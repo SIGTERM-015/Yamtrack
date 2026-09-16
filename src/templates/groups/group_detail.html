@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load app_tags %}
+
+{% block title %}
+  {{ group.name }} - Yamtrack
+{% endblock title %}
+
+{% block content %}
+  <div class="mb-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold mb-2">{{ group.name }}</h1>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center">
+            <div class="flex -space-x-2 mr-2">
+              {% for member in group.members.all %}
+                <div class="w-6 h-6 rounded-full {% if member == group.owner %}bg-[#4f46e5]{% else %}bg-[#4b5563]{% endif %} flex items-center justify-center border-2 border-[#2a2f35] text-xs font-medium"
+                     title="{{ member.username }}">{{ member.username.0|upper }}</div>
+              {% endfor %}
+            </div>
+            <span class="text-sm text-gray-400">
+              {{ group.members.count }} member{{ group.members.count|pluralize }}
+              <span class="mx-2">•</span>
+              {{ items_data|length }} item{{ items_data|length|pluralize }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-6">
+    {% for data in items_data %}
+      <div class="bg-[#2a2f35] rounded-lg overflow-hidden shadow-lg relative flex flex-col group h-full">
+        <div class="relative w-full aspect-[2/3] flex-shrink-0">
+          <a href="{{ data.item|media_url }}" class="block w-full h-full">
+            <img alt="{{ data.item.title }}"
+                 class="w-full h-full object-cover bg-[#3e454d]"
+                 src="{% if data.item.image and data.item.image != 'None' %}{{ data.item.image }}{% else %}{{ IMG_NONE }}{% endif %}">
+          </a>
+          
+          <div class="absolute top-2 right-2 bg-gray-900/90 text-white text-xs px-2 py-1 rounded-md flex items-center shadow-md">
+            <span class="font-bold">{{ data.completed_count }}/{{ data.total_members }}</span>
+          </div>
+        </div>
+
+        <div class="p-3 flex-grow flex flex-col justify-between" x-data="{ expanded: false }">
+          <a href="{{ data.item|media_url }}" class="text-sm font-semibold hover:text-[#4a9eff] transition-colors line-clamp-2 mb-2" title="{{ data.item.title }}">
+            {{ data.item.title }}
+          </a>
+          
+          <div class="relative">
+            <button @click="expanded = !expanded" class="w-full flex items-center justify-between text-xs text-gray-400 hover:text-white mb-1">
+              <span>Member Status</span>
+              <svg :class="{'rotate-180': expanded}" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div x-show="expanded" class="mt-2 space-y-2">
+              {% for mp in data.member_progress %}
+                <div class="flex items-center justify-between text-xs bg-[#1e2329] p-1.5 rounded">
+                  <div class="flex items-center gap-1.5 truncate">
+                    <div class="w-5 h-5 rounded-full bg-[#4b5563] flex items-center justify-center flex-shrink-0" title="{{ mp.user.username }}">
+                      {{ mp.user.username.0|upper }}
+                    </div>
+                    <span class="truncate max-w-[80px]" title="{{ mp.user.username }}">{{ mp.user.username }}</span>
+                  </div>
+                  <div class="flex flex-col items-end flex-shrink-0">
+                    {% if mp.status %}
+                      <span class="text-[10px] uppercase font-bold 
+                        {% if mp.status == 'Completed' %}text-green-400
+                        {% elif mp.status == 'Watching' or mp.status == 'Reading' %}text-blue-400
+                        {% elif mp.status == 'Plan to Watch' or mp.status == 'Plan to Read' %}text-gray-400
+                        {% else %}text-yellow-400{% endif %}">
+                        {{ mp.status }}
+                      </span>
+                    {% else %}
+                      <span class="text-[10px] uppercase text-gray-500">None</span>
+                    {% endif %}
+                    {% if data.item.media_type == 'tv' %}
+                      <span class="text-[10px] text-gray-400">Ep {{ mp.progress }}</span>
+                    {% elif mp.progress > 0 %}
+                      <span class="text-[10px] text-gray-400">P {{ mp.progress }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="col-span-full py-12 text-center text-gray-400">
+        This group has no items yet.
+      </div>
+    {% endfor %}
+  </div>
+{% endblock content %}
