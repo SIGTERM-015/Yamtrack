@@ -13,10 +13,12 @@ class GroupModelTest(TestCase):
         """Set up test data for Group models."""
         user_model = get_user_model()
         self.user1 = user_model.objects.create_user(
-            username="user1", password="testpassword123"  # noqa: S106
+            username="user1",
+            password="testpassword123",  # noqa: S106
         )
         self.user2 = user_model.objects.create_user(
-            username="user2", password="testpassword123"  # noqa: S106
+            username="user2",
+            password="testpassword123",  # noqa: S106
         )
 
         self.item1 = Item.objects.create(
