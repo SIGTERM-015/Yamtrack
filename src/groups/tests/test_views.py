@@ -71,6 +71,13 @@ class GroupViewsTest(TestCase):
         self.assertNotContains(response, "Test Group")
         self.assertContains(response, "You don't belong to any groups yet.")
 
+    def test_group_list_nav_link_visible(self):
+        """Test that the main navigation exposes a link to the groups list."""
+        self.client.login(username="user1", password="testpassword123")  # noqa: S106
+        response = self.client.get(reverse("group_list"))
+        self.assertContains(response, f'href="{reverse("group_list")}"')
+        self.assertContains(response, "<span>Groups</span>")
+
     def test_group_detail_unauthenticated(self):
         """Test that unauthenticated users are redirected."""
         url = reverse("group_detail", args=[self.group.id])
