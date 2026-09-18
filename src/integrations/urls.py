@@ -51,4 +51,9 @@ urlpatterns = [
         views.emby_webhook,
         name="emby_webhook",
     ),
+    path(
+        "webhook/scrobble/<str:token>",
+        views.scrobble_webhook,
+        name="scrobble_webhook",
+    ),
 ]

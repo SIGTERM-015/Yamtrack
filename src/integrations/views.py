@@ -9,7 +9,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_not_required
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import HttpResponse, StreamingHttpResponse
+from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
@@ -20,7 +20,7 @@ import users
 from app import helpers as app_helpers
 from integrations import exports, tasks
 from integrations.imports import anilist, helpers, simkl, trakt
-from integrations.webhooks import emby, jellyfin, plex
+from integrations.webhooks import emby, jellyfin, plex, scrobble
 
 logger = logging.getLogger(__name__)
 
@@ -586,3 +586,40 @@ def emby_webhook(request, token):
     processor = emby.EmbyWebhookProcessor()
     processor.process_payload(payload, user)
     return HttpResponse(status=200)
+
+
+@login_not_required
+@csrf_exempt
+@require_POST
+def scrobble_webhook(request, token):
+    """Handle agnostic playback ("scrobble") events from external clients."""
+    try:
+        user = users.models.User.objects.get(token=token)
+    except ObjectDoesNotExist:
+        logger.warning(
+            "Could not process scrobble webhook: Invalid token: %s",
+            token,
+        )
+        return HttpResponse(status=401)
+
+    # Attach User instance so history_user_id is populated
+    request.user = user
+
+    if not request.body:
+        logger.warning("Missing payload in scrobble webhook request")
+        return HttpResponse("Missing payload", status=400)
+
+    try:
+        payload = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        logger.warning("Invalid JSON in scrobble webhook request")
+        return HttpResponse("Invalid JSON", status=400)
+
+    processor = scrobble.ScrobbleWebhookProcessor()
+    try:
+        result = processor.process_payload(payload, user)
+    except scrobble.ScrobblePayloadError as exc:
+        logger.warning("Invalid scrobble payload: %s", exc)
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    return JsonResponse({"status": result}, status=200)
