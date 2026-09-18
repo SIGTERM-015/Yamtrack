@@ -1,4 +1,5 @@
 import datetime
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -140,7 +141,8 @@ class EditMedia(TestCase):
         )
         self.client.login(**self.credentials)
 
-    def test_edit_movie_score(self):
+    @patch("app.views.services.get_media_metadata", return_value={"max_progress": None})
+    def test_edit_movie_score(self, mock_metadata):
         """Test the editing of a movie score."""
         item = Item.objects.create(
             media_id="10494",
