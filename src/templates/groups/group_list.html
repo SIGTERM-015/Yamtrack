@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Groups - Yamtrack
+{% endblock title %}
+
+{% block content %}
+  <div class="mb-8">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div>
+        <h1 class="text-3xl font-bold mb-2">Groups</h1>
+        <p class="text-gray-400">View your groups and tracked progress</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    {% for group in groups %}
+      <div class="bg-[#2a2f35] rounded-lg overflow-hidden hover:shadow-lg group relative">
+        <div class="relative h-48 flex items-center justify-center bg-[#39404b]">
+          <div class="absolute inset-0 bg-gradient-to-t from-[#1e2329] to-transparent"></div>
+          <a href="{% url 'group_detail' group.id %}" class="absolute inset-0"></a>
+          
+          <div class="absolute bottom-4 left-4 flex flex-col items-start max-w-[calc(100%-2rem)]">
+            <h3 class="text-xl font-semibold text-white mb-1 line-clamp-1 w-full">{{ group.name }}</h3>
+            <p class="text-sm text-gray-200 line-clamp-2 w-full">{{ group.description }}</p>
+          </div>
+        </div>
+        <div class="p-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              {% include "app/icons/persons.svg" with classes="w-4 h-4 text-gray-400 mr-2" %}
+              <div class="flex -space-x-2">
+                <div class="w-6 h-6 rounded-full bg-[#4f46e5] flex items-center justify-center border-2 border-[#2a2f35] text-xs font-medium"
+                     title="{{ group.owner.username }}">{{ group.owner.username.0|upper }}</div>
+                {% for membership in group.memberships.all %}
+                  {% if membership.user != group.owner %}
+                    <div class="w-6 h-6 rounded-full bg-[#4b5563] flex items-center justify-center border-2 border-[#2a2f35] text-xs font-medium"
+                         title="{{ membership.user.username }}">{{ membership.user.username.0|upper }}</div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+            <span class="text-sm text-gray-400">{{ group.members.count }} member{{ group.members.count|pluralize }}</span>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="col-span-full py-12 text-center text-gray-400">
+        You don't belong to any groups yet.
+      </div>
+    {% endfor %}
+  </div>
+{% endblock content %}
