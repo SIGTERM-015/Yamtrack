@@ -643,6 +643,7 @@ def media_save(request):
                 "image": metadata["image"],
             },
         )
+        item.set_genres(metadata.get("genres"))
         model = apps.get_model(app_label="app", model_name=media_type)
         instance = model(item=item, user=request.user)
 
