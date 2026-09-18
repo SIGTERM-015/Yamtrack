@@ -6,7 +6,7 @@ on:
     branches:
       - "dev"
     tags:
-      - "v*"
+      - "fork-v*"
   pull_request:
     branches:
       - "dev"
@@ -114,8 +114,14 @@ jobs:
       - name: Get version from git
         id: get-version
         run: |
-          VERSION=$(git describe --tags 2>/dev/null || echo "dev")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          # Fork-owned versioning: only fork-v* tags count, so the version baked
+          # into the image never reuses an upstream yamtrack release tag.
+          if VERSION=$(git describe --tags --match 'fork-v*' --exact-match 2>/dev/null); then
+            echo "Building release $VERSION"
+          else
+            VERSION="fork-dev-$(git rev-parse --short HEAD)"
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Using version: $VERSION"
 
       - name: Setup Docker buildx
@@ -132,9 +138,8 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=ref,event=tag
+            type=sha,format=short
 
       # Determine if we should push the image
       - name: Set push flag
