@@ -43,7 +43,7 @@ class IntegrationTest(StaticLiveServerTestCase):
     def test_season_progress_edit(self):
         """Test the progress edit of a season."""
         self.page.get_by_placeholder("Search tv shows...").fill("breaking bad")
-        self.page.get_by_role("button").nth(1).click()
+        self.page.get_by_role("button", name="Search").click()
         expect(self.page.locator("h2")).to_contain_text("Search Results")
         self.page.get_by_title("Breaking Bad", exact=True).click()
         expect(self.page.get_by_role("main")).to_contain_text("Breaking Bad")
@@ -94,7 +94,7 @@ class IntegrationTest(StaticLiveServerTestCase):
     def test_season_completed(self):
         """Test the completed status of a season."""
         self.page.get_by_placeholder("Search tv shows...").fill("breaking bad")
-        self.page.get_by_role("button").nth(1).click()
+        self.page.get_by_role("button", name="Search").click()
         expect(self.page.locator("h2")).to_contain_text("Search Results")
         self.page.get_by_title("Breaking Bad", exact=True).click()
         expect(self.page.get_by_role("main")).to_contain_text("Breaking Bad")
