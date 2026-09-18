@@ -11,6 +11,7 @@ from groups.models import Group, GroupInvitation, GroupOrigin
 from groups.services import (
     apply_status_to_group_members,
     apply_status_to_user,
+    get_group_comparison,
     get_group_progress,
 )
 
@@ -295,3 +296,47 @@ def group_transfer_owner(request, group_id):
     group.save(update_fields=["owner"])
     messages.success(request, f"{new_owner.username} is the new owner of the group.")
     return redirect("group_detail", group_id=group.id)
+
+
+@login_required
+def group_comparison(request, group_id):
+    """View to compare group members' ratings side by side."""
+    group = get_object_or_404(Group, id=group_id)
+
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    comparison_data = get_group_comparison(group)
+    items_dict = {
+        item.id: item
+        for item in Item.objects.filter(
+            id__in=[data["item_id"] for data in comparison_data]
+        )
+    }
+    members = list(group.members.all())
+
+    rows = []
+    for data in comparison_data:
+        item = items_dict.get(data["item_id"])
+        if item is None:
+            continue
+
+        rows.append(
+            {
+                "item": item,
+                "scores": [
+                    {"user": member, "score": data["scores"].get(member.id)}
+                    for member in members
+                ],
+                "average": data["average"],
+                "difference": data["difference"],
+            }
+        )
+
+    context = {
+        "group": group,
+        "members": members,
+        "rows": rows,
+    }
+    return render(request, "groups/group_comparison.html", context)

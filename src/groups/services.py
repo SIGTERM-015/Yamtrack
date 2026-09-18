@@ -7,6 +7,9 @@ from django.db import models
 from app.models import Status
 from groups.models import Group, GroupItem
 
+# Minimum number of submitted scores needed to report a comparison difference.
+_MIN_SCORES_FOR_DIFFERENCE = 2
+
 
 def get_group_progress(group: Group) -> dict:
     """
@@ -263,3 +266,75 @@ def resolve_group_context(user, item) -> dict:
             break
 
     return {"groups": list(groups.values_list("id", flat=True)), "policy": policy}
+
+
+def get_group_comparison(group: Group) -> list[dict]:
+    """
+    Build a side-by-side rating comparison for the items in a group.
+
+    Ratings (``score``) are shared within the group, so they are compared
+    here. The free-text ``notes`` field is private to each user and is
+    deliberately neither read nor returned by this function.
+
+    Args:
+        group: The Group instance.
+
+    Returns:
+        A list of dicts, one per group item, sorted by rating discrepancy
+        (largest first, unscored items last):
+            - 'item_id' (int): the item ID.
+            - 'media_type' (str): the media type.
+            - 'scores' (dict): user_id -> submitted score (float) or None.
+            - 'average' (float|None): mean of the submitted scores.
+            - 'difference' (float|None): gap between the highest and lowest
+              submitted score, None when fewer than two members scored.
+    """
+    group_items = list(group.group_items.select_related("item"))
+    members = list(group.members.all())
+    member_ids = [m.id for m in members]
+
+    items_by_type = defaultdict(list)
+    for gi in group_items:
+        items_by_type[gi.item.media_type].append(gi.item.id)
+
+    scores_by_item = {gi.item.id: {m.id: None for m in members} for gi in group_items}
+
+    for media_type, item_ids in items_by_type.items():
+        model = apps.get_model("app", media_type)
+        rows = model.objects.filter(
+            item_id__in=item_ids,
+            user_id__in=member_ids,
+        ).values("item_id", "user_id", "score")
+
+        for row in rows:
+            score = row["score"]
+            scores_by_item[row["item_id"]][row["user_id"]] = (
+                None if score is None else float(score)
+            )
+
+    comparison = []
+    for gi in group_items:
+        scores = scores_by_item[gi.item.id]
+        submitted = [score for score in scores.values() if score is not None]
+
+        comparison.append(
+            {
+                "item_id": gi.item.id,
+                "media_type": gi.item.media_type,
+                "scores": scores,
+                "average": (sum(submitted) / len(submitted) if submitted else None),
+                "difference": (
+                    max(submitted) - min(submitted)
+                    if len(submitted) >= _MIN_SCORES_FOR_DIFFERENCE
+                    else None
+                ),
+            }
+        )
+
+    comparison.sort(
+        key=lambda row: (
+            row["difference"] is None,
+            -(row["difference"] or 0),
+        )
+    )
+    return comparison

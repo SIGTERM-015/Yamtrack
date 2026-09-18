@@ -33,4 +33,9 @@ urlpatterns = [
         views.group_transfer_owner,
         name="group_transfer_owner",
     ),
+    path(
+        "<int:group_id>/comparison/",
+        views.group_comparison,
+        name="group_comparison",
+    ),
 ]

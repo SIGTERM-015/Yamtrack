@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load app_tags %}
+
+{% block title %}
+  {{ group.name }} - Ratings - Yamtrack
+{% endblock title %}
+
+{% block content %}
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold mb-2">{{ group.name }} — Ratings comparison</h1>
+    <p class="text-sm text-gray-400">
+      Ratings side by side, sorted by disagreement. Scores are shared with the
+      group; personal notes stay private.
+    </p>
+  </div>
+
+  <div class="overflow-x-auto bg-[#2a2f35] rounded-lg shadow-lg">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-gray-400 border-b border-[#3e454d]">
+          <th class="p-3">Title</th>
+          {% for member in members %}
+            <th class="p-3 text-center">{{ member.username }}</th>
+          {% endfor %}
+          <th class="p-3 text-center">Average</th>
+          <th class="p-3 text-center">Difference</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr class="border-b border-[#3e454d] last:border-b-0">
+            <td class="p-3">
+              <a href="{{ row.item|media_url }}" class="hover:underline">{{ row.item.title }}</a>
+            </td>
+            {% for entry in row.scores %}
+              <td class="p-3 text-center">
+                {% if entry.score is not None %}
+                  {{ entry.score }}
+                {% else %}
+                  <span class="text-gray-500">—</span>
+                {% endif %}
+              </td>
+            {% endfor %}
+            <td class="p-3 text-center">
+              {% if row.average is not None %}{{ row.average|floatformat:1 }}{% else %}<span class="text-gray-500">—</span>{% endif %}
+            </td>
+            <td class="p-3 text-center font-bold">
+              {% if row.difference is not None %}{{ row.difference|floatformat:1 }}{% else %}<span class="text-gray-500">—</span>{% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td class="p-12 text-center text-gray-400" colspan="{{ members|length|add:3 }}">
+              This group has no items yet.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock content %}

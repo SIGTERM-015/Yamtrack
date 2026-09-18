@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
@@ -5,6 +7,7 @@ from app.models import TV, Episode, Item, Movie, Season, Status
 from groups.models import Group, GroupItem, GroupMembership, GroupOrigin
 from groups.services import (
     add_item_to_group,
+    get_group_comparison,
     get_group_progress,
     resolve_group_context,
 )
@@ -313,3 +316,135 @@ class AddItemToGroupPreservesPersonalTest(TestCase):
 
         fresh = Movie.objects.get(user=self.user3, item=self.item)
         self.assertEqual(fresh.status, Status.PLANNING.value)
+
+
+class GroupComparisonServiceTest(TestCase):
+    """Test the group ratings comparison service."""
+
+    def setUp(self):
+        """Set up test data."""
+        patcher = patch("app.models.providers.services.get_media_metadata")
+        self.mock_get_media_metadata = patcher.start()
+        self.mock_get_media_metadata.return_value = {"max_progress": 1}
+        self.addCleanup(patcher.stop)
+
+        self.user1 = User.objects.create(username="user1")
+        self.user2 = User.objects.create(username="user2")
+        self.group = Group.objects.create(name="My Group", owner=self.user1)
+        GroupMembership.objects.create(group=self.group, user=self.user1)
+        GroupMembership.objects.create(group=self.group, user=self.user2)
+
+        self.movie_agree = Item.objects.create(
+            media_id="m1", title="Agreed Movie", media_type="movie", source="tmdb"
+        )
+        self.movie_disagree = Item.objects.create(
+            media_id="m2", title="Divided Movie", media_type="movie", source="tmdb"
+        )
+        GroupItem.objects.create(
+            group=self.group, item=self.movie_agree, added_by=self.user1
+        )
+        GroupItem.objects.create(
+            group=self.group, item=self.movie_disagree, added_by=self.user1
+        )
+
+    def test_comparison_scores_average_and_difference(self):
+        """Scores, combined average and difference are computed per item."""
+        Movie.objects.create(
+            user=self.user1,
+            item=self.movie_agree,
+            status=Status.COMPLETED,
+            score=7,
+        )
+        Movie.objects.create(
+            user=self.user2,
+            item=self.movie_agree,
+            status=Status.COMPLETED,
+            score=7,
+        )
+        Movie.objects.create(
+            user=self.user1,
+            item=self.movie_disagree,
+            status=Status.COMPLETED,
+            score=9,
+        )
+        Movie.objects.create(
+            user=self.user2,
+            item=self.movie_disagree,
+            status=Status.COMPLETED,
+            score=3,
+        )
+
+        comparison = {row["item_id"]: row for row in get_group_comparison(self.group)}
+
+        agree = comparison[self.movie_agree.id]
+        self.assertEqual(agree["scores"][self.user1.id], 7.0)
+        self.assertEqual(agree["scores"][self.user2.id], 7.0)
+        self.assertEqual(agree["average"], 7.0)
+        self.assertEqual(agree["difference"], 0.0)
+
+        disagree = comparison[self.movie_disagree.id]
+        self.assertEqual(disagree["average"], 6.0)
+        self.assertEqual(disagree["difference"], 6.0)
+
+    def test_comparison_sorted_by_discrepancy(self):
+        """Items with the biggest rating gap come first."""
+        Movie.objects.create(
+            user=self.user1,
+            item=self.movie_agree,
+            status=Status.COMPLETED,
+            score=7,
+        )
+        Movie.objects.create(
+            user=self.user2,
+            item=self.movie_agree,
+            status=Status.COMPLETED,
+            score=7,
+        )
+        Movie.objects.create(
+            user=self.user1,
+            item=self.movie_disagree,
+            status=Status.COMPLETED,
+            score=9,
+        )
+        Movie.objects.create(
+            user=self.user2,
+            item=self.movie_disagree,
+            status=Status.COMPLETED,
+            score=3,
+        )
+
+        ordered = [row["item_id"] for row in get_group_comparison(self.group)]
+        self.assertEqual(ordered, [self.movie_disagree.id, self.movie_agree.id])
+
+    def test_comparison_single_score_has_no_difference(self):
+        """An item scored by only one member has no difference."""
+        Movie.objects.create(
+            user=self.user1,
+            item=self.movie_agree,
+            status=Status.COMPLETED,
+            score=8,
+        )
+
+        comparison = {row["item_id"]: row for row in get_group_comparison(self.group)}
+        row = comparison[self.movie_agree.id]
+
+        self.assertEqual(row["scores"][self.user1.id], 8.0)
+        self.assertIsNone(row["scores"][self.user2.id])
+        self.assertEqual(row["average"], 8.0)
+        self.assertIsNone(row["difference"])
+
+    def test_comparison_never_exposes_private_notes(self):
+        """Private notes must not leak through the comparison."""
+        Movie.objects.create(
+            user=self.user1,
+            item=self.movie_agree,
+            status=Status.COMPLETED,
+            score=8,
+            notes="secret private note",
+        )
+
+        comparison = get_group_comparison(self.group)
+
+        for row in comparison:
+            self.assertNotIn("notes", row)
+        self.assertNotIn("secret private note", str(comparison))
