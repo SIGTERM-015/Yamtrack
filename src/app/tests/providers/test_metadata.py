@@ -470,8 +470,31 @@ class Metadata(TestCase):
         response = comicvine.comic("155969")
         self.assertEqual(response["title"], "Ultimate Spider-Man")
 
-    def test_hardcover_book(self):
+    @patch("app.providers.hardcover.services.api_request")
+    def test_hardcover_book(self, mock_api_request):
         """Test the metadata method for books from Hardcover."""
+        mock_api_request.return_value = {
+            "data": {
+                "books_by_pk": {
+                    "id": "377193",
+                    "title": "The Great Gatsby",
+                    "slug": "the-great-gatsby",
+                    "description": "A novel set on Long Island.",
+                    "cached_image": None,
+                    "cached_tags": [
+                        {"tag": "Fiction"},
+                        {"tag": "Young Adult"},
+                        {"tag": "Classics"},
+                    ],
+                    "rating": 3.7,
+                    "ratings_count": 100,
+                    "pages": 180,
+                    "release_date": "1925-04-10",
+                    "cached_contributors": "F. Scott Fitzgerald",
+                    "default_cover_edition": None,
+                },
+            },
+        }
         response = hardcover.book("377193")
         self.assertEqual(response["title"], "The Great Gatsby")
         self.assertEqual(response["details"]["author"], "F. Scott Fitzgerald")
@@ -480,8 +503,27 @@ class Metadata(TestCase):
         self.assertIn("Classics", response["genres"])
         self.assertAlmostEqual(response["score"], 7.4, delta=0.1)
 
-    def test_hardcover_book_unknown(self):
+    @patch("app.providers.hardcover.services.api_request")
+    def test_hardcover_book_unknown(self, mock_api_request):
         """Test the metadata method for books from Hardcover with minimal data."""
+        mock_api_request.return_value = {
+            "data": {
+                "books_by_pk": {
+                    "id": "1265528",
+                    "title": "MiNRS",
+                    "slug": "minrs",
+                    "description": None,
+                    "cached_image": None,
+                    "cached_tags": None,
+                    "rating": None,
+                    "ratings_count": 0,
+                    "pages": 300,
+                    "release_date": "2015-09-22",
+                    "cached_contributors": "Kevin Sylvester",
+                    "default_cover_edition": {"edition_format": None},
+                },
+            },
+        }
         response = hardcover.book("1265528")
         self.assertEqual(response["title"], "MiNRS")
         self.assertEqual(response["details"]["author"], "Kevin Sylvester")

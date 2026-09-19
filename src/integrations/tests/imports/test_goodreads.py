@@ -1,3 +1,4 @@
+import itertools
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -28,6 +29,26 @@ class ImportGoodreads(TestCase):
         """Create user for the tests."""
         self.credentials = {"username": "test", "password": "12345"}
         self.user = get_user_model().objects.create_user(**self.credentials)
+
+        media_ids = itertools.count(1)
+
+        def fake_search(*_args, **_kwargs):
+            return {
+                "results": [
+                    {
+                        "media_id": str(next(media_ids)),
+                        "source": Sources.HARDCOVER.value,
+                        "media_type": "book",
+                        "title": "Mock Book",
+                        "image": "",
+                    },
+                ],
+            }
+
+        search_patcher = patch.object(services, "search", side_effect=fake_search)
+        search_patcher.start()
+        self.addCleanup(search_patcher.stop)
+
         with Path(mock_path / "import_goodreads.csv").open("rb") as file:
             self.import_results = goodreads.importer(file, self.user, "new")
 
