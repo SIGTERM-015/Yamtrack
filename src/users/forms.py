@@ -6,6 +6,8 @@ from django.contrib.auth.forms import (
 )
 from django.core.exceptions import ValidationError
 
+from app import config
+
 from .models import VALID_SEARCH_TYPES, User
 
 
@@ -71,6 +73,29 @@ class SuggestionForm(forms.Form):
         max_length=500,
         widget=forms.Textarea,
     )
+
+    def clean(self):
+        """Reject providers that are not valid for the suggested media type."""
+        cleaned_data = super().clean()
+        media_type = cleaned_data.get("media_type")
+        source = cleaned_data.get("source")
+        if (
+            media_type
+            and source
+            and not is_valid_suggestion_source(
+                media_type,
+                source,
+            )
+        ):
+            self.add_error("source", "Invalid provider for this media type.")
+        return cleaned_data
+
+
+def is_valid_suggestion_source(media_type, source):
+    """Return True when source is a provider enabled for media_type."""
+    if media_type not in VALID_SEARCH_TYPES:
+        return False
+    return source in {provider.value for provider in config.get_sources(media_type)}
 
 
 class PasswordChangeForm(PasswordChangeForm):

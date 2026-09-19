@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_not_required
 from django.core.cache import cache
 from django.db import IntegrityError
 from django.db.models import Q
-from django.http import Http404
+from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.defaultfilters import pluralize
 from django.utils import timezone
@@ -24,6 +24,7 @@ from users.forms import (
     PasswordChangeForm,
     SuggestionForm,
     UserUpdateForm,
+    is_valid_suggestion_source,
 )
 from users.models import (
     VALID_SEARCH_TYPES,
@@ -429,12 +430,16 @@ def _suggestion_rate_limited(request, target_user):
     """Return True when this IP has sent too many suggestions recently."""
     ip = request.META.get("REMOTE_ADDR", "unknown")
     key = f"suggestion-rate:{ip}:{target_user.pk}"
-    count = cache.get(key, 0)
-    if count >= SUGGESTION_RATE_LIMIT:
-        return True
+    # Seed the key with a fixed TTL, then increment atomically so concurrent
+    # requests cannot both read the same count and overwrite each other.
+    cache.add(key, 0, SUGGESTION_RATE_WINDOW)
+    try:
+        count = cache.incr(key)
+    except ValueError:
+        cache.set(key, 1, SUGGESTION_RATE_WINDOW)
+        count = 1
 
-    cache.set(key, count + 1, SUGGESTION_RATE_WINDOW)
-    return False
+    return count > SUGGESTION_RATE_LIMIT
 
 
 @login_not_required
@@ -445,6 +450,10 @@ def suggest_media(request, username):
 
     if target_user == request.user:
         return redirect("suggestions")
+
+    if target_user.profile_private:
+        msg = "User not found"
+        raise Http404(msg)
 
     if not target_user.suggestions_enabled:
         msg = "Suggestions are disabled for this user"
@@ -458,27 +467,26 @@ def suggest_media(request, username):
 
     if request.method == "POST":
         form = SuggestionForm(request.POST)
-        if form.is_valid():
-            if _suggestion_rate_limited(request, target_user):
-                messages.error(
-                    request,
-                    "You have sent too many suggestions, try again later.",
-                )
-            else:
-                Suggestion.objects.create(
-                    suggested_by=(
-                        request.user if request.user.is_authenticated else None
-                    ),
-                    target_user=target_user,
-                    **form.cleaned_data,
-                )
-                messages.success(
-                    request,
-                    f"Your suggestion was sent to {target_user.username}.",
-                )
-            return redirect("suggest_media", username=username)
+        if not form.is_valid():
+            messages.error(request, "Invalid suggestion.")
+            return HttpResponseBadRequest("Invalid suggestion.")
 
-        messages.error(request, "Invalid suggestion.")
+        if _suggestion_rate_limited(request, target_user):
+            messages.error(
+                request,
+                "You have sent too many suggestions, try again later.",
+            )
+        else:
+            Suggestion.objects.create(
+                suggested_by=(request.user if request.user.is_authenticated else None),
+                target_user=target_user,
+                **form.cleaned_data,
+            )
+            messages.success(
+                request,
+                f"Your suggestion was sent to {target_user.username}.",
+            )
+        return redirect("suggest_media", username=username)
 
     results = []
     query = request.GET.get("q")
@@ -524,6 +532,9 @@ def accept_suggestion(request, suggestion_id):
         target_user=request.user,
         status=SuggestionStatus.PENDING.value,
     )
+
+    if not is_valid_suggestion_source(suggestion.media_type, suggestion.source):
+        return HttpResponseBadRequest("Invalid suggestion.")
 
     metadata = services.get_media_metadata(
         suggestion.media_type,
