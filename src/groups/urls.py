@@ -17,4 +17,9 @@ urlpatterns = [
     ),
     path("<int:group_id>/", views.group_detail, name="group_detail"),
     path("<int:group_id>/invite/", views.group_invite, name="group_invite"),
+    path(
+        "<int:group_id>/set-status/",
+        views.group_set_item_status,
+        name="group_set_item_status",
+    ),
 ]

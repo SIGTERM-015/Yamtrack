@@ -4,7 +4,7 @@ from django.apps import apps
 from django.db import models
 
 from app.models import Status
-from groups.models import Group
+from groups.models import Group, GroupItem
 
 
 def get_group_progress(group: Group) -> dict:
@@ -82,3 +82,74 @@ def get_group_progress(group: Group) -> dict:
                 result[item_id]["completed_count"] += 1
 
     return result
+
+
+def apply_status_to_group_members(group: Group, item, status) -> dict:
+    """
+    Apply a status to every member of a group without overwriting existing data.
+
+    Only members who do not already have the item in ``status`` are touched.
+    Members who already hold that exact status keep their dates and notes
+    intact; members with a different status only have the status field changed.
+
+    The operation is idempotent: running it a second time changes nothing.
+
+    Args:
+        group: The Group instance.
+        item: The Item instance.
+        status: A Status value or member.
+
+    Returns:
+        A summary dict with ``created``, ``updated`` and ``skipped`` counts.
+    """
+    status_value = status.value if hasattr(status, "value") else status
+    model = apps.get_model("app", item.media_type)
+    member_ids = list(group.members.values_list("id", flat=True))
+    existing = {
+        entry.user_id: entry
+        for entry in model.objects.filter(item=item, user_id__in=member_ids)
+    }
+
+    to_create = []
+    updated = 0
+    skipped = 0
+
+    for user_id in member_ids:
+        entry = existing.get(user_id)
+        if entry is None:
+            to_create.append(model(item=item, user_id=user_id, status=status_value))
+        elif entry.status == status_value:
+            skipped += 1
+        else:
+            updated += model.objects.filter(pk=entry.pk).update(status=status_value)
+
+    if to_create:
+        model.objects.bulk_create(to_create)
+
+    return {"created": len(to_create), "updated": updated, "skipped": skipped}
+
+
+def add_item_to_group(group: Group, item, added_by, status=Status.PLANNING) -> tuple:
+    """
+    Add an item to a group and apply ``status`` to every member.
+
+    Adding a title to the group's *to watch* adds it to every member's own
+    *to watch* without overwriting members who already track it.
+
+    Args:
+        group: The Group instance.
+        item: The Item instance.
+        added_by: The user adding the item.
+        status: Status applied to members; defaults to Planning (to watch).
+
+    Returns:
+        A ``(group_item, summary)`` tuple matching
+        :func:`apply_status_to_group_members`.
+    """
+    group_item, _ = GroupItem.objects.get_or_create(
+        group=group,
+        item=item,
+        defaults={"added_by": added_by},
+    )
+    summary = apply_status_to_group_members(group, item, status)
+    return group_item, summary

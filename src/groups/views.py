@@ -5,10 +5,11 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+
 from app import config
-from app.models import Item
+from app.models import Item, Status
 from groups.models import Group, GroupInvitation
-from groups.services import get_group_progress
+from groups.services import apply_status_to_group_members, get_group_progress
 
 
 @login_required
@@ -75,6 +76,7 @@ def group_detail(request, group_id):
         "items_data": items_data,
         "is_member": is_member,
         "invitation": invitation,
+        "status_choices": Status.choices,
     }
     return render(request, "groups/group_detail.html", context)
 
@@ -175,3 +177,25 @@ def group_invitation_reject(request, invitation_id):
     invitation.delete()
     messages.success(request, f"You declined the invitation to '{group.name}'.")
     return redirect("group_list")
+
+
+@require_POST
+def group_set_item_status(request, group_id):
+    """Apply a status to every member of a group, without overwriting data."""
+    group = get_object_or_404(Group, id=group_id)
+
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    item = get_object_or_404(
+        Item, id=request.POST.get("item_id"), group_items__group=group
+    )
+
+    status = request.POST.get("status")
+    if status not in {choice.value for choice in Status}:
+        msg = "Invalid status"
+        raise Http404(msg)
+
+    apply_status_to_group_members(group, item, status)
+    return redirect("group_detail", group_id=group.id)
