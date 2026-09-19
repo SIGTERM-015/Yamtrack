@@ -5,6 +5,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from app import config
 from app.models import Item
 from groups.models import Group, GroupInvitation
 from groups.services import get_group_progress
@@ -51,9 +52,14 @@ def group_detail(request, group_id):
 
         member_progress = []
         for m_id, m_data in p_data["members"].items():
+            status = m_data["status"]
+            status_config = config.get_status_config(status) if status else None
             member_progress.append({
                 "user": members_dict.get(m_id),
-                "status": m_data["status"],
+                "status": status,
+                "status_color": (
+                    status_config["text_color"] if status_config else "text-gray-500"
+                ),
                 "progress": m_data["progress"],
             })
 
