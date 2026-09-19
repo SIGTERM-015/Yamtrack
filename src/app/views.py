@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 from django.apps import apps
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth.decorators import login_not_required
+from django.contrib.auth.decorators import login_not_required, login_required
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import IntegrityError
@@ -18,6 +18,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 
 from app import config, helpers, history_processor
 from app import home as home_helpers
+from app import recommendations as recommendation_engine
 from app import statistics as stats
 from app.forms import EpisodeForm, ManualItemForm, get_form_class
 from app.models import (
@@ -1084,6 +1085,141 @@ def journal(request):
         },
     )
     return render(request, "app/journal.html", context)
+
+
+# --- Recommendation UI (E8.4) ----------------------------------------------
+
+# Media types that can seed recommendations. Seasons and episodes are skipped:
+# a season's suggestions duplicate its parent show's.
+_RECOMMENDATION_MEDIA_TYPES = (
+    MediaTypes.MOVIE.value,
+    MediaTypes.TV.value,
+    MediaTypes.ANIME.value,
+    MediaTypes.MANGA.value,
+    MediaTypes.GAME.value,
+    MediaTypes.BOOK.value,
+    MediaTypes.COMIC.value,
+    MediaTypes.BOARDGAME.value,
+)
+
+# How many of the user's recent titles are asked for provider suggestions, and
+# the maximum number of ranked suggestions rendered.
+RECOMMENDATION_SOURCE_LIMIT = 8
+RECOMMENDATION_LIMIT = 24
+
+# Length of an ``?exclude=`` identity token: ``source|media_id|media_type``.
+_IDENTITY_KEY_LENGTH = 3
+
+
+def _serialise_key(key):
+    """Join an ``item_key`` tuple into a URL-safe ``|``-separated token."""
+    return "|".join(key)
+
+
+def _parse_excluded(raw):
+    """Parse a comma-separated ``?exclude=`` value back into identity tuples."""
+    excluded = set()
+    for chunk in (raw or "").split(","):
+        parts = [part for part in chunk.split("|") if part]
+        if len(parts) >= _IDENTITY_KEY_LENGTH:
+            excluded.add(tuple(parts))
+    return excluded
+
+
+def _user_media(user):
+    """Return every ``(media_type, media)`` pair for a user, newest first."""
+    pairs = []
+    for media_type in _RECOMMENDATION_MEDIA_TYPES:
+        model = apps.get_model(app_label="app", model_name=media_type)
+        queryset = model.objects.filter(user=user).select_related("item")
+        pairs.extend((media_type, media) for media in queryset)
+    pairs.sort(key=lambda pair: pair[1].created_at, reverse=True)
+    return pairs
+
+
+def _history_entry(media_type, media):
+    """Build a scoring-engine history entry from a stored media row.
+
+    ``genres`` is empty until E7.1 (persisted genres) is merged, so the taste
+    profile carries no signal on this branch and ranking falls back to the tied
+    provider/quality defaults.  This is documented in the delivery report.
+    """
+    item = media.item
+    return {
+        "source": item.source,
+        "media_id": item.media_id,
+        "media_type": media_type,
+        "title": item.title,
+        "season_number": item.season_number,
+        "score": float(media.score) if media.score is not None else None,
+        "status": media.status,
+        "genres": [],
+    }
+
+
+def _candidate_season_numbers(media_type, item):
+    """Return the ``season_numbers`` argument for a metadata lookup, if any."""
+    if media_type == MediaTypes.SEASON.value:
+        return [item.season_number]
+    return None
+
+
+@login_required
+@require_GET
+def recommendations(request):
+    """Show ranked suggestions with one-click "to watch" and dismiss actions.
+
+    ``?mode=mine`` (default) is the individual ranking.  ``?mode=group`` is a
+    placeholder until the couple profiles land.
+    """
+    mode = request.GET.get("mode") or "mine"
+    if mode == "group":
+        return render(
+            request,
+            "app/recommendations.html",
+            {"mode": "group", "candidates": [], "excluded": []},
+        )
+
+    pairs = _user_media(request.user)
+    history = [_history_entry(media_type, media) for media_type, media in pairs]
+    excluded = _parse_excluded(request.GET.get("exclude"))
+    excluded_keys = sorted(_serialise_key(key) for key in excluded)
+
+    candidates = {}
+    for media_type, media in pairs[:RECOMMENDATION_SOURCE_LIMIT]:
+        item = media.item
+        try:
+            metadata = services.get_media_metadata(
+                media_type,
+                item.media_id,
+                item.source,
+                _candidate_season_numbers(media_type, item),
+            )
+        except Exception:  # a bad provider must not break the page
+            logger.exception("Failed to load recommendation metadata for %s", item)
+            continue
+        related = metadata.get("related") or {}
+        for candidate in related.get("recommendations") or []:
+            candidates.setdefault(recommendation_engine.item_key(candidate), candidate)
+
+    ranked = recommendation_engine.rank_candidates(
+        list(candidates.values()),
+        history,
+        limit=RECOMMENDATION_LIMIT,
+        excluded=excluded,
+    )
+    for entry in ranked:
+        key = _serialise_key(recommendation_engine.item_key(entry))
+        entry["key"] = key
+        entry["dismiss_query"] = urlencode(
+            {"mode": "mine", "exclude": ",".join([*excluded_keys, key])},
+        )
+
+    return render(
+        request,
+        "app/recommendations.html",
+        {"mode": "mine", "candidates": ranked, "excluded": excluded_keys},
+    )
 
 
 @require_GET

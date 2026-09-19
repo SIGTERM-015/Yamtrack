@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Recomendaciones - Yamtrack
+{% endblock title %}
+
+{% block content %}
+  <div class="space-y-6">
+    <h1 class="text-3xl font-bold">Recomendaciones</h1>
+
+    <nav class="flex gap-x-6 overflow-x-auto border-b border-[#2c3136]">
+      <a href="{% url 'recommendations' %}?mode=mine"
+         class="pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors {% if mode == 'mine' %}text-white border-indigo-500{% else %}text-gray-400 border-transparent hover:text-white{% endif %}">
+        Para mí
+      </a>
+      <a href="{% url 'recommendations' %}?mode=group"
+         class="pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors {% if mode == 'group' %}text-white border-indigo-500{% else %}text-gray-400 border-transparent hover:text-white{% endif %}">
+        Para el grupo
+      </a>
+    </nav>
+
+    {% if mode == 'group' %}
+      <div class="rounded-lg border border-gray-700 bg-[#2a2f35] p-6 text-gray-300">
+        <p class="font-medium text-white">Recomendaciones de grupo: próximamente (E8.5).</p>
+        <p class="mt-1 text-sm">
+          El motor de grupo (least-misery y el modo «para mí» dentro del grupo) ya
+          está implementado; falta exponer el perfil de cada miembro para poder
+          combinarlos en esta pantalla.
+        </p>
+      </div>
+    {% elif candidates %}
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {% for candidate in candidates %}
+          <article class="flex flex-col overflow-hidden rounded-lg border border-gray-700 bg-[#2a2f35]">
+            {% if candidate.image %}
+              <img src="{{ candidate.image }}"
+                   alt="{{ candidate.title }}"
+                   class="h-48 w-full object-cover">
+            {% endif %}
+            <div class="flex flex-1 flex-col gap-2 p-4">
+              <h2 class="font-semibold text-white">{{ candidate.title }}</h2>
+              <p class="text-xs tracking-wide text-gray-400 uppercase">{{ candidate.media_type }} · {{ candidate.source }}</p>
+              {% if candidate.top_genre %}
+                <p class="text-sm text-gray-300">Porque te gusta {{ candidate.top_genre }}</p>
+              {% else %}
+                <p class="text-sm text-gray-500">Aún sin señales de gustos: E7.1 (géneros persistidos) no está en esta rama, así que ordenamos por relevancia del proveedor.</p>
+              {% endif %}
+              <div class="mt-auto flex items-center gap-3 pt-2">
+                <form method="post"
+                      action="{% url 'media_save' %}?next={% url 'recommendations' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="media_id" value="{{ candidate.media_id }}">
+                  <input type="hidden" name="source" value="{{ candidate.source }}">
+                  <input type="hidden" name="media_type" value="{{ candidate.media_type }}">
+                  {% if candidate.season_number %}
+                    <input type="hidden" name="season_number" value="{{ candidate.season_number }}">
+                  {% endif %}
+                  <input type="hidden" name="status" value="Planning">
+                  <input type="hidden" name="progress" value="0">
+                  <button type="submit"
+                          class="cursor-pointer rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
+                    Añadir a plan
+                  </button>
+                </form>
+                <a href="{% url 'recommendations' %}?{{ candidate.dismiss_query }}"
+                   class="rounded-md border border-gray-700 px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white">
+                  Descartar
+                </a>
+              </div>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-gray-400">
+        Aún no hay recomendaciones. Añade y puntúa algunas series o películas y
+        vuelve a mirar: se usan tus títulos recientes para buscar sugerencias.
+      </p>
+    {% endif %}
+  </div>
+{% endblock content %}
