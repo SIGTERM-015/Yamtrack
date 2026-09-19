@@ -14,6 +14,7 @@ from integrations.imports import (
     hltb,
     imdb,
     kitsu,
+    letterboxd,
     mal,
     simkl,
     steam,
@@ -151,6 +152,12 @@ def import_steam(username, user_id, mode):
 def import_imdb(file, user_id, mode):
     """Celery task for importing media data from IMDB."""
     return import_media(imdb.importer, file, user_id, mode)
+
+
+@shared_task(name="Import from Letterboxd")
+def import_letterboxd(file, user_id, mode):
+    """Celery task for importing media data from Letterboxd."""
+    return import_media(letterboxd.importer, file, user_id, mode)
 
 
 @shared_task(name="Import from GoodReads")
