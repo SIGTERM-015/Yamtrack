@@ -268,6 +268,34 @@ def resolve_group_context(user, item) -> dict:
     return {"groups": list(groups.values_list("id", flat=True)), "policy": policy}
 
 
+def _group_scores(
+    group_items: list, members: list
+) -> dict[int, dict[int, float | None]]:
+    """Return ``{item_id: {user_id: score|None}}`` for the given members."""
+    member_ids = [m.id for m in members]
+
+    items_by_type = defaultdict(list)
+    for gi in group_items:
+        items_by_type[gi.item.media_type].append(gi.item.id)
+
+    scores_by_item = {gi.item.id: {m.id: None for m in members} for gi in group_items}
+
+    for media_type, item_ids in items_by_type.items():
+        model = apps.get_model("app", media_type)
+        rows = model.objects.filter(
+            item_id__in=item_ids,
+            user_id__in=member_ids,
+        ).values("item_id", "user_id", "score")
+
+        for row in rows:
+            score = row["score"]
+            scores_by_item[row["item_id"]][row["user_id"]] = (
+                None if score is None else float(score)
+            )
+
+    return scores_by_item
+
+
 def get_group_comparison(group: Group) -> list[dict]:
     """
     Build a side-by-side rating comparison for the items in a group.
@@ -291,26 +319,7 @@ def get_group_comparison(group: Group) -> list[dict]:
     """
     group_items = list(group.group_items.select_related("item"))
     members = list(group.members.all())
-    member_ids = [m.id for m in members]
-
-    items_by_type = defaultdict(list)
-    for gi in group_items:
-        items_by_type[gi.item.media_type].append(gi.item.id)
-
-    scores_by_item = {gi.item.id: {m.id: None for m in members} for gi in group_items}
-
-    for media_type, item_ids in items_by_type.items():
-        model = apps.get_model("app", media_type)
-        rows = model.objects.filter(
-            item_id__in=item_ids,
-            user_id__in=member_ids,
-        ).values("item_id", "user_id", "score")
-
-        for row in rows:
-            score = row["score"]
-            scores_by_item[row["item_id"]][row["user_id"]] = (
-                None if score is None else float(score)
-            )
+    scores_by_item = _group_scores(group_items, members)
 
     comparison = []
     for gi in group_items:
@@ -338,3 +347,104 @@ def get_group_comparison(group: Group) -> list[dict]:
         )
     )
     return comparison
+
+
+def _default_genre_getter(item) -> list[str]:
+    """Best-effort read of an item's genres without importing the Genre model."""
+    genres = getattr(item, "genres", ())
+    # Works with the E7.1 M2M manager (``.all()``) and plain iterables.
+    if callable(getattr(genres, "all", None)):
+        genres = genres.all()
+    return [str(genre).strip() for genre in genres if genre]
+
+
+def get_group_genre_stats(group: Group, genre_getter=None) -> dict:
+    """
+    Aggregate ratings by genre and member for a group.
+
+    Genres are read through a pluggable ``genre_getter`` callable (defaults to
+    the item's ``genres`` relation) so this service stays decoupled from the
+    E7.1 ``Genre`` model.
+
+    Args:
+        group: The Group instance.
+        genre_getter: optional callable taking an item and returning an
+            iterable of genre names.
+
+    Returns:
+        A dict with:
+            - 'members' (list): the group members.
+            - 'genres' (list): one dict per genre, sorted by rated volume
+              (largest first), each with 'genre', 'members'
+              (user_id -> {'average': float|None, 'count': int}),
+              'average' (float|None), 'difference' (float|None, gap between
+              the member averages, None when fewer than two members scored)
+              and 'count' (int).
+            - 'agreements' (list): genres with the smallest member difference.
+            - 'disagreements' (list): genres with the largest member difference.
+            - 'volume' (dict): user_id -> number of rated items.
+    """
+    getter = genre_getter or _default_genre_getter
+    group_items = list(group.group_items.select_related("item"))
+    members = list(group.members.all())
+    scores_by_item = _group_scores(group_items, members)
+
+    genres_by_item = {gi.item.id: list(getter(gi.item)) for gi in group_items}
+
+    genre_member_scores = defaultdict(lambda: defaultdict(list))
+    volume = {m.id: 0 for m in members}
+
+    for gi in group_items:
+        for user_id, score in scores_by_item[gi.item.id].items():
+            if score is None:
+                continue
+            volume[user_id] += 1
+            for genre in genres_by_item[gi.item.id]:
+                genre_member_scores[genre][user_id].append(score)
+
+    genres = []
+    for genre, per_member in genre_member_scores.items():
+        member_stats = {}
+        for member in members:
+            member_scores = per_member.get(member.id, [])
+            member_stats[member.id] = {
+                "average": (
+                    sum(member_scores) / len(member_scores) if member_scores else None
+                ),
+                "count": len(member_scores),
+            }
+
+        all_scores = [s for scores in per_member.values() for s in scores]
+        averages = [
+            stats["average"]
+            for stats in member_stats.values()
+            if stats["average"] is not None
+        ]
+
+        genres.append(
+            {
+                "genre": genre,
+                "members": member_stats,
+                "average": (sum(all_scores) / len(all_scores) if all_scores else None),
+                "difference": (
+                    max(averages) - min(averages)
+                    if len(averages) >= _MIN_SCORES_FOR_DIFFERENCE
+                    else None
+                ),
+                "count": len(all_scores),
+            }
+        )
+
+    genres.sort(key=lambda row: (-row["count"], row["genre"]))
+
+    rated = [row for row in genres if row["difference"] is not None]
+    agreements = sorted(rated, key=lambda row: row["difference"])
+    disagreements = sorted(rated, key=lambda row: row["difference"], reverse=True)
+
+    return {
+        "members": members,
+        "genres": genres,
+        "agreements": agreements,
+        "disagreements": disagreements,
+        "volume": volume,
+    }

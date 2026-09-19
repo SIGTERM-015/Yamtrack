@@ -38,4 +38,9 @@ urlpatterns = [
         views.group_comparison,
         name="group_comparison",
     ),
+    path(
+        "<int:group_id>/genres/",
+        views.group_genre_stats,
+        name="group_genre_stats",
+    ),
 ]

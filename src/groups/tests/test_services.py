@@ -8,6 +8,7 @@ from groups.models import Group, GroupItem, GroupMembership, GroupOrigin
 from groups.services import (
     add_item_to_group,
     get_group_comparison,
+    get_group_genre_stats,
     get_group_progress,
     resolve_group_context,
 )
@@ -448,3 +449,151 @@ class GroupComparisonServiceTest(TestCase):
         for row in comparison:
             self.assertNotIn("notes", row)
         self.assertNotIn("secret private note", str(comparison))
+
+
+class GroupGenreStatsServiceTest(TestCase):
+    """Test the group genre statistics service."""
+
+    def setUp(self):
+        """Set up test data."""
+        patcher = patch("app.models.providers.services.get_media_metadata")
+        self.mock_get_media_metadata = patcher.start()
+        self.mock_get_media_metadata.return_value = {"max_progress": 1}
+        self.addCleanup(patcher.stop)
+
+        self.user1 = User.objects.create(username="user1")
+        self.user2 = User.objects.create(username="user2")
+        self.group = Group.objects.create(name="My Group", owner=self.user1)
+        GroupMembership.objects.create(group=self.group, user=self.user1)
+        GroupMembership.objects.create(group=self.group, user=self.user2)
+
+        self.action = Item.objects.create(
+            media_id="g1", title="Pure Action", media_type="movie", source="tmdb"
+        )
+        self.thriller = Item.objects.create(
+            media_id="g2", title="Pure Thriller", media_type="movie", source="tmdb"
+        )
+        self.mixed = Item.objects.create(
+            media_id="g3", title="Action Thriller", media_type="movie", source="tmdb"
+        )
+        for item in (self.action, self.thriller, self.mixed):
+            GroupItem.objects.create(group=self.group, item=item, added_by=self.user1)
+
+        self.item_genres = {
+            self.action.id: ["Action"],
+            self.thriller.id: ["Thriller"],
+            self.mixed.id: ["Action", "Thriller"],
+        }
+
+    def _getter(self, item):
+        return self.item_genres.get(item.id, [])
+
+    def test_genre_stats_averages_per_member(self):
+        """Average per genre and member, volume and agreement ranking."""
+        for item, user1_score, user2_score in (
+            (self.action, 8, 6),
+            (self.thriller, 4, 8),
+            (self.mixed, 6, 6),
+        ):
+            Movie.objects.create(
+                user=self.user1,
+                item=item,
+                status=Status.COMPLETED,
+                score=user1_score,
+            )
+            Movie.objects.create(
+                user=self.user2,
+                item=item,
+                status=Status.COMPLETED,
+                score=user2_score,
+            )
+
+        stats = get_group_genre_stats(self.group, genre_getter=self._getter)
+        genres = {row["genre"]: row for row in stats["genres"]}
+
+        action = genres["Action"]
+        self.assertEqual(action["members"][self.user1.id]["average"], 7.0)
+        self.assertEqual(action["members"][self.user1.id]["count"], 2)
+        self.assertEqual(action["members"][self.user2.id]["average"], 6.0)
+        self.assertEqual(action["average"], 6.5)
+        self.assertEqual(action["difference"], 1.0)
+        self.assertEqual(action["count"], 4)
+
+        thriller = genres["Thriller"]
+        self.assertEqual(thriller["members"][self.user1.id]["average"], 5.0)
+        self.assertEqual(thriller["members"][self.user2.id]["average"], 7.0)
+        self.assertEqual(thriller["average"], 6.0)
+        self.assertEqual(thriller["difference"], 2.0)
+
+        self.assertEqual(stats["volume"][self.user1.id], 3)
+        self.assertEqual(stats["volume"][self.user2.id], 3)
+
+        # Same volume, so genres fall back to alphabetical order.
+        self.assertEqual(
+            [row["genre"] for row in stats["genres"]], ["Action", "Thriller"]
+        )
+        self.assertEqual(stats["agreements"][0]["genre"], "Action")
+        self.assertEqual(stats["disagreements"][0]["genre"], "Thriller")
+
+    def test_genre_stats_missing_member_score(self):
+        """A genre rated by only one member has no difference."""
+        Movie.objects.create(
+            user=self.user1,
+            item=self.action,
+            status=Status.COMPLETED,
+            score=5,
+        )
+        Movie.objects.create(
+            user=self.user2,
+            item=self.thriller,
+            status=Status.COMPLETED,
+            score=9,
+        )
+
+        stats = get_group_genre_stats(self.group, genre_getter=self._getter)
+        genres = {row["genre"]: row for row in stats["genres"]}
+
+        self.assertEqual(genres["Action"]["average"], 5.0)
+        self.assertIsNone(genres["Action"]["members"][self.user2.id]["average"])
+        self.assertEqual(genres["Action"]["members"][self.user2.id]["count"], 0)
+        self.assertIsNone(genres["Action"]["difference"])
+
+        self.assertEqual(stats["agreements"], [])
+        self.assertEqual(stats["disagreements"], [])
+
+    def test_genre_stats_ignores_unrated_and_untracked_volumes(self):
+        """Only scored items count toward volume and genre aggregates."""
+        Movie.objects.create(
+            user=self.user1,
+            item=self.action,
+            status=Status.COMPLETED,
+            score=8,
+        )
+        Movie.objects.create(
+            user=self.user1,
+            item=self.mixed,
+            status=Status.IN_PROGRESS,
+            score=None,
+        )
+
+        stats = get_group_genre_stats(self.group, genre_getter=self._getter)
+        genres = {row["genre"]: row for row in stats["genres"]}
+
+        self.assertEqual(stats["volume"][self.user1.id], 1)
+        self.assertEqual(stats["volume"][self.user2.id], 0)
+        self.assertEqual(genres["Action"]["count"], 1)
+        self.assertNotIn("Thriller", genres)
+
+    def test_genre_stats_default_getter_without_genre_model(self):
+        """Without a getter and no genres relation, no genres are returned."""
+        Movie.objects.create(
+            user=self.user1,
+            item=self.action,
+            status=Status.COMPLETED,
+            score=8,
+        )
+
+        stats = get_group_genre_stats(self.group)
+
+        self.assertEqual(stats["genres"], [])
+        self.assertEqual(stats["volume"][self.user1.id], 1)

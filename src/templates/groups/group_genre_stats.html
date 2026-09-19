@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {{ group.name }} - Genres - Yamtrack
+{% endblock title %}
+
+{% block content %}
+  <div class="mb-6">
+    <h1 class="text-3xl font-bold mb-2">{{ group.name }} — Genre comparison</h1>
+    <p class="text-sm text-gray-400">
+      Average rating per genre and member, sorted by rated volume. Genres where
+      members agree most and disagree most are listed below.
+    </p>
+  </div>
+
+  <div class="mb-6 flex flex-wrap gap-4">
+    {% for entry in member_volumes %}
+      <div class="bg-[#2a2f35] rounded-lg shadow-lg px-4 py-3">
+        <span class="text-gray-400 text-sm">{{ entry.user.username }}</span>
+        <span class="ml-2 font-bold">{{ entry.count }}</span>
+        <span class="text-gray-500 text-sm">rated</span>
+      </div>
+    {% endfor %}
+  </div>
+
+  {% if genres %}
+    <div class="overflow-x-auto bg-[#2a2f35] rounded-lg shadow-lg">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-gray-400 border-b border-[#3e454d]">
+            <th class="p-3">Genre</th>
+            {% for member in members %}
+              <th class="p-3 text-center">{{ member.username }}</th>
+            {% endfor %}
+            <th class="p-3 text-center">Average</th>
+            <th class="p-3 text-center">Difference</th>
+            <th class="p-3 text-center">Rated</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in genres %}
+            <tr class="border-b border-[#3e454d] last:border-b-0">
+              <td class="p-3">{{ row.genre }}</td>
+              {% for entry in row.members %}
+                <td class="p-3 text-center">
+                  {% if entry.average is not None %}
+                    {{ entry.average|floatformat:1 }}
+                    <span class="text-gray-500 text-xs">({{ entry.count }})</span>
+                  {% else %}
+                    <span class="text-gray-500">—</span>
+                  {% endif %}
+                </td>
+              {% endfor %}
+              <td class="p-3 text-center">
+                {% if row.average is not None %}{{ row.average|floatformat:1 }}{% else %}<span class="text-gray-500">—</span>{% endif %}
+              </td>
+              <td class="p-3 text-center">
+                {% if row.difference is not None %}{{ row.difference|floatformat:1 }}{% else %}<span class="text-gray-500">—</span>{% endif %}
+              </td>
+              <td class="p-3 text-center">{{ row.count }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mt-6 grid gap-4 md:grid-cols-2">
+      <div class="bg-[#2a2f35] rounded-lg shadow-lg p-4">
+        <h2 class="font-bold mb-2">Where you agree most</h2>
+        {% for row in agreements %}
+          <div class="flex justify-between text-sm py-1">
+            <span>{{ row.genre }}</span>
+            <span class="text-gray-400">{{ row.difference|floatformat:1 }}</span>
+          </div>
+        {% empty %}
+          <p class="text-gray-500 text-sm">Not enough rated genres yet.</p>
+        {% endfor %}
+      </div>
+      <div class="bg-[#2a2f35] rounded-lg shadow-lg p-4">
+        <h2 class="font-bold mb-2">Where you disagree most</h2>
+        {% for row in disagreements %}
+          <div class="flex justify-between text-sm py-1">
+            <span>{{ row.genre }}</span>
+            <span class="text-gray-400">{{ row.difference|floatformat:1 }}</span>
+          </div>
+        {% empty %}
+          <p class="text-gray-500 text-sm">Not enough rated genres yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  {% else %}
+    <p class="text-gray-400">No rated genres yet.</p>
+  {% endif %}
+{% endblock content %}

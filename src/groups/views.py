@@ -12,6 +12,7 @@ from groups.services import (
     apply_status_to_group_members,
     apply_status_to_user,
     get_group_comparison,
+    get_group_genre_stats,
     get_group_progress,
 )
 
@@ -340,3 +341,47 @@ def group_comparison(request, group_id):
         "rows": rows,
     }
     return render(request, "groups/group_comparison.html", context)
+
+
+@login_required
+def group_genre_stats(request, group_id):
+    """View to compare group members' average ratings per genre."""
+    group = get_object_or_404(Group, id=group_id)
+
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    stats = get_group_genre_stats(group)
+    members = stats["members"]
+
+    genre_rows = [
+        {
+            "genre": genre["genre"],
+            "average": genre["average"],
+            "difference": genre["difference"],
+            "count": genre["count"],
+            "members": [
+                {
+                    "user": member,
+                    "average": genre["members"][member.id]["average"],
+                    "count": genre["members"][member.id]["count"],
+                }
+                for member in members
+            ],
+        }
+        for genre in stats["genres"]
+    ]
+
+    context = {
+        "group": group,
+        "members": members,
+        "genres": genre_rows,
+        "agreements": stats["agreements"],
+        "disagreements": stats["disagreements"],
+        "member_volumes": [
+            {"user": member, "count": stats["volume"].get(member.id, 0)}
+            for member in members
+        ],
+    }
+    return render(request, "groups/group_genre_stats.html", context)
