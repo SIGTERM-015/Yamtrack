@@ -44,6 +44,10 @@ SOURCES_CONFIG = {
         "name": "IMDB",
         "logo": static("img/imdb-logo.png"),
     },
+    "letterboxd": {
+        "name": "Letterboxd",
+        "logo": static("img/shortcuts/movies.svg"),
+    },
     "steam": {
         "name": "Steam",
         "logo": static("img/steam-logo.ico"),
