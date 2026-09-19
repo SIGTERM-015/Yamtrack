@@ -978,9 +978,16 @@ def statistics(request):
         round(score_distribution["total_scored"] / total * 100) if total else None
     )
 
+    try:
+        heatmap_year = int(request.GET.get("heatmap-year"))
+    except (TypeError, ValueError):
+        heatmap_year = None
+
     context = {
         "start_date": start_date,
         "end_date": end_date,
+        "heatmap": stats.get_media_heatmap(request.user, heatmap_year),
+        "now_year": timezone.localdate().year,
         "media_count": media_count,
         "media_type_distribution": media_type_distribution,
         "score_distribution": score_distribution,

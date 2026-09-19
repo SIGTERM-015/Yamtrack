@@ -24,8 +24,18 @@ User = get_user_model()
 class StatisticsDateFilteringTests(TestCase):
     """Test the date filtering functionality in the statistics module."""
 
-    def setUp(self):
+    @patch("app.models.providers.services.get_media_metadata")
+    def setUp(self, mock_get_metadata):
         """Set up test data."""
+        mock_get_metadata.return_value = {
+            "max_progress": 1,
+            "title": "Test TV Show",
+            "image": "poster.jpg",
+            "details": {"seasons": 1},
+            "season/1": {
+                "episodes": [{"episode_number": 1}, {"episode_number": 2}],
+            },
+        }
         self.credentials = {"username": "testuser", "password": "testpassword"}
         self.user = get_user_model().objects.create_user(**self.credentials)
 
@@ -292,8 +302,10 @@ class StatisticsDateFilteringTests(TestCase):
         self.assertNotIn(self.movie5_item.id, movie_ids)
         self.assertNotIn(self.movie6_item.id, movie_ids)
 
-    def test_start_date_only_filtering(self):
+    @patch("app.models.providers.services.get_media_metadata")
+    def test_start_date_only_filtering(self, mock_get_metadata):
         """Test filtering for media with only start date."""
+        mock_get_metadata.return_value = {"max_progress": 1}
         start_date = datetime.datetime(2025, 2, 10, 0, 0, tzinfo=datetime.UTC)
         end_date = datetime.datetime(2025, 2, 20, 0, 0, tzinfo=datetime.UTC)
 
@@ -336,8 +348,10 @@ class StatisticsDateFilteringTests(TestCase):
         # Should not include the movie with start date outside range
         self.assertNotIn(outside_item.id, movie_ids)
 
-    def test_end_date_only_filtering(self):
+    @patch("app.models.providers.services.get_media_metadata")
+    def test_end_date_only_filtering(self, mock_get_metadata):
         """Test filtering for media with only end date."""
+        mock_get_metadata.return_value = {"max_progress": 1}
         start_date = datetime.datetime(2025, 2, 10, 0, 0, tzinfo=datetime.UTC)
         end_date = datetime.datetime(2025, 2, 20, 0, 0, tzinfo=datetime.UTC)
 
@@ -406,8 +420,10 @@ class StatisticsDateFilteringTests(TestCase):
         movie_ids = [m.item.id for m in user_media[MediaTypes.MOVIE.value]]
         self.assertIn(self.movie4_item.id, movie_ids)
 
-    def test_overlapping_ranges(self):
+    @patch("app.models.providers.services.get_media_metadata")
+    def test_overlapping_ranges(self, mock_get_metadata):
         """Test media with date ranges that overlap with the filter range."""
+        mock_get_metadata.return_value = {"max_progress": 1}
         start_date = datetime.datetime(2025, 2, 1, 0, 0, tzinfo=datetime.UTC)
         end_date = datetime.datetime(2025, 2, 28, 0, 0, tzinfo=datetime.UTC)
 
@@ -459,6 +475,22 @@ class StatisticsTests(TestCase):
 
     def setUp(self):
         """Set up test data."""
+        patcher = patch("app.models.providers.services.get_media_metadata")
+        self.mock_get_metadata = patcher.start()
+        self.addCleanup(patcher.stop)
+        self.mock_get_metadata.return_value = {
+            "max_progress": 1,
+            "title": "Test TV Show",
+            "image": "poster.jpg",
+            "details": {"seasons": 1},
+            "season/1": {
+                "episodes": [
+                    {"episode_number": 1},
+                    {"episode_number": 2},
+                    {"episode_number": 3},
+                ],
+            },
+        }
         self.credentials = {"username": "testuser", "password": "testpassword"}
         self.user = get_user_model().objects.create_user(**self.credentials)
 
@@ -1028,3 +1060,98 @@ class GetActivityDataWeekStartTests(TestCase):
         )
         first_day = result["calendar_weeks"][0][0]["date"]
         self.assertEqual(first_day, "2024-12-29")
+
+
+class GetMediaHeatmapTests(TestCase):
+    """Tests for get_media_heatmap year filtering and end_date counting."""
+
+    @patch("app.models.providers.services.get_media_metadata")
+    def setUp(self, mock_get_metadata):
+        """Create a movie and an episode consumed in different years."""
+        mock_get_metadata.return_value = {
+            "max_progress": 1,
+            "title": "Heatmap Show",
+            "image": "heatmap.jpg",
+            "details": {"seasons": 1},
+            "season/1": {
+                "episodes": [{"episode_number": 1}, {"episode_number": 2}],
+            },
+        }
+        self.user = get_user_model().objects.create_user(
+            username="heatmap_user",
+            password="testpassword",  # noqa: S106
+        )
+        movie_item = Item.objects.create(
+            media_id="500",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Heatmap Movie",
+        )
+        Movie.objects.create(
+            user=self.user,
+            item=movie_item,
+            status=Status.COMPLETED.value,
+            end_date=datetime.datetime(2025, 3, 10, 0, 0, tzinfo=datetime.UTC),
+        )
+
+        season_item = Item.objects.create(
+            media_id="600",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.SEASON.value,
+            title="Heatmap Show",
+            season_number=1,
+        )
+        episode_item = Item.objects.create(
+            media_id="600",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.EPISODE.value,
+            title="Heatmap Show",
+            season_number=1,
+            episode_number=1,
+        )
+        season = Season.objects.create(
+            user=self.user,
+            item=season_item,
+            status=Status.IN_PROGRESS.value,
+        )
+        Episode.objects.create(
+            item=episode_item,
+            related_season=season,
+            end_date=datetime.datetime(2025, 3, 11, 0, 0, tzinfo=datetime.UTC),
+        )
+
+        next_year_item = Item.objects.create(
+            media_id="501",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Next Year Movie",
+        )
+        Movie.objects.create(
+            user=self.user,
+            item=next_year_item,
+            status=Status.COMPLETED.value,
+            end_date=datetime.datetime(2026, 1, 5, 0, 0, tzinfo=datetime.UTC),
+        )
+
+    def test_year_totals_and_out_of_year_days(self):
+        """Each year counts only its own end_dates; other-year days stay at 0."""
+        heatmap_2025 = statistics.get_media_heatmap(self.user, 2025)
+        self.assertEqual(heatmap_2025["total"], 2)
+        days_2025 = {
+            day["date"]: day["count"]
+            for week in heatmap_2025["calendar_weeks"]
+            for day in week
+        }
+        self.assertEqual(days_2025["2025-03-10"], 1)
+        self.assertEqual(days_2025["2025-03-11"], 1)
+        self.assertEqual(days_2025.get("2026-01-05", 0), 0)
+
+        heatmap_2026 = statistics.get_media_heatmap(self.user, 2026)
+        self.assertEqual(heatmap_2026["total"], 1)
+        days_2026 = {
+            day["date"]: day["count"]
+            for week in heatmap_2026["calendar_weeks"]
+            for day in week
+        }
+        self.assertEqual(days_2026["2026-01-05"], 1)
+        self.assertEqual(days_2026.get("2025-03-10", 0), 0)
