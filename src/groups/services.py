@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 from django.apps import apps
+from django.contrib.auth import get_user_model
 from django.db import models
 
 from app.models import Status
@@ -153,3 +154,62 @@ def add_item_to_group(group: Group, item, added_by, status=Status.PLANNING) -> t
     )
     summary = apply_status_to_group_members(group, item, status)
     return group_item, summary
+
+
+def resolve_group_context(user, item) -> dict:
+    """
+    Resolve the group context that applies to an item in a user's profile.
+
+    **Provisional policy (E10.3).** An item is considered "shared" when more
+    than one active member of a group it belongs to also holds that item.
+    Shared items resolve to ``"assume"``: callers may assume the group context
+    without asking. Anything else resolves to ``"ask"``: the context is
+    ambiguous and the user should be prompted before any group-wide action.
+
+    This is a read-only helper. It never writes to the scrobbling user's
+    profile or to any other member's profile (no-destruction rule, E2).
+
+    Args:
+        user: The user whose profile received the item.
+        item: The Item instance.
+
+    Returns:
+        dict: ``{"groups": [group_id, ...], "policy": "assume"|"ask"}``. The
+        group list holds the ids of the groups that link ``user`` and
+        ``item``, either because the user is a member and the group tracks the
+        item (``GroupItem``) or because the item entered the user's profile
+        from the group and is still attached (``GroupOrigin`` with
+        ``detached=False``).
+    """
+    member_groups = Group.objects.filter(members=user, group_items__item=item)
+    origin_groups = Group.objects.filter(
+        group_origins__user=user,
+        group_origins__item=item,
+        group_origins__detached=False,
+    )
+    groups = (member_groups | origin_groups).distinct()
+
+    policy = "ask"
+    for group in groups:
+        holders = (
+            get_user_model()
+            .objects.filter(is_active=True)
+            .filter(
+                models.Q(
+                    added_group_items__group=group,
+                    added_group_items__item=item,
+                )
+                | models.Q(
+                    group_origins__group=group,
+                    group_origins__item=item,
+                    group_origins__detached=False,
+                )
+            )
+            .distinct()
+            .count()
+        )
+        if holders > 1:
+            policy = "assume"
+            break
+
+    return {"groups": list(groups.values_list("id", flat=True)), "policy": policy}

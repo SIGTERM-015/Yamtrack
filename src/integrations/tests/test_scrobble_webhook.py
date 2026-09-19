@@ -8,6 +8,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from app.models import Item, Movie, Status
+from groups.models import Group, GroupItem, GroupMembership, GroupOrigin
 
 METADATA_PATCH = "app.models.providers.services.get_media_metadata"
 FETCH_RELEASES_PATCH = "app.models.Item.fetch_releases"
@@ -139,3 +140,39 @@ class ScrobbleWebhookTests(TestCase):
         self.assertEqual(response.json()["status"], "duplicate")
         self.assertEqual(Movie.objects.filter(user=self.user).count(), 1)
         self.assertEqual(Item.objects.count(), 1)
+
+    def test_group_context_logged_as_assume_without_writing_others(self):
+        """A shared item logs policy=assume and never writes to other profiles."""
+        partner = get_user_model().objects.create_user(username="partner")
+        group = Group.objects.create(name="Couple", owner=self.user)
+        GroupMembership.objects.create(group=group, user=self.user)
+        GroupMembership.objects.create(group=group, user=partner)
+
+        item = Item.objects.create(
+            media_id="550", source="tmdb", media_type="movie", title="Fight Club"
+        )
+        GroupItem.objects.create(group=group, item=item, added_by=self.user)
+        GroupOrigin.objects.create(user=self.user, item=item, group=group)
+        GroupOrigin.objects.create(user=partner, item=item, group=group)
+
+        with self.assertLogs("integrations.webhooks.scrobble", level="INFO") as logs:
+            response = self._post(self._payload(progress=92))
+
+        self.assertEqual(response.status_code, 200)
+        output = "\n".join(logs.output)
+        self.assertIn("policy=assume", output)
+        self.assertIn(f"groups=[{group.id}]", output)
+
+        # No-destruction (E2): only the scrobbling user got a tracking entry.
+        self.assertEqual(Movie.objects.filter(user=self.user).count(), 1)
+        self.assertEqual(Movie.objects.filter(user=partner).count(), 0)
+
+    def test_group_context_logged_as_ask_without_group(self):
+        """An item with no group context logs policy=ask and empty groups."""
+        with self.assertLogs("integrations.webhooks.scrobble", level="INFO") as logs:
+            response = self._post(self._payload(progress=92))
+
+        self.assertEqual(response.status_code, 200)
+        output = "\n".join(logs.output)
+        self.assertIn("policy=ask", output)
+        self.assertIn("groups=[]", output)

@@ -2,8 +2,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from app.models import TV, Episode, Item, Movie, Season, Status
-from groups.models import Group, GroupItem, GroupMembership
-from groups.services import get_group_progress
+from groups.models import Group, GroupItem, GroupMembership, GroupOrigin
+from groups.services import get_group_progress, resolve_group_context
 
 User = get_user_model()
 
@@ -190,3 +190,66 @@ class GroupProgressServiceTest(TestCase):
         self.assertEqual(
             res[self.movie_item.id]["members"][self.user2.id]["progress"], 0
         )
+
+
+class ResolveGroupContextTest(TestCase):
+    """Test the provisional group-context resolution policy (E10.3)."""
+
+    def setUp(self):
+        """Set up two members of a group that tracks an item."""
+        self.user1 = User.objects.create(username="user1")
+        self.user2 = User.objects.create(username="user2")
+        self.group = Group.objects.create(name="My Group", owner=self.user1)
+        GroupMembership.objects.create(group=self.group, user=self.user1)
+        GroupMembership.objects.create(group=self.group, user=self.user2)
+
+        self.item = Item.objects.create(
+            media_id="m1", title="Movie 1", media_type="movie", source="tmdb"
+        )
+        GroupItem.objects.create(group=self.group, item=self.item, added_by=self.user1)
+        # user1 owns the item in their profile via the group (still attached).
+        GroupOrigin.objects.create(user=self.user1, item=self.item, group=self.group)
+
+    def test_no_group_returns_ask_with_no_groups(self):
+        """A user with no group link resolves to ask with no groups."""
+        lonely = User.objects.create(username="lonely")
+
+        result = resolve_group_context(lonely, self.item)
+
+        self.assertEqual(result, {"groups": [], "policy": "ask"})
+
+    def test_single_holder_returns_ask(self):
+        """Only one active member holds the item, so the context is ambiguous."""
+        result = resolve_group_context(self.user1, self.item)
+
+        self.assertEqual(result["groups"], [self.group.id])
+        self.assertEqual(result["policy"], "ask")
+
+    def test_multiple_holders_returns_assume(self):
+        """A second active member holding the item makes the context assumable."""
+        GroupOrigin.objects.create(user=self.user2, item=self.item, group=self.group)
+
+        result = resolve_group_context(self.user1, self.item)
+
+        self.assertEqual(result["groups"], [self.group.id])
+        self.assertEqual(result["policy"], "assume")
+
+    def test_inactive_holder_does_not_trigger_assume(self):
+        """Inactive members are not counted as active holders."""
+        self.user2.is_active = False
+        self.user2.save()
+        GroupOrigin.objects.create(user=self.user2, item=self.item, group=self.group)
+
+        result = resolve_group_context(self.user1, self.item)
+
+        self.assertEqual(result["policy"], "ask")
+
+    def test_detached_origin_is_ignored(self):
+        """A detached origin is independent user data, not a group holder."""
+        GroupOrigin.objects.create(
+            user=self.user2, item=self.item, group=self.group, detached=True
+        )
+
+        result = resolve_group_context(self.user1, self.item)
+
+        self.assertEqual(result["policy"], "ask")
