@@ -1,0 +1,75 @@
+{% comment %}
+GitHub-style media consumption heatmap. Expects:
+  heatmap: output of app.statistics.get_media_heatmap
+{% endcomment %}
+<div class="bg-[#2a2f35] rounded-xl p-6 max-w-[calc(100svw-4rem)] mb-8 ring-1 ring-white/5">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-xl font-semibold">Consumption Heatmap</h2>
+    <div class="flex items-center gap-3">
+      <a href="?heatmap-year={{ heatmap.year|add:'-1' }}"
+         class="px-2 py-1 rounded-md hover:bg-[#343a40] text-gray-300"
+         aria-label="Previous year">&larr;</a>
+      <span class="font-medium">{{ heatmap.year }}</span>
+      {% if heatmap.year < now_year %}
+        <a href="?heatmap-year={{ heatmap.year|add:'1' }}"
+           class="px-2 py-1 rounded-md hover:bg-[#343a40] text-gray-300"
+           aria-label="Next year">&rarr;</a>
+      {% else %}
+        <span class="px-2 py-1 text-gray-600" aria-hidden="true">&rarr;</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="overflow-x-auto flex flex-col justify-center"
+       x-data="{ graphTooWide: false }"
+       x-init="$nextTick(() => { const graphWidth = $refs.graphContainer.scrollWidth; const parentWidth = $el.clientWidth; graphTooWide = graphWidth > parentWidth; })"
+       :class="graphTooWide ? 'items-start' : 'items-center'">
+    <div class="p-4" x-ref="graphContainer">
+      <!-- Months row -->
+      <div class="flex mb-2 pl-[36.68px]">
+        {% for month, week_count in heatmap.months %}
+          <div class="text-xs text-gray-400"
+               style="width: calc({{ week_count }} * 1rem + ({{ week_count }} * 0.25rem))">{{ month }}</div>
+        {% endfor %}
+      </div>
+
+      <!-- Graph wrapper -->
+      <div class="flex">
+        <!-- Weekday labels -->
+        <div class="flex flex-col justify-between pr-2 text-sm text-gray-400">
+          {% for label in heatmap.weekday_labels %}
+            {% if forloop.counter|divisibleby:2 %}
+              <div class="h-4"></div>
+            {% else %}
+              <div class="h-4 flex items-center">{{ label }}</div>
+            {% endif %}
+          {% endfor %}
+        </div>
+
+        <!-- Weeks grid -->
+        <div class="flex gap-1">
+          {% for week in heatmap.calendar_weeks %}
+            <div class="flex flex-col gap-1">
+              {% for day in week %}
+                <div class="w-4 h-4 rounded-sm transition-colors duration-200 hover:ring-2 hover:ring-white {% if day.level == 0 %}bg-[#3a414c]{% elif day.level == 1 %}bg-indigo-600{% elif day.level == 2 %}bg-indigo-500{% elif day.level == 3 %}bg-indigo-400{% elif day.level == 4 %}bg-indigo-300{% endif %}"
+                     title="{{ day.date }}: {{ day.count }} consum{{ day.count|pluralize:"ption,ptions" }}"></div>
+              {% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="flex items-center gap-2 pl-6 text-xs text-gray-400"
+         :class="graphTooWide ? 'mb-5 mt-2' : 'mt-4'">
+      <span>Less</span>
+      <div class="w-4 h-4 rounded-sm bg-[#3a414c]"></div>
+      <div class="w-4 h-4 rounded-sm bg-indigo-600"></div>
+      <div class="w-4 h-4 rounded-sm bg-indigo-500"></div>
+      <div class="w-4 h-4 rounded-sm bg-indigo-400"></div>
+      <div class="w-4 h-4 rounded-sm bg-indigo-300"></div>
+      <span>More</span>
+      <span class="ml-4">{{ heatmap.total }} consumed in {{ heatmap.year }}</span>
+    </div>
+  </div>
+</div>

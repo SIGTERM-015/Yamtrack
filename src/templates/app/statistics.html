@@ -11,6 +11,7 @@
     <h1 class="text-3xl font-bold mb-2">Statistics</h1>
     <p class="text-gray-400">Track your media consumption habits</p>
   </div>
+  {% include "app/components/media_heatmap.html" with heatmap=heatmap now_year=now_year %}
   <div x-data="dateRangePicker()" x-init="init()" class="relative mb-8">
     <!-- Trigger Button -->
     <button @click="toggleDropdown()"

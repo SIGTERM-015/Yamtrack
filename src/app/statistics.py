@@ -574,6 +574,89 @@ def get_activity_data(user, start_date, end_date):
     }
 
 
+def get_media_heatmap(user, year=None):
+    """Daily media consumption for a calendar year, from real ``end_date``s.
+
+    Counts tracked media and episodes on the day they were actually consumed,
+    so imports or edits that bump history timestamps do not distort the
+    calendar. Returns the same grid shape as ``get_activity_data``.
+    """
+    today = timezone.localdate()
+    year = year or today.year
+    local_tz = timezone.get_current_timezone()
+    start = datetime.datetime(year, 1, 1, tzinfo=local_tz)
+    end = datetime.datetime(
+        year,
+        12,
+        31,
+        23,
+        59,
+        59,
+        999999,
+        tzinfo=local_tz,
+    )
+
+    date_counts = defaultdict(int)
+
+    def count_end_dates(queryset):
+        for value in queryset.values_list("end_date", flat=True).iterator(
+            chunk_size=2_000,
+        ):
+            date_counts[timezone.localtime(value, local_tz).date()] += 1
+
+    for model_name in user.get_active_media_types():
+        model = apps.get_model(app_label="app", model_name=model_name)
+        if model in (TV, Season):
+            # TV/Season have no end_date; episodes are counted separately below.
+            continue
+        count_end_dates(model.objects.filter(user=user, end_date__range=(start, end)))
+
+    count_end_dates(
+        Episode.objects.filter(
+            related_season__user=user,
+            end_date__range=(start, end),
+        ),
+    )
+
+    week_start_sunday = user.week_start_day == WeekStartDayChoices.SUNDAY
+    year_start = datetime.datetime(year, 1, 1, tzinfo=local_tz)
+    year_end = datetime.datetime(year, 12, 31, tzinfo=local_tz)
+    start_aligned = get_aligned_week_start(
+        year_start,
+        week_start_sunday=week_start_sunday,
+    )
+    date_range = [
+        start_aligned.date() + datetime.timedelta(days=offset)
+        for offset in range((year_end.date() - start_aligned.date()).days + 1)
+    ]
+
+    activity_data = [
+        {
+            "date": current_date.strftime("%Y-%m-%d"),
+            "count": date_counts.get(current_date, 0),
+            "level": get_level(date_counts.get(current_date, 0)),
+        }
+        for current_date in date_range
+    ]
+    calendar_weeks = [
+        activity_data[i : i + 7] for i in range(0, len(activity_data), 7)
+    ]
+
+    week_start_weekday = 6 if week_start_sunday else 0
+    months, weeks_per_month = _build_month_labels(date_range, week_start_weekday)
+
+    days = list(calendar.day_abbr)
+    weekday_labels = [days[6], *days[0:6]] if week_start_sunday else days
+
+    return {
+        "year": year,
+        "total": sum(date_counts.values()),
+        "calendar_weeks": calendar_weeks,
+        "months": list(zip(months, weeks_per_month, strict=False)),
+        "weekday_labels": weekday_labels,
+    }
+
+
 def get_aligned_week_start(datetime_obj, *, week_start_sunday=False):
     """Get the first day of the week containing the given date."""
     if datetime_obj is None:
