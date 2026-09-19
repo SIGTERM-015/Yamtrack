@@ -1,12 +1,45 @@
 import secrets
 
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.db import models
 from django_celery_beat.models import PeriodicTask
 from django_celery_results.models import TaskResult
+from PIL import Image
 
 from app.models import Item, MediaTypes, Status
 from users import helpers
+
+MAX_AVATAR_SIZE = 2 * 1024 * 1024  # 2 MB
+ALLOWED_AVATAR_FORMATS = {"JPEG", "PNG", "WEBP", "GIF"}
+
+def validate_avatar(image):
+    """Reject avatars that are too large or not a supported image format."""
+    if image.size > MAX_AVATAR_SIZE:
+        msg = f"Avatar must be smaller than {MAX_AVATAR_SIZE // (1024 * 1024)} MB."
+        raise ValidationError(msg)
+
+    try:
+        image_format = Image.open(image).format
+        image.seek(0)
+    except (OSError, ValueError) as error:
+        msg = "Upload a valid image file."
+        raise ValidationError(msg) from error
+
+    if image_format not in ALLOWED_AVATAR_FORMATS:
+        allowed = ", ".join(sorted(ALLOWED_AVATAR_FORMATS))
+        msg = f"Unsupported image format. Allowed formats: {allowed}."
+        raise ValidationError(msg)
+
+
+SOCIAL_LINK_FIELDS = [
+    ("letterboxd", "Letterboxd"),
+    ("imdb", "IMDb"),
+    ("trakt", "Trakt"),
+    ("instagram", "Instagram"),
+    ("twitter", "X / Twitter"),
+    ("mastodon", "Mastodon"),
+]
 
 EXCLUDED_SEARCH_TYPES = [MediaTypes.SEASON.value, MediaTypes.EPISODE.value]
 
@@ -125,6 +158,24 @@ class User(AbstractUser):
     profile_private = models.BooleanField(
         default=True, help_text="Toggle profile visibility to anonymous users"
     )
+
+    avatar = models.ImageField(
+        upload_to="avatars/",
+        blank=True,
+        validators=[validate_avatar],
+        help_text="Profile picture (max 2 MB, JPEG/PNG/WEBP/GIF).",
+    )
+    bio = models.TextField(
+        blank=True,
+        max_length=500,
+        help_text="Short biography shown on your profile.",
+    )
+    letterboxd = models.URLField(blank=True)
+    imdb = models.URLField(blank=True)
+    trakt = models.URLField(blank=True)
+    instagram = models.URLField(blank=True)
+    twitter = models.URLField(blank=True)
+    mastodon = models.URLField(blank=True)
 
     last_search_type = models.CharField(
         max_length=10,
@@ -553,6 +604,15 @@ class User(AbstractUser):
                 name="week_start_day_valid",
                 condition=models.Q(week_start_day__in=WeekStartDayChoices.values),
             ),
+        ]
+
+    @property
+    def social_links(self):
+        """Return the configured social links as (label, url) pairs."""
+        return [
+            (label, getattr(self, field))
+            for field, label in SOCIAL_LINK_FIELDS
+            if getattr(self, field)
         ]
 
     def update_preference(self, field_name, new_value):

@@ -52,10 +52,21 @@ class UserUpdateForm(forms.ModelForm):
         self.fields["username"].help_text = None
 
     class Meta:
-        """Only allow updating username."""
+        """Only allow updating username and profile customization fields."""
 
         model = User
-        fields = ["username", "profile_private"]
+        fields = [
+            "username",
+            "profile_private",
+            "avatar",
+            "bio",
+            "letterboxd",
+            "imdb",
+            "trakt",
+            "instagram",
+            "twitter",
+            "mastodon",
+        ]
 
 
 class PasswordChangeForm(PasswordChangeForm):
