@@ -66,21 +66,13 @@
                     <span class="truncate max-w-[80px]" title="{{ mp.user.username }}">{{ mp.user.username }}</span>
                   </div>
                   <div class="flex flex-col items-end flex-shrink-0">
-                    {% if mp.status %}
-                      <span class="text-[10px] uppercase font-bold 
-                        {% if mp.status == 'Completed' %}text-green-400
-                        {% elif mp.status == 'Watching' or mp.status == 'Reading' %}text-blue-400
-                        {% elif mp.status == 'Plan to Watch' or mp.status == 'Plan to Read' %}text-gray-400
-                        {% else %}text-yellow-400{% endif %}">
-                        {{ mp.status }}
+                    <span class="text-[10px] uppercase font-bold {{ mp.status_color }}">
+                      {{ mp.status|default:"Not tracked" }}
+                    </span>
+                    {% if mp.progress > 0 %}
+                      <span class="text-[10px] text-gray-400">
+                        {% if data.item.media_type == 'tv' %}Ep {{ mp.progress }}{% else %}P {{ mp.progress }}{% endif %}
                       </span>
-                    {% else %}
-                      <span class="text-[10px] uppercase text-gray-500">None</span>
-                    {% endif %}
-                    {% if data.item.media_type == 'tv' %}
-                      <span class="text-[10px] text-gray-400">Ep {{ mp.progress }}</span>
-                    {% elif mp.progress > 0 %}
-                      <span class="text-[10px] text-gray-400">P {{ mp.progress }}</span>
                     {% endif %}
                   </div>
                 </div>

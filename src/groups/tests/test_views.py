@@ -1,8 +1,11 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from app.models import TV, Item, MediaTypes, Sources
+from app import config
+from app.models import TV, Item, MediaTypes, Sources, Status
 from groups.models import Group
 
 
@@ -11,6 +14,14 @@ class GroupViewsTest(TestCase):
 
     def setUp(self):
         """Set up test data."""
+        patcher = patch("app.models.providers.services.get_media_metadata")
+        self.mock_get_media_metadata = patcher.start()
+        self.mock_get_media_metadata.return_value = {
+            "max_progress": 1,
+            "related": {"seasons": []},
+        }
+        self.addCleanup(patcher.stop)
+
         user_model = get_user_model()
         self.user1 = user_model.objects.create_user(
             username="user1", password="testpassword123",  # noqa: S106
@@ -101,3 +112,36 @@ class GroupViewsTest(TestCase):
 
         # Should contain progress for both members
         self.assertEqual(len(items_data[0]["member_progress"]), 2)
+
+    def test_group_detail_counter_and_untracked_members(self):
+        """Counter reflects completed members and labels untracked ones."""
+        # user2 completes the item; user3 is a member with no tracking.
+        self.group.members.add(self.user3)
+        TV.objects.create(
+            user=self.user2,
+            item=self.item1,
+            status=Status.COMPLETED.value,
+        )
+        self.client.login(username="user1", password="testpassword123")  # noqa: S106
+        response = self.client.get(reverse("group_detail", args=[self.group.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "1/3")
+        self.assertContains(response, "Not tracked")
+        self.assertNotContains(response, ">None<")
+
+    def test_group_detail_uses_canonical_status_colors(self):
+        """Member badges use the app's canonical status colours."""
+        TV.objects.create(
+            user=self.user2,
+            item=self.item1,
+            status=Status.IN_PROGRESS.value,
+        )
+        self.client.login(username="user1", password="testpassword123")  # noqa: S106
+        response = self.client.get(reverse("group_detail", args=[self.group.id]))
+
+        self.assertContains(response, Status.IN_PROGRESS.value)
+        self.assertContains(
+            response,
+            config.get_status_text_color(Status.IN_PROGRESS.value),
+        )
