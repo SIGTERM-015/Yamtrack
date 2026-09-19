@@ -22,4 +22,15 @@ urlpatterns = [
         views.group_set_item_status,
         name="group_set_item_status",
     ),
+    path(
+        "<int:group_id>/members/<int:user_id>/remove/",
+        views.group_remove_member,
+        name="group_remove_member",
+    ),
+    path("<int:group_id>/leave/", views.group_leave, name="group_leave"),
+    path(
+        "<int:group_id>/transfer/",
+        views.group_transfer_owner,
+        name="group_transfer_owner",
+    ),
 ]

@@ -1,14 +1,14 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 
 from app import config
 from app.models import Item, Status
-from groups.models import Group, GroupInvitation
+from groups.models import Group, GroupInvitation, GroupOrigin
 from groups.services import apply_status_to_group_members, get_group_progress
 
 
@@ -179,6 +179,12 @@ def group_invitation_reject(request, invitation_id):
     return redirect("group_list")
 
 
+def _detach_group_origins(user, group):
+    """Mark a departing member's group-born items as belonging to them."""
+    GroupOrigin.objects.filter(user=user, group=group).update(detached=True)
+
+
+@login_required
 @require_POST
 def group_set_item_status(request, group_id):
     """Apply a status to every member of a group, without overwriting data."""
@@ -198,4 +204,79 @@ def group_set_item_status(request, group_id):
         raise Http404(msg)
 
     apply_status_to_group_members(group, item, status)
+    return redirect("group_detail", group_id=group.id)
+
+
+@login_required
+@require_POST
+def group_remove_member(request, group_id, user_id):
+    """Remove another member from a group. Owner-only."""
+    group = get_object_or_404(Group, id=group_id)
+
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    if group.owner_id != request.user.id:
+        return HttpResponse("Only the owner can remove members.", status=403)
+
+    member = group.members.filter(id=user_id).first()
+    if member is None:
+        msg = "Member not found"
+        raise Http404(msg)
+
+    if member.id == group.owner_id:
+        return HttpResponse(
+            "The owner cannot be removed; transfer ownership first.", status=400
+        )
+
+    group.members.remove(member)
+    _detach_group_origins(member, group)
+    messages.success(request, f"{member.username} was removed from the group.")
+    return redirect("group_detail", group_id=group.id)
+
+
+@login_required
+@require_POST
+def group_leave(request, group_id):
+    """Leave a group. The owner must transfer ownership first."""
+    group = get_object_or_404(Group, id=group_id)
+
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    if group.owner_id == request.user.id:
+        return HttpResponse(
+            "Transfer ownership before leaving the group.", status=400
+        )
+
+    group.members.remove(request.user)
+    _detach_group_origins(request.user, group)
+    messages.success(request, f"You left '{group.name}'.")
+    return redirect("group_list")
+
+
+@login_required
+@require_POST
+def group_transfer_owner(request, group_id):
+    """Transfer group ownership to another member. Owner-only."""
+    group = get_object_or_404(Group, id=group_id)
+
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    if group.owner_id != request.user.id:
+        return HttpResponse("Only the owner can transfer ownership.", status=403)
+
+    new_owner = group.members.filter(id=request.POST.get("user_id")).first()
+    if new_owner is None or new_owner.id == group.owner_id:
+        return HttpResponse(
+            "Choose another member to transfer ownership to.", status=400
+        )
+
+    group.owner = new_owner
+    group.save(update_fields=["owner"])
+    messages.success(request, f"{new_owner.username} is the new owner of the group.")
     return redirect("group_detail", group_id=group.id)
