@@ -205,6 +205,11 @@ class MediaForm(forms.ModelForm):
     media_type = forms.CharField(widget=forms.HiddenInput(), required=True)
     source = forms.CharField(widget=forms.HiddenInput(), required=True)
     media_id = forms.CharField(widget=forms.HiddenInput(), required=True)
+    notes_public = forms.BooleanField(
+        required=False,
+        label="Show this note publicly",
+        help_text="Visible as a review on your public profile",
+    )
 
     class Meta:
         """Define fields and input types."""
@@ -216,6 +221,7 @@ class MediaForm(forms.ModelForm):
             "start_date",
             "end_date",
             "notes",
+            "notes_public",
         ]
         widgets = {
             "score": forms.NumberInput(
@@ -270,6 +276,7 @@ class MovieForm(MediaForm):
             "start_date",
             "end_date",
             "notes",
+            "notes_public",
         ]
 
 
@@ -338,7 +345,7 @@ class TvForm(MediaForm):
         """Bind form to model."""
 
         model = TV
-        fields = ["score", "status", "notes"]
+        fields = ["score", "status", "notes", "notes_public"]
 
 
 class SeasonForm(MediaForm):
@@ -354,6 +361,7 @@ class SeasonForm(MediaForm):
             "score",
             "status",
             "notes",
+            "notes_public",
         ]
 
 

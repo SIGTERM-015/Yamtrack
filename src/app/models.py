@@ -896,6 +896,10 @@ class Media(models.Model):
     start_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True, default="")
+    notes_public = models.BooleanField(
+        default=False,
+        help_text="Show this note as a public review on your profile",
+    )
 
     class Meta:
         """Meta options for the model."""

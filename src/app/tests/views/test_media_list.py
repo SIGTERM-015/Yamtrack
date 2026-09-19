@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -29,6 +31,10 @@ class MediaListViewTests(TestCase):
             **self.external_credentials
         )
         self.client.login(**self.credentials)
+        self.metadata_patcher = patch("app.providers.services.get_media_metadata")
+        self.mock_get_media_metadata = self.metadata_patcher.start()
+        self.mock_get_media_metadata.return_value = {"max_progress": 1}
+        self.addCleanup(self.metadata_patcher.stop)
 
         movies_id = ["278", "238", "129", "424", "680"]
         num_completed = 3
@@ -193,3 +199,75 @@ class MediaListViewTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn("media_list", response.context)
+
+    def _create_note(self, user, notes, notes_public):
+        """Create a completed movie entry carrying a note."""
+        item = Item.objects.create(
+            media_id="550",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Review Movie",
+            image="http://example.com/image.jpg",
+        )
+        return Movie.objects.create(
+            item=item,
+            user=user,
+            status=Status.COMPLETED.value,
+            notes=notes,
+            notes_public=notes_public,
+        )
+
+    def test_public_review_visible_to_anonymous(self):
+        """Notes marked public appear as reviews on a public profile."""
+        review = self._create_note(self.external_user, "Great movie", notes_public=True)
+        self.external_user.profile_private = False
+        self.external_user.save(update_fields=["profile_private"])
+        self.client.logout()
+
+        response = self.client.get(
+            reverse(
+                "medialist", args=[self.external_user.username, MediaTypes.MOVIE.value]
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(review, response.context["public_reviews"])
+        self.assertContains(response, "Great movie")
+
+    def test_private_review_hidden(self):
+        """Notes not marked public never appear as reviews."""
+        review = self._create_note(
+            self.external_user, "Secret note", notes_public=False
+        )
+        self.external_user.profile_private = False
+        self.external_user.save(update_fields=["profile_private"])
+        self.client.logout()
+
+        response = self.client.get(
+            reverse(
+                "medialist", args=[self.external_user.username, MediaTypes.MOVIE.value]
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(review, response.context["public_reviews"])
+        self.assertNotContains(response, "Secret note")
+
+    def test_notes_public_defaults_to_false(self):
+        """New entries keep their notes private by default."""
+        item = Item.objects.create(
+            media_id="551",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Default Review Movie",
+            image="http://example.com/image.jpg",
+        )
+        review = Movie.objects.create(
+            item=item,
+            user=self.user,
+            status=Status.COMPLETED.value,
+            notes="Default note",
+        )
+        review.refresh_from_db()
+
+        self.assertFalse(review.notes_public)
