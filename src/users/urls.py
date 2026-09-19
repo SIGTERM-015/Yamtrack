@@ -3,6 +3,18 @@ from django.urls import path
 from users import views
 
 urlpatterns = [
+    path("suggest/<str:username>", views.suggest_media, name="suggest_media"),
+    path("settings/suggestions", views.suggestions, name="suggestions"),
+    path(
+        "suggestions/<int:suggestion_id>/accept",
+        views.accept_suggestion,
+        name="accept_suggestion",
+    ),
+    path(
+        "suggestions/<int:suggestion_id>/discard",
+        views.discard_suggestion,
+        name="discard_suggestion",
+    ),
     path("settings/account", views.account, name="account"),
     path("settings/notifications", views.notifications, name="notifications"),
     path("notifications/search/", views.search_items, name="search_notification_items"),

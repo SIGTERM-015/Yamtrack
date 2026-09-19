@@ -1,0 +1,94 @@
+{% extends "users/base.html" %}
+
+{% block title %}
+  Suggestions - Yamtrack
+{% endblock title %}
+
+{% block settings_content %}
+  <div class="space-y-6">
+    <div class="bg-[#2a2f35] rounded-lg p-6">
+      <div class="flex items-center mb-5">
+        {% include "app/icons/bell.svg" with classes="w-6 h-6 text-indigo-400 mr-3" %}
+        <h2 class="text-xl font-semibold">Pending suggestions</h2>
+      </div>
+
+      {% if pending_suggestions %}
+        <div class="space-y-4">
+          {% for suggestion in pending_suggestions %}
+            <div class="flex flex-col sm:flex-row gap-4 p-3 bg-[#39404b] rounded-md">
+              {% if suggestion.image %}
+                <img src="{{ suggestion.image }}"
+                     alt="{{ suggestion.title }}"
+                     class="w-16 h-24 object-cover rounded-md shrink-0">
+              {% endif %}
+              <div class="grow">
+                <h3 class="font-semibold">{{ suggestion.title }}</h3>
+                <p class="text-xs text-gray-400">
+                  {{ suggestion.media_type|capfirst }} &middot; {{ suggestion.source }}
+                  {% if suggestion.suggested_by %}&middot; from {{ suggestion.suggested_by.username }}{% endif %}
+                </p>
+                {% if suggestion.message %}
+                  <p class="mt-2 text-sm text-gray-300">{{ suggestion.message }}</p>
+                {% endif %}
+                <div class="flex gap-2 mt-3">
+                  <form method="post"
+                        action="{% url 'accept_suggestion' suggestion.id %}">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm cursor-pointer">
+                      Accept
+                    </button>
+                  </form>
+                  <form method="post"
+                        action="{% url 'discard_suggestion' suggestion.id %}">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="px-3 py-1.5 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm cursor-pointer">
+                      Discard
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-gray-400 text-sm">No pending suggestions.</p>
+      {% endif %}
+    </div>
+
+    <div class="bg-[#2a2f35] rounded-lg p-6">
+      <div class="flex items-center mb-5">
+        {% include "app/icons/clock.svg" with classes="w-6 h-6 text-indigo-400 mr-3" %}
+        <h2 class="text-xl font-semibold">Resolved suggestions</h2>
+      </div>
+
+      {% if resolved_suggestions %}
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left">
+            <thead class="text-xs text-gray-400 uppercase">
+              <tr>
+                <th class="py-2 pr-4">Title</th>
+                <th class="py-2 pr-4">Type</th>
+                <th class="py-2 pr-4">Status</th>
+                <th class="py-2">Resolved</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for suggestion in resolved_suggestions %}
+                <tr class="border-t border-gray-700">
+                  <td class="py-2 pr-4">{{ suggestion.title }}</td>
+                  <td class="py-2 pr-4">{{ suggestion.media_type|capfirst }}</td>
+                  <td class="py-2 pr-4">{{ suggestion.get_status_display }}</td>
+                  <td class="py-2">{{ suggestion.resolved_at|date:"Y-m-d" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-gray-400 text-sm">No resolved suggestions yet.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock settings_content %}

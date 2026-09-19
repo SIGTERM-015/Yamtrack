@@ -1,5 +1,6 @@
 import secrets
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -176,6 +177,10 @@ class User(AbstractUser):
     instagram = models.URLField(blank=True)
     twitter = models.URLField(blank=True)
     mastodon = models.URLField(blank=True)
+    suggestions_enabled = models.BooleanField(
+        default=True,
+        help_text="Allow other people to suggest titles from your profile",
+    )
 
     last_search_type = models.CharField(
         max_length=10,
@@ -798,3 +803,50 @@ class User(AbstractUser):
         """Regenerate the user's token."""
         self.token = generate_token()
         self.save(update_fields=["token"])
+
+
+class SuggestionStatus(models.TextChoices):
+    """Status of a title suggestion."""
+
+    PENDING = "pending", "Pending"
+    ACCEPTED = "accepted", "Accepted"
+    DISCARDED = "discarded", "Discarded"
+
+
+class Suggestion(models.Model):
+    """A media title suggested to a user from their public profile."""
+
+    suggested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="suggestions_made",
+    )
+    target_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="suggestions_received",
+    )
+    title = models.CharField(max_length=255)
+    media_type = models.CharField(max_length=10, choices=MediaTypes.choices)
+    media_id = models.CharField(max_length=255)
+    source = models.CharField(max_length=50)
+    image = models.URLField(blank=True, default="")
+    message = models.TextField(blank=True, default="")
+    status = models.CharField(
+        max_length=10,
+        choices=SuggestionStatus.choices,
+        default=SuggestionStatus.PENDING.value,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        """Meta options for the model."""
+
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        """Return the suggested title and recipient."""
+        return f"{self.title} -> {self.target_user}"

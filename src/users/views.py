@@ -1,29 +1,47 @@
 import logging
 
 import apprise
+from django.apps import apps
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.decorators import login_not_required
 from django.core.cache import cache
 from django.db import IntegrityError
 from django.db.models import Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.defaultfilters import pluralize
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django_celery_beat.models import PeriodicTask
 
-from app.models import Item, MediaTypes
-from app.providers import tmdb
-from users.forms import NotificationSettingsForm, PasswordChangeForm, UserUpdateForm
+from app import config
+from app.models import Item, MediaTypes, Status
+from app.providers import services, tmdb
+from users.forms import (
+    NotificationSettingsForm,
+    PasswordChangeForm,
+    SuggestionForm,
+    UserUpdateForm,
+)
 from users.models import (
+    VALID_SEARCH_TYPES,
     WATCH_PROVIDER_REGION_UNSET,
     DateFormatChoices,
     QuickWatchDateChoices,
+    Suggestion,
+    SuggestionStatus,
     TimeFormatChoices,
+    User,
     WeekStartDayChoices,
 )
 
 logger = logging.getLogger(__name__)
+
+# Anti-spam: max suggestions per IP and target user per rolling window.
+SUGGESTION_RATE_LIMIT = 5
+SUGGESTION_RATE_WINDOW = 3600
 
 
 @require_http_methods(["GET", "POST"])
@@ -407,3 +425,147 @@ def clear_search_cache(request):
     )
 
     return redirect("advanced")
+
+
+def _suggestion_rate_limited(request, target_user):
+    """Return True when this IP has sent too many suggestions recently."""
+    ip = request.META.get("REMOTE_ADDR", "unknown")
+    key = f"suggestion-rate:{ip}:{target_user.pk}"
+    count = cache.get(key, 0)
+    if count >= SUGGESTION_RATE_LIMIT:
+        return True
+
+    cache.set(key, count + 1, SUGGESTION_RATE_WINDOW)
+    return False
+
+
+@login_not_required
+@require_http_methods(["GET", "POST"])
+def suggest_media(request, username):
+    """Let anyone suggest a title to a user from their public profile."""
+    target_user = get_object_or_404(User, username=username)
+
+    if target_user == request.user:
+        return redirect("suggestions")
+
+    if not target_user.suggestions_enabled:
+        msg = "Suggestions are disabled for this user"
+        raise Http404(msg)
+
+    media_types = [
+        media_type
+        for media_type in target_user.get_enabled_media_types()
+        if media_type in VALID_SEARCH_TYPES
+    ]
+
+    if request.method == "POST":
+        form = SuggestionForm(request.POST)
+        if form.is_valid():
+            if _suggestion_rate_limited(request, target_user):
+                messages.error(
+                    request,
+                    "You have sent too many suggestions, try again later.",
+                )
+            else:
+                Suggestion.objects.create(
+                    suggested_by=(
+                        request.user if request.user.is_authenticated else None
+                    ),
+                    target_user=target_user,
+                    **form.cleaned_data,
+                )
+                messages.success(
+                    request,
+                    f"Your suggestion was sent to {target_user.username}.",
+                )
+            return redirect("suggest_media", username=username)
+
+        messages.error(request, "Invalid suggestion.")
+
+    results = []
+    query = request.GET.get("q")
+    selected_type = request.GET.get("media_type")
+    if query and selected_type in media_types:
+        source = config.get_default_source_name(selected_type).value
+        data = services.search(selected_type, query, 1, source)
+        results = data.get("results", [])
+
+    context = {
+        "target_user": target_user,
+        "media_types": media_types,
+        "results": results,
+        "query": query or "",
+        "selected_type": selected_type or (media_types[0] if media_types else ""),
+    }
+    return render(request, "users/suggest.html", context)
+
+
+@require_GET
+def suggestions(request):
+    """Show the title suggestions received by the current user."""
+    received = Suggestion.objects.filter(target_user=request.user).select_related(
+        "suggested_by",
+    )
+    context = {
+        "pending_suggestions": received.filter(
+            status=SuggestionStatus.PENDING.value,
+        ),
+        "resolved_suggestions": received.exclude(
+            status=SuggestionStatus.PENDING.value,
+        )[:20],
+    }
+    return render(request, "users/suggestions.html", context)
+
+
+@require_POST
+def accept_suggestion(request, suggestion_id):
+    """Accept a suggestion and add it to the user's watchlist."""
+    suggestion = get_object_or_404(
+        Suggestion,
+        pk=suggestion_id,
+        target_user=request.user,
+        status=SuggestionStatus.PENDING.value,
+    )
+
+    metadata = services.get_media_metadata(
+        suggestion.media_type,
+        suggestion.media_id,
+        suggestion.source,
+    )
+    item, _ = Item.objects.get_or_create(
+        media_id=suggestion.media_id,
+        source=suggestion.source,
+        media_type=suggestion.media_type,
+        season_number=None,
+        defaults={
+            "title": metadata.get("title", suggestion.title),
+            "image": metadata.get("image") or suggestion.image,
+        },
+    )
+    model = apps.get_model(app_label="app", model_name=suggestion.media_type)
+    media = model(item=item, user=request.user)
+    media.status = Status.PLANNING.value
+    media.save()
+
+    suggestion.status = SuggestionStatus.ACCEPTED.value
+    suggestion.resolved_at = timezone.now()
+    suggestion.save(update_fields=["status", "resolved_at"])
+
+    messages.success(request, f"{suggestion.title} added to your watchlist.")
+    return redirect("suggestions")
+
+
+@require_POST
+def discard_suggestion(request, suggestion_id):
+    """Discard a suggestion without adding it to the watchlist."""
+    suggestion = get_object_or_404(
+        Suggestion,
+        pk=suggestion_id,
+        target_user=request.user,
+        status=SuggestionStatus.PENDING.value,
+    )
+    suggestion.status = SuggestionStatus.DISCARDED.value
+    suggestion.resolved_at = timezone.now()
+    suggestion.save(update_fields=["status", "resolved_at"])
+    messages.info(request, f"Suggestion for {suggestion.title} discarded.")
+    return redirect("suggestions")
