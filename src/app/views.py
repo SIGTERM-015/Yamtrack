@@ -626,6 +626,16 @@ def media_save(request):
 
     if instance_id:
         instance = helpers.get_owned_media_or_404(request, media_type, instance_id)
+        item = instance.item
+        if not item.genres.exists():
+            metadata = services.get_media_metadata(
+                item.media_type,
+                item.media_id,
+                item.source,
+                [item.season_number],
+                item.episode_number,
+            )
+            item.set_genres(metadata.get("genres"))
     else:
         metadata = services.get_media_metadata(
             media_type,
@@ -643,6 +653,7 @@ def media_save(request):
                 "image": metadata["image"],
             },
         )
+        item.set_genres(metadata.get("genres"))
         model = apps.get_model(app_label="app", model_name=media_type)
         instance = model(item=item, user=request.user)
 

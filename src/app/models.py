@@ -64,6 +64,21 @@ class MediaTypes(models.TextChoices):
     BOARDGAME = "boardgame", "Boardgame"
 
 
+class Genre(models.Model):
+    """Model to store a media genre."""
+
+    name = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        """Meta options for the model."""
+
+        ordering = ["name"]
+
+    def __str__(self):
+        """Return the genre name."""
+        return self.name
+
+
 class Item(CalendarTriggerMixin, models.Model):
     """Model to store basic information about media items."""
 
@@ -82,6 +97,7 @@ class Item(CalendarTriggerMixin, models.Model):
     image = models.URLField()  # if add default, custom media entry will show the value
     season_number = models.PositiveIntegerField(null=True, blank=True)
     episode_number = models.PositiveIntegerField(null=True, blank=True)
+    genres = models.ManyToManyField(Genre, blank=True, related_name="items")
 
     class Meta:
         """Meta options for the model."""
@@ -175,6 +191,26 @@ class Item(CalendarTriggerMixin, models.Model):
         Uses a UUID to ensure uniqueness.
         """
         return str(uuid.uuid4())
+
+    def set_genres(self, genres):
+        """Persist the genres of the item.
+
+        ``genres`` is an iterable of genre names, typically the ``genres``
+        value returned by a metadata provider. Missing or empty values are
+        ignored.
+        """
+        if not genres:
+            return
+
+        names = {str(genre).strip() for genre in genres if genre}
+        names.discard("")
+        if not names:
+            return
+
+        genre_objects = [
+            Genre.objects.get_or_create(name=name)[0] for name in sorted(names)
+        ]
+        self.genres.set(genre_objects)
 
     def fetch_releases(self, delay):
         """Fetch releases for the item."""
