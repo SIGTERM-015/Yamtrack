@@ -35,7 +35,9 @@ def account(request):
     if request.method == "POST":
         # Handle username update
         if "username" in request.POST:
-            user_form = UserUpdateForm(request.POST, instance=request.user)
+            user_form = UserUpdateForm(
+                request.POST, request.FILES, instance=request.user
+            )
 
             if user_form.is_valid():
                 user_form.save()

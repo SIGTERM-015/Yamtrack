@@ -21,7 +21,7 @@
         </div>
       {% endif %}
 
-      <form method="post" class="space-y-4">
+      <form method="post" enctype="multipart/form-data" class="space-y-4">
         {% csrf_token %}
         <div>
           <label for="{{ user_form.username.id_for_label }}"
@@ -57,6 +57,59 @@
               <div class="w-9 h-5 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-400 peer-focus:ring-offset-2 peer-focus:ring-offset-[#39404b] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-px after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-indigo-600">
               </div>
             </label>
+          </div>
+        </div>
+
+        <div>
+          <label for="{{ user_form.avatar.id_for_label }}"
+                 class="block text-sm font-medium mb-2 text-gray-300">Avatar</label>
+          {% if user.avatar %}
+            <img src="{{ user.avatar.url }}"
+                 alt="Current avatar"
+                 class="w-16 h-16 rounded-full object-cover mb-2">
+          {% endif %}
+          <input id="{{ user_form.avatar.id_for_label }}"
+                 name="{{ user_form.avatar.html_name }}"
+                 class="w-full py-2 px-3 bg-[#39404b] rounded-md text-white text-sm border {% if user_form.avatar.errors %}border-red-500{% else %}border-gray-600{% endif %} focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                 type="file"
+                 accept="image/*">
+          {% if user_form.avatar.errors %}
+            <p class="mt-1 text-sm text-red-400">{{ user_form.avatar.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <label for="{{ user_form.bio.id_for_label }}"
+                 class="block text-sm font-medium mb-2 text-gray-300">Bio</label>
+          <textarea id="{{ user_form.bio.id_for_label }}"
+                    name="{{ user_form.bio.html_name }}"
+                    rows="3"
+                    class="w-full py-2 px-3 bg-[#39404b] rounded-md text-white text-sm border {% if user_form.bio.errors %}border-red-500{% else %}border-gray-600{% endif %} focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">{{ user_form.bio.value|default:"" }}</textarea>
+          {% if user_form.bio.errors %}
+            <p class="mt-1 text-sm text-red-400">{{ user_form.bio.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <h3 class="text-sm font-medium text-gray-300 mb-2">Social links</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {% for field in user_form %}
+              {% if field.name in "letterboxd,imdb,trakt,instagram,twitter,mastodon" %}
+                <div>
+                  <label for="{{ field.id_for_label }}"
+                         class="block text-xs text-gray-400 mb-1">{{ field.label }}</label>
+                  <input id="{{ field.id_for_label }}"
+                         name="{{ field.html_name }}"
+                         class="w-full py-2 px-3 bg-[#39404b] rounded-md text-white text-sm border {% if field.errors %}border-red-500{% else %}border-gray-600{% endif %} focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                         type="url"
+                         placeholder="https://"
+                         value="{{ field.value|default:'' }}">
+                  {% if field.errors %}
+                    <p class="mt-1 text-sm text-red-400">{{ field.errors.0 }}</p>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endfor %}
           </div>
         </div>
 
@@ -163,7 +216,7 @@
                   class="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm cursor-pointer">
             {% include "app/icons/save.svg" with classes="w-4 h-4 mr-2" %}
             Update Password
-          </button>
+          </button          </button>
         </div>
       </form>
     </div>
