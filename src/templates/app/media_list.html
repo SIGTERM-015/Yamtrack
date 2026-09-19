@@ -13,6 +13,28 @@
     {{ media_type|media_type_readable_plural }}
   </h1>
 
+  {% if featured_shelves %}
+    <section class="mb-8">
+      <h2 class="text-xl font-bold mb-3">Shelves</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for shelf in featured_shelves %}
+          <div class="bg-[#2c3136] rounded-md p-4">
+            <a href="{% url 'list_detail' shelf.id %}"
+               class="font-semibold text-white hover:text-[#4a9eff]">{{ shelf.name }}</a>
+            {% if shelf.description %}
+              <p class="text-sm text-gray-400 mt-1">{{ shelf.description }}</p>
+            {% endif %}
+            <ol class="mt-2 text-sm text-gray-300 list-decimal list-inside">
+              {% for item in shelf.items.all %}
+                <li>{{ item.title }}</li>
+              {% endfor %}
+            </ol>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
   <div x-data="{ sort: '{{ current_sort }}', status: '{{ current_status }}', layout: '{{ current_layout }}', search: '{{ request.GET.search|default:'' }}', statusLabels: {
     {% for value, label in status_choices %}
       '{{ value }}': '{{ label }}'

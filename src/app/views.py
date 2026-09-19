@@ -35,6 +35,7 @@ from app.models import (
 from app.providers import manual, services, tmdb
 from app.templatetags import app_tags
 from events.models import Event
+from lists.models import CustomList
 from users.models import (
     DateFormatChoices,
     HomeSortChoices,
@@ -247,6 +248,7 @@ def media_list(request, username, media_type):
         "sort_choices": MediaSortChoices.choices,
         "status_choices": MediaStatusChoices.choices,
         "target_user": target_user,
+        "featured_shelves": CustomList.objects.get_featured_shelves(target_user),
     }
 
     # Handle HTMX requests for partial updates. Soft-navigation requests (e.g.
