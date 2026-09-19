@@ -5,7 +5,7 @@ from django.apps import apps
 from django.db.models import Field, Prefetch
 
 from app import helpers
-from app.models import Episode, Item, MediaTypes, Season
+from app.models import Episode, Item, MediaTypes, Movie, Season, Sources
 
 logger = logging.getLogger(__name__)
 
@@ -119,3 +119,40 @@ def get_track_fields():
             all_fields.append(timestamp_field)
 
     return list(all_fields)
+
+
+LETTERBOXD_HEADERS = ["tmdbID", "Title", "Year", "Rating10", "WatchedDate"]
+
+
+def format_letterboxd_rating(score):
+    """Format a 0-10 score for Letterboxd's Rating10 column."""
+    if score is None:
+        return ""
+
+    value = f"{score:f}"
+    if "." in value:
+        value = value.rstrip("0").rstrip(".")
+
+    return value
+
+
+def generate_letterboxd_rows(user):
+    """Generate Letterboxd-compatible CSV rows for a user's movies."""
+    pseudo_buffer = Echo()
+    writer = csv.writer(pseudo_buffer)
+
+    yield writer.writerow(LETTERBOXD_HEADERS)
+
+    movies = Movie.objects.filter(user=user).select_related("item")
+
+    for movie in movies.iterator(chunk_size=500):
+        item = movie.item
+        yield writer.writerow(
+            [
+                item.media_id if item.source == Sources.TMDB.value else "",
+                item.title,
+                "",  # Year is not stored on Item; tmdbID drives matching
+                format_letterboxd_rating(movie.score),
+                movie.end_date.date().isoformat() if movie.end_date else "",
+            ],
+        )

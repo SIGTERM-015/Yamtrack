@@ -1,6 +1,8 @@
 import csv
 from datetime import UTC, datetime
+from decimal import Decimal
 from io import StringIO
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
@@ -8,6 +10,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from app.models import (
+    TV,
     Anime,
     Book,
     Episode,
@@ -174,3 +177,111 @@ class ExportCSVTest(TestCase):
         for row in reader:
             media_id = row["media_id"]
             self.assertIn(media_id, db_media_ids)
+
+
+class LetterboxdExportTest(TestCase):
+    """Test exporting a user's movies to a Letterboxd-compatible CSV."""
+
+    def setUp(self):
+        """Create movies for two users plus a non-movie item."""
+        self.credentials = {"username": "test", "password": "12345"}
+        self.user = get_user_model().objects.create_user(**self.credentials)
+        self.other_user = get_user_model().objects.create_user(
+            **{**self.credentials, "username": "other"},
+        )
+        self.client.login(**self.credentials)
+
+        # Saving a completed movie calls the provider; keep the test offline.
+        metadata_patcher = patch(
+            "app.models.providers.services.get_media_metadata",
+        )
+        self.mock_metadata = metadata_patcher.start()
+        self.mock_metadata.return_value = {"max_progress": None}
+        self.addCleanup(metadata_patcher.stop)
+
+        tmdb_item = Item.objects.create(
+            media_id="10494",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Perfect Blue",
+            image="https://image.url",
+        )
+        Movie.objects.create(
+            item=tmdb_item,
+            user=self.user,
+            score=Decimal("9.0"),
+            status=Status.COMPLETED.value,
+            end_date=datetime(2023, 6, 1, 0, 0, tzinfo=UTC),
+        )
+
+        manual_item = Item.objects.create(
+            media_id="8f1b9e6a-0000-0000-0000-000000000000",
+            source=Sources.MANUAL.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="A Manual Movie",
+            image="https://image.url",
+        )
+        Movie.objects.create(
+            item=manual_item,
+            user=self.user,
+            score=Decimal("8.5"),
+            status=Status.COMPLETED.value,
+        )
+
+        other_item = Item.objects.create(
+            media_id="603",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="The Matrix",
+            image="https://image.url",
+        )
+        Movie.objects.create(
+            item=other_item,
+            user=self.other_user,
+            score=Decimal("10.0"),
+            status=Status.COMPLETED.value,
+        )
+
+        tv_item = Item.objects.create(
+            media_id="1668",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.TV.value,
+            title="Friends",
+            image="https://image.url",
+        )
+        TV.objects.create(
+            item=tv_item,
+            user=self.user,
+            status=Status.IN_PROGRESS.value,
+        )
+
+    def test_export_letterboxd_csv(self):
+        """Only the requesting user's movies are exported with Letterboxd columns."""
+        response = self.client.get(reverse("export_letterboxd"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/csv")
+
+        content = b"".join(response.streaming_content).decode("utf-8")
+        reader = csv.DictReader(StringIO(content))
+        rows = list(reader)
+
+        self.assertEqual(
+            reader.fieldnames,
+            ["tmdbID", "Title", "Year", "Rating10", "WatchedDate"],
+        )
+        self.assertEqual(len(rows), 2)
+
+        by_title = {row["Title"]: row for row in rows}
+        self.assertNotIn("The Matrix", by_title)
+        self.assertNotIn("Friends", by_title)
+
+        perfect_blue = by_title["Perfect Blue"]
+        self.assertEqual(perfect_blue["tmdbID"], "10494")
+        self.assertEqual(perfect_blue["Rating10"], "9")
+        self.assertEqual(perfect_blue["WatchedDate"], "2023-06-01")
+
+        manual = by_title["A Manual Movie"]
+        self.assertEqual(manual["tmdbID"], "")
+        self.assertEqual(manual["Rating10"], "8.5")
+        self.assertEqual(manual["WatchedDate"], "")

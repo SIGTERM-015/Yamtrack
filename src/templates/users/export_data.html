@@ -18,5 +18,14 @@
         Export as CSV
       </button>
     </form>
+    <p class="text-sm text-gray-400 mt-6 mb-4">
+      Export your movies as a CSV ready to import at letterboxd.com/import.
+    </p>
+    <form method="get" action="{% url 'export_letterboxd' %}">
+      {% csrf_token %}
+      <button class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm cursor-pointer">
+        Export for Letterboxd
+      </button>
+    </form>
   </div>
 {% endblock settings_content %}
