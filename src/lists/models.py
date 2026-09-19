@@ -44,6 +44,19 @@ class CustomListManager(models.Manager):
             .order_by("name")
         )
 
+    def get_featured_shelves(self, user):
+        """Return the user's featured shelves in manual order."""
+        return (
+            self.filter(owner=user, is_featured=True)
+            .prefetch_related(
+                Prefetch(
+                    "items",
+                    queryset=Item.objects.order_by("-customlistitem__date_added"),
+                ),
+            )
+            .order_by("sort_order", "name")
+        )
+
 
 class CustomList(models.Model):
     """Model for custom lists."""
@@ -61,6 +74,15 @@ class CustomList(models.Model):
         related_name="custom_lists",
         blank=True,
         through="CustomListItem",
+    )
+    is_featured = models.BooleanField(
+        default=False,
+        help_text="Show this list as a shelf on the public profile",
+    )
+    sort_order = models.PositiveIntegerField(
+        default=0,
+        blank=True,
+        help_text="Manual position of the shelf (lower numbers come first)",
     )
 
     objects = CustomListManager()
