@@ -134,3 +134,40 @@ class GroupOrigin(models.Model):
     def __str__(self):
         """Return string representation."""
         return f"{self.item} for {self.user} from {self.group}"
+
+
+class GroupInvitation(models.Model):
+    """
+    Pending invitation for a user to join a group.
+
+    A row exists only while the invitation is pending. Accepting it creates a
+    GroupMembership; rejecting it deletes the row.
+    """
+
+    group = models.ForeignKey(
+        Group, on_delete=models.CASCADE, related_name="invitations"
+    )
+    invited_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="group_invitations",
+    )
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="sent_group_invitations",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        """Meta class."""
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["group", "invited_user"], name="unique_group_invitation"
+            ),
+        ]
+
+    def __str__(self):
+        """Return string representation."""
+        return f"Invitation of {self.invited_user} to {self.group}"

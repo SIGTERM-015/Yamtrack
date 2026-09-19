@@ -1,17 +1,25 @@
+from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from app.models import Item
-from groups.models import Group
+from groups.models import Group, GroupInvitation
 from groups.services import get_group_progress
 
 
 @login_required
 def group_list(request):
-    """View to list user groups."""
+    """View to list user groups and pending invitations."""
     groups = request.user.joined_groups.all()
-    return render(request, "groups/group_list.html", {"groups": groups})
+    invitations = request.user.group_invitations.select_related("group", "invited_by")
+    return render(
+        request,
+        "groups/group_list.html",
+        {"groups": groups, "invitations": invitations},
+    )
 
 
 @login_required
@@ -19,7 +27,10 @@ def group_detail(request, group_id):
     """View to display group detail."""
     group = get_object_or_404(Group, id=group_id)
 
-    if not group.members.filter(id=request.user.id).exists():
+    is_member = group.members.filter(id=request.user.id).exists()
+    invitation = group.invitations.filter(invited_user=request.user).first()
+
+    if not is_member and invitation is None:
         msg = "Group not found"
         raise Http404(msg)
 
@@ -56,5 +67,105 @@ def group_detail(request, group_id):
     context = {
         "group": group,
         "items_data": items_data,
+        "is_member": is_member,
+        "invitation": invitation,
     }
     return render(request, "groups/group_detail.html", context)
+
+
+@login_required
+def group_create(request):
+    """View to create a group; the creator becomes owner and first member."""
+    if request.method != "POST":
+        return render(request, "groups/group_create.html")
+
+    name = request.POST.get("name", "").strip()
+    description = request.POST.get("description", "").strip()
+
+    if not name:
+        return render(
+            request,
+            "groups/group_create.html",
+            {
+                "error": "Group name is required.",
+                "name": name,
+                "description": description,
+            },
+        )
+
+    group = Group.objects.create(
+        name=name,
+        description=description,
+        owner=request.user,
+    )
+    group.members.add(request.user)
+    messages.success(request, f"Group '{group.name}' created.")
+    return redirect("group_detail", group_id=group.id)
+
+
+@login_required
+@require_POST
+def group_invite(request, group_id):
+    """Invite an existing user to a group the requester belongs to."""
+    group = get_object_or_404(Group, id=group_id)
+
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    username = request.POST.get("username", "").strip()
+
+    if not username:
+        messages.error(request, "Enter a username to invite.")
+        return redirect("group_detail", group_id=group.id)
+
+    user_model = get_user_model()
+    invited_user = user_model.objects.filter(username__iexact=username).first()
+
+    if invited_user is None:
+        messages.error(request, f"No user named '{username}'.")
+    elif invited_user == request.user:
+        messages.error(request, "You are already in this group.")
+    elif group.members.filter(id=invited_user.id).exists():
+        messages.error(request, f"{invited_user.username} is already a member.")
+    elif group.invitations.filter(invited_user=invited_user).exists():
+        messages.error(
+            request,
+            f"{invited_user.username} already has a pending invitation.",
+        )
+    else:
+        GroupInvitation.objects.create(
+            group=group,
+            invited_user=invited_user,
+            invited_by=request.user,
+        )
+        messages.success(request, f"Invitation sent to {invited_user.username}.")
+
+    return redirect("group_detail", group_id=group.id)
+
+
+@login_required
+@require_POST
+def group_invitation_accept(request, invitation_id):
+    """Accept a pending invitation and join the group."""
+    invitation = get_object_or_404(
+        GroupInvitation, id=invitation_id, invited_user=request.user
+    )
+    group = invitation.group
+    group.members.add(request.user)
+    invitation.delete()
+    messages.success(request, f"You joined '{group.name}'.")
+    return redirect("group_detail", group_id=group.id)
+
+
+@login_required
+@require_POST
+def group_invitation_reject(request, invitation_id):
+    """Reject a pending invitation."""
+    invitation = get_object_or_404(
+        GroupInvitation, id=invitation_id, invited_user=request.user
+    )
+    group = invitation.group
+    invitation.delete()
+    messages.success(request, f"You declined the invitation to '{group.name}'.")
+    return redirect("group_list")

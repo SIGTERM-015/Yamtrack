@@ -29,6 +29,50 @@
     </div>
   </div>
 
+  {% if invitation and not is_member %}
+    <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg bg-[#2a2f35] border border-[#4f46e5] px-4 py-3">
+      <span>
+        You have been invited to this group by {{ invitation.invited_by.username }}.
+      </span>
+      <div class="flex gap-2">
+        <form method="post" action="{% url 'group_invitation_accept' invitation.id %}">
+          {% csrf_token %}
+          <button type="submit"
+                  class="rounded-lg bg-[#4f46e5] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#4338ca]">
+            Accept
+          </button>
+        </form>
+        <form method="post" action="{% url 'group_invitation_reject' invitation.id %}">
+          {% csrf_token %}
+          <button type="submit"
+                  class="rounded-lg border border-[#39404b] px-3 py-1.5 text-sm font-medium text-gray-300 hover:bg-[#1e2329]">
+            Reject
+          </button>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if is_member %}
+    <div class="mb-6 rounded-lg bg-[#2a2f35] px-4 py-3">
+      <form method="post" action="{% url 'group_invite' group.id %}" class="flex flex-col sm:flex-row gap-2">
+        {% csrf_token %}
+        <input name="username" type="text" placeholder="Username to invite" autocomplete="off"
+               class="flex-1 rounded-lg bg-[#1e2329] border border-[#39404b] px-3 py-2 text-white">
+        <button type="submit"
+                class="rounded-lg bg-[#4f46e5] px-4 py-2 font-medium text-white hover:bg-[#4338ca]">
+          Invite
+        </button>
+      </form>
+      {% if group.invitations.all %}
+        <p class="mt-2 text-sm text-gray-400">
+          Pending:
+          {% for inv in group.invitations.all %}{{ inv.invited_user.username }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        </p>
+      {% endif %}
+    </div>
+  {% endif %}
+
   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-6">
     {% for data in items_data %}
       <div class="bg-[#2a2f35] rounded-lg overflow-hidden shadow-lg relative flex flex-col group h-full">

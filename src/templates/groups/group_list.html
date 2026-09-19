@@ -11,8 +11,46 @@
         <h1 class="text-3xl font-bold mb-2">Groups</h1>
         <p class="text-gray-400">View your groups and tracked progress</p>
       </div>
+      <a href="{% url 'group_create' %}"
+         class="rounded-lg bg-[#4f46e5] px-4 py-2 font-medium text-white hover:bg-[#4338ca]">
+        Create group
+      </a>
     </div>
   </div>
+
+  {% if invitations %}
+    <div class="mb-8">
+      <h2 class="text-xl font-semibold mb-3">Pending invitations</h2>
+      <div class="space-y-3">
+        {% for invitation in invitations %}
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg bg-[#2a2f35] px-4 py-3">
+            <div>
+              <span class="font-medium">{{ invitation.group.name }}</span>
+              <span class="text-sm text-gray-400">
+                — invited by {{ invitation.invited_by.username }}
+              </span>
+            </div>
+            <div class="flex gap-2">
+              <form method="post" action="{% url 'group_invitation_accept' invitation.id %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="rounded-lg bg-[#4f46e5] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#4338ca]">
+                  Accept
+                </button>
+              </form>
+              <form method="post" action="{% url 'group_invitation_reject' invitation.id %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="rounded-lg border border-[#39404b] px-3 py-1.5 text-sm font-medium text-gray-300 hover:bg-[#1e2329]">
+                  Reject
+                </button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
 
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
     {% for group in groups %}
