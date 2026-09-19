@@ -596,10 +596,7 @@ def scrobble_webhook(request, token):
     try:
         user = users.models.User.objects.get(token=token)
     except ObjectDoesNotExist:
-        logger.warning(
-            "Could not process scrobble webhook: Invalid token: %s",
-            token,
-        )
+        logger.warning("Could not process scrobble webhook: invalid user token")
         return HttpResponse(status=401)
 
     # Attach User instance so history_user_id is populated
