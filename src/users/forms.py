@@ -6,7 +6,7 @@ from django.contrib.auth.forms import (
 )
 from django.core.exceptions import ValidationError
 
-from .models import User
+from .models import VALID_SEARCH_TYPES, User
 
 
 class CustomLoginForm(LoginForm):
@@ -55,7 +55,22 @@ class UserUpdateForm(forms.ModelForm):
         """Only allow updating username."""
 
         model = User
-        fields = ["username", "profile_private"]
+        fields = ["username", "profile_private", "suggestions_enabled"]
+
+
+class SuggestionForm(forms.Form):
+    """Validate a title suggestion posted from a public profile."""
+
+    title = forms.CharField(max_length=255)
+    media_type = forms.ChoiceField(choices=[(v, v) for v in VALID_SEARCH_TYPES])
+    media_id = forms.CharField(max_length=255)
+    source = forms.CharField(max_length=50)
+    image = forms.URLField(required=False)
+    message = forms.CharField(
+        required=False,
+        max_length=500,
+        widget=forms.Textarea,
+    )
 
 
 class PasswordChangeForm(PasswordChangeForm):
