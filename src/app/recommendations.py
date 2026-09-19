@@ -270,3 +270,166 @@ def rank_candidates(
     if limit is not None:
         return ranked[:limit]
     return ranked
+
+
+# --- Group recommendations (E8.3) -------------------------------------------
+
+
+MIN_MEMBER_AFFINITY = -0.3
+MAX_ACTIVITY_WEIGHT = 50
+
+GROUP_MODE_GROUP = "group"
+GROUP_MODE_MINE = "mine"
+
+
+def member_weight(member: dict, media_type: str | None = None) -> float:
+    """Return a member's group-vote weight, capped so nobody dominates."""
+    return float(
+        min(rated_count(member.get("history") or [], media_type), MAX_ACTIVITY_WEIGHT)
+    )
+
+
+def build_group_affinity(
+    members: list[dict],
+    media_type: str | None = None,
+    k: float = DEFAULT_K,
+) -> dict[str, float]:
+    """Aggregate members' taste vectors, weighted by each one's activity.
+
+    A member's weight is :func:`member_weight` -- the number of scored titles
+    (bounded by :data:`MAX_ACTIVITY_WEIGHT`) -- so a member who rates everything
+    cannot drown out a quieter one, and members without scored titles carry no
+    vote at all.
+    """
+    totals: dict[str, float] = {}
+    weights: dict[str, float] = {}
+    for member in members:
+        weight = member_weight(member, media_type)
+        if weight <= 0.0:
+            continue
+        affinity = build_affinity(
+            member.get("history") or [], media_type=media_type, k=k
+        )
+        for genre, value in affinity.items():
+            totals[genre] = totals.get(genre, 0.0) + weight * value
+            weights[genre] = weights.get(genre, 0.0) + weight
+    return {
+        genre: totals[genre] / weights[genre]
+        for genre in totals
+        if weights[genre] > 0.0
+    }
+
+
+def _member_candidate_score(
+    candidate: dict,
+    member_affinity: dict[str, float],
+    weights: Weights,
+) -> float:
+    """Score one candidate the way the individual engine would for a member."""
+    components = _weighted_components(
+        candidate, genre_affinity(candidate.get("genres"), member_affinity), weights
+    )
+    penalty = float(candidate.get("penalty") or 0.0)
+    return _combine(components, penalty, weights.delta)
+
+
+def rank_group_candidates(  # noqa: C901, PLR0912, PLR0913
+    candidates: list[dict],
+    members: list[dict],
+    media_type: str | None = None,
+    *,
+    mode: str = GROUP_MODE_GROUP,
+    viewer: dict | None = None,
+    limit: int | None = None,
+    weights: Weights | None = None,
+    excluded: object = (),
+) -> list[dict]:
+    """Rank candidates for a group of members.
+
+    Each member is a dict with a ``history`` list (same shape as the individual
+    engine).  Two explicit, non-mixed modes follow the E8.1 design note:
+
+    ``GROUP_MODE_GROUP`` ("para el grupo", least-misery)
+        A candidate scores the *minimum* of every member's individual score, so
+        anything one member would hate never rises to the top.  A candidate is
+        dropped outright when its genre affinity falls below
+        :data:`MIN_MEMBER_AFFINITY` for *any* member, and when *any* member has
+        already seen it.
+    ``GROUP_MODE_MINE`` ("para mí", dentro del grupo)
+        The individual ranking for ``viewer`` with every title another member
+        has already seen filtered out.
+
+    A group of one member degenerates to the individual ranking; a group whose
+    members have no ratings falls back to provider relevance and quality.
+    """
+    weights = weights or Weights()
+
+    if mode == GROUP_MODE_MINE:
+        if viewer is None:
+            msg = "viewer is required for mode='mine'"
+            raise ValueError(msg)
+        blocked = set(excluded)
+        for member in members:
+            if member is not viewer:
+                blocked |= seen_keys(member.get("history") or [])
+        return rank_candidates(
+            candidates,
+            viewer.get("history") or [],
+            media_type,
+            limit=limit,
+            weights=weights,
+            excluded=blocked,
+        )
+    if mode != GROUP_MODE_GROUP:
+        msg = f"unknown group mode: {mode!r}"
+        raise ValueError(msg)
+
+    profiles = [
+        (
+            build_affinity(
+                member.get("history") or [], media_type=media_type, k=weights.k
+            ),
+            member_weight(member, media_type),
+        )
+        for member in members
+    ]
+    profiles = [profile for profile in profiles if profile[1] > 0.0]
+    if not profiles:
+        # Nobody has ratings: rank on provider relevance and quality alone.
+        profiles = [({}, 1.0)]
+
+    group_affinity = build_group_affinity(members, media_type=media_type, k=weights.k)
+    blocked = set(excluded)
+    for member in members:
+        blocked |= seen_keys(member.get("history") or [])
+
+    ranked = []
+    for candidate in candidates:
+        if not _matches_media_type(candidate, media_type):
+            continue
+        if str(candidate.get("media_type") or "").strip().lower() == "episode":
+            continue
+        if item_key(candidate) in blocked:
+            continue
+        member_scores = []
+        rejected = False
+        for affinity, _weight in profiles:
+            candidate_affinity = genre_affinity(candidate.get("genres"), affinity)
+            if candidate_affinity < MIN_MEMBER_AFFINITY:
+                rejected = True
+                break
+            member_scores.append(_member_candidate_score(candidate, affinity, weights))
+        if rejected:
+            continue
+        ranked.append(
+            {
+                **candidate,
+                "score": min(member_scores),
+                "affinity": genre_affinity(candidate.get("genres"), group_affinity),
+                "top_genre": _top_genre(candidate, group_affinity),
+            }
+        )
+    ranked.sort(key=lambda item: (-item["score"], _normalise_title(item.get("title"))))
+    if limit is not None:
+        return ranked[:limit]
+    return ranked
