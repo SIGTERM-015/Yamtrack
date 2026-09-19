@@ -129,6 +129,33 @@ def apply_status_to_group_members(group: Group, item, status) -> dict:
     return {"created": len(to_create), "updated": updated, "skipped": skipped}
 
 
+def apply_status_to_user(item, user, status) -> dict:
+    """
+    Apply a status to a single user's tracking entry.
+
+    Unlike the group bulk action, this is an explicit individual action: an
+    existing entry has its status replaced rather than skipped.
+
+    Args:
+        item: The Item instance.
+        user: The user the status applies to.
+        status: A Status value or member.
+
+    Returns:
+        A summary dict with ``created`` and ``updated`` counts.
+    """
+    status_value = status.value if hasattr(status, "value") else status
+    model = apps.get_model("app", item.media_type)
+    updated = model.objects.filter(item=item, user=user).update(status=status_value)
+    if updated:
+        return {"created": 0, "updated": updated}
+
+    # bulk_create bypasses Model.save(), whose process_status() hook would
+    # call the metadata provider for a title we already have locally.
+    model.objects.bulk_create([model(item=item, user=user, status=status_value)])
+    return {"created": 1, "updated": 0}
+
+
 def add_item_to_group(group: Group, item, added_by, status=Status.PLANNING) -> tuple:
     """
     Add an item to a group and apply ``status`` to every member.

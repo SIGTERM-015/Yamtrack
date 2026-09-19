@@ -179,6 +179,20 @@
                   <option value="{{ value }}">{{ label }}</option>
                 {% endfor %}
               </select>
+              <label class="flex items-center gap-1 text-[10px] text-gray-400 cursor-pointer"
+                     title="Only my entry">
+                <input type="radio" name="scope" value="mine" class="accent-[#4f46e5]">
+                Just me
+              </label>
+              <label class="flex items-center gap-1 text-[10px] text-gray-400 cursor-pointer"
+                     title="Every member">
+                <input type="radio"
+                       name="scope"
+                       value="group"
+                       checked
+                       class="accent-[#4f46e5]">
+                Whole group
+              </label>
               <button type="submit"
                       class="text-xs bg-[#4f46e5] hover:bg-[#4338ca] rounded px-2 py-0.5">
                 Apply
