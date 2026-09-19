@@ -27,20 +27,20 @@ class GroupBulkStatusTest(TestCase):
         self.movie = Item.objects.create(
             media_id="m1", title="Movie 1", media_type="movie", source="tmdb"
         )
-        GroupItem.objects.create(
-            group=self.group, item=self.movie, added_by=self.owner
-        )
+        GroupItem.objects.create(group=self.group, item=self.movie, added_by=self.owner)
 
     def test_status_applied_only_to_members_without_it(self):
         """Members missing the status get it; a different status is updated."""
-        Movie.objects.bulk_create([
-            Movie(
-                user=self.alice,
-                item=self.movie,
-                status=Status.PLANNING,
-                notes="keep me",
-            ),
-        ])
+        Movie.objects.bulk_create(
+            [
+                Movie(
+                    user=self.alice,
+                    item=self.movie,
+                    status=Status.PLANNING,
+                    notes="keep me",
+                ),
+            ]
+        )
 
         summary = apply_status_to_group_members(
             self.group, self.movie, Status.COMPLETED
@@ -59,17 +59,19 @@ class GroupBulkStatusTest(TestCase):
     def test_existing_completed_entry_is_left_intact(self):
         """A member who watched it months ago keeps date and note untouched."""
         watched_at = timezone.now() - timedelta(days=90)
-        Movie.objects.bulk_create([
-            Movie(
-                user=self.owner,
-                item=self.movie,
-                status=Status.COMPLETED,
-                start_date=watched_at,
-                end_date=watched_at,
-                notes="saw it in the cinema",
-                score=9,
-            ),
-        ])
+        Movie.objects.bulk_create(
+            [
+                Movie(
+                    user=self.owner,
+                    item=self.movie,
+                    status=Status.COMPLETED,
+                    start_date=watched_at,
+                    end_date=watched_at,
+                    notes="saw it in the cinema",
+                    score=9,
+                ),
+            ]
+        )
 
         summary = apply_status_to_group_members(
             self.group, self.movie, Status.COMPLETED
@@ -88,14 +90,10 @@ class GroupBulkStatusTest(TestCase):
 
     def test_bulk_action_is_idempotent(self):
         """Running the action twice does not duplicate or change entries."""
-        first = apply_status_to_group_members(
-            self.group, self.movie, Status.PLANNING
-        )
+        first = apply_status_to_group_members(self.group, self.movie, Status.PLANNING)
         self.assertEqual(first, {"created": 3, "updated": 0, "skipped": 0})
 
-        second = apply_status_to_group_members(
-            self.group, self.movie, Status.PLANNING
-        )
+        second = apply_status_to_group_members(self.group, self.movie, Status.PLANNING)
         self.assertEqual(second, {"created": 0, "updated": 0, "skipped": 3})
 
         self.assertEqual(
@@ -118,7 +116,9 @@ class GroupBulkStatusTest(TestCase):
             self.assertEqual(entry.status, Status.PLANNING.value)
 
         add_item_to_group(self.group, item, self.owner)
-        self.assertEqual(GroupItem.objects.filter(group=self.group, item=item).count(), 1)
+        self.assertEqual(
+            GroupItem.objects.filter(group=self.group, item=item).count(), 1
+        )
         self.assertEqual(
             Movie.objects.filter(item=item).count(), self.group.members.count()
         )
@@ -136,6 +136,94 @@ class GroupBulkStatusTest(TestCase):
         for user in (self.owner, self.alice, self.bob):
             entry = Movie.objects.get(user=user, item=self.movie)
             self.assertEqual(entry.status, Status.COMPLETED.value)
+
+    def test_scope_mine_only_updates_requesting_user(self):
+        """scope=mine touches the poster's entry and no one else's."""
+        self.client.force_login(self.alice)
+        url = reverse("group_set_item_status", args=[self.group.id])
+
+        response = self.client.post(
+            url,
+            {
+                "item_id": self.movie.id,
+                "status": Status.COMPLETED.value,
+                "scope": "mine",
+            },
+        )
+
+        self.assertRedirects(response, reverse("group_detail", args=[self.group.id]))
+        self.assertEqual(
+            Movie.objects.get(user=self.alice, item=self.movie).status,
+            Status.COMPLETED.value,
+        )
+        self.assertFalse(
+            Movie.objects.filter(item=self.movie).exclude(user=self.alice).exists()
+        )
+
+    def test_scope_mine_replaces_existing_status(self):
+        """An explicit individual action overwrites the user's own status."""
+        Movie.objects.bulk_create(
+            [
+                Movie(
+                    user=self.alice,
+                    item=self.movie,
+                    status=Status.PLANNING,
+                    notes="keep me",
+                ),
+            ]
+        )
+        self.client.force_login(self.alice)
+        url = reverse("group_set_item_status", args=[self.group.id])
+
+        self.client.post(
+            url,
+            {
+                "item_id": self.movie.id,
+                "status": Status.COMPLETED.value,
+                "scope": "mine",
+            },
+        )
+
+        entry = Movie.objects.get(user=self.alice, item=self.movie)
+        self.assertEqual(entry.status, Status.COMPLETED.value)
+        self.assertEqual(entry.notes, "keep me")
+        self.assertEqual(Movie.objects.filter(item=self.movie).count(), 1)
+
+    def test_scope_group_updates_every_member(self):
+        """scope=group applies the status to all members."""
+        self.client.force_login(self.owner)
+        url = reverse("group_set_item_status", args=[self.group.id])
+
+        response = self.client.post(
+            url,
+            {
+                "item_id": self.movie.id,
+                "status": Status.COMPLETED.value,
+                "scope": "group",
+            },
+        )
+
+        self.assertRedirects(response, reverse("group_detail", args=[self.group.id]))
+        for user in (self.owner, self.alice, self.bob):
+            entry = Movie.objects.get(user=user, item=self.movie)
+            self.assertEqual(entry.status, Status.COMPLETED.value)
+
+    def test_invalid_scope_is_rejected(self):
+        """An unknown scope aborts the action without touching any entry."""
+        self.client.force_login(self.owner)
+        url = reverse("group_set_item_status", args=[self.group.id])
+
+        response = self.client.post(
+            url,
+            {
+                "item_id": self.movie.id,
+                "status": Status.COMPLETED.value,
+                "scope": "everyone",
+            },
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(Movie.objects.filter(item=self.movie).exists())
 
     def test_view_rejects_non_member(self):
         """A user outside the group cannot trigger the bulk action."""

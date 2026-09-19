@@ -5,7 +5,11 @@ from django.views.decorators.http import require_POST
 
 from app.models import Item, Status
 from groups.models import Group
-from groups.services import apply_status_to_group_members, get_group_progress
+from groups.services import (
+    apply_status_to_group_members,
+    apply_status_to_user,
+    get_group_progress,
+)
 
 
 @login_required
@@ -41,18 +45,22 @@ def group_detail(request, group_id):
 
         member_progress = []
         for m_id, m_data in p_data["members"].items():
-            member_progress.append({
-                "user": members_dict.get(m_id),
-                "status": m_data["status"],
-                "progress": m_data["progress"],
-            })
+            member_progress.append(
+                {
+                    "user": members_dict.get(m_id),
+                    "status": m_data["status"],
+                    "progress": m_data["progress"],
+                }
+            )
 
-        items_data.append({
-            "item": item,
-            "completed_count": p_data["completed_count"],
-            "total_members": p_data["total_members"],
-            "member_progress": member_progress,
-        })
+        items_data.append(
+            {
+                "item": item,
+                "completed_count": p_data["completed_count"],
+                "total_members": p_data["total_members"],
+                "member_progress": member_progress,
+            }
+        )
 
     context = {
         "group": group,
@@ -81,5 +89,13 @@ def group_set_item_status(request, group_id):
         msg = "Invalid status"
         raise Http404(msg)
 
-    apply_status_to_group_members(group, item, status)
+    scope = request.POST.get("scope", "group")
+    if scope == "mine":
+        apply_status_to_user(item, request.user, status)
+    elif scope == "group":
+        apply_status_to_group_members(group, item, status)
+    else:
+        msg = "Invalid scope"
+        raise Http404(msg)
+
     return redirect("group_detail", group_id=group.id)
