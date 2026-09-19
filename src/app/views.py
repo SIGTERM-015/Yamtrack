@@ -235,10 +235,17 @@ def media_list(request, username, media_type):
         media_type,
     )
 
+    public_reviews = (
+        apps.get_model(app_label="app", model_name=media_type)
+        .objects.filter(user=target_user, notes_public=True)
+        .exclude(notes="")
+    )
+
     context = {
         "media_type": media_type,
         "media_type_plural": app_tags.media_type_readable_plural(media_type).lower(),
         "media_list": media_page,
+        "public_reviews": public_reviews,
         "current_layout": layout,
         "layout_class": ".media-grid" if layout == "grid" else "tbody",
         "current_sort": sort_filter,

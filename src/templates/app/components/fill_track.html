@@ -24,7 +24,7 @@
       {% if total_fields > 8 %}<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">{% endif %}
 
         {% for field in form %}
-          {% if field.name != 'notes' and field.name != 'instance_id' and field.name != 'media_type' and field.name != 'source' and field.name != 'media_id' and field.name != 'season_number' %}
+          {% if field.name != 'notes' and field.name != 'notes_public' and field.name != 'instance_id' and field.name != 'media_type' and field.name != 'source' and field.name != 'media_id' and field.name != 'season_number' %}
             <div class="mb-5 {% if field.name == 'status' and total_fields|divisibleby:2 %}sm:col-span-2{% endif %}">
               <label class="block text-sm font-medium mb-1 text-gray-300"
                      for="{{ field.id_for_label }}">{{ field.label }}</label>
@@ -64,6 +64,17 @@
         <label class="block text-sm font-medium mb-1 text-gray-300"
                for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
         {{ form.notes|add_class:"w-full p-2 bg-[#39404b] rounded-md text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4a9eff]" }}
+      </div>
+    {% endif %}
+
+    {% if form.notes_public %}
+      <div class="mb-5">
+        <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer"
+               for="{{ form.notes_public.id_for_label }}">
+          {{ form.notes_public|add_class:"h-4 w-4 rounded border-gray-600 bg-[#39404b] text-indigo-600 focus:ring-[#4a9eff]" }}
+          {{ form.notes_public.label }}
+        </label>
+        <p class="mt-1 text-xs text-gray-500">{{ form.notes_public.help_text }}</p>
       </div>
     {% endif %}
 
