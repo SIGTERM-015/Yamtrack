@@ -59,6 +59,15 @@ class ScrobbleWebhookTests(TestCase):
 
         self.assertEqual(response.status_code, 401)
 
+    def test_invalid_token_is_not_logged(self):
+        """The rejected token must never be written to the logs."""
+        url = reverse("scrobble_webhook", kwargs={"token": "invalid-token"})
+        with self.assertLogs("integrations.views", level="WARNING") as captured:
+            response = self._post(self._payload(), url=url)
+
+        self.assertEqual(response.status_code, 401)
+        self.assertNotIn("invalid-token", "\n".join(captured.output))
+
     def test_missing_payload_returns_400(self):
         """An empty body must be rejected."""
         response = self.client.post(self.url, content_type="application/json")
