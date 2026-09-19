@@ -5,6 +5,7 @@ import logging
 from django.utils import timezone
 
 from app.models import Item, MediaTypes, Movie, Sources, Status
+from groups.services import resolve_group_context
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +104,16 @@ class ScrobbleWebhookProcessor:
             source=data["source"],
             media_type=data["media_type"],
             defaults={"title": data["title"], "image": data["image"]},
+        )
+
+        # Annotate/log the group context only; never write to other profiles.
+        group_context = resolve_group_context(user, item)
+        logger.info(
+            "Group context for scrobble of %s by %s: groups=%s policy=%s",
+            item,
+            user,
+            group_context["groups"],
+            group_context["policy"],
         )
 
         current_movie = (
