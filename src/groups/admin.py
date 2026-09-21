@@ -9,11 +9,13 @@ class GroupMembershipInline(admin.TabularInline):
     model = GroupMembership
     extra = 1
 
+
 class GroupItemInline(admin.TabularInline):
     """Inline for GroupItem."""
 
     model = GroupItem
     extra = 1
+
 
 @admin.register(Group)
 class GroupAdmin(admin.ModelAdmin):
@@ -24,6 +26,7 @@ class GroupAdmin(admin.ModelAdmin):
     list_filter = ("created_at",)
     inlines = [GroupMembershipInline, GroupItemInline]
 
+
 @admin.register(GroupMembership)
 class GroupMembershipAdmin(admin.ModelAdmin):
     """Admin configuration for GroupMembership."""
@@ -31,6 +34,7 @@ class GroupMembershipAdmin(admin.ModelAdmin):
     list_display = ("group", "user", "joined_at")
     search_fields = ("group__name", "user__username")
     list_filter = ("joined_at",)
+
 
 @admin.register(GroupItem)
 class GroupItemAdmin(admin.ModelAdmin):
@@ -40,6 +44,7 @@ class GroupItemAdmin(admin.ModelAdmin):
     search_fields = ("group__name", "item__title", "added_by__username")
     list_filter = ("added_at",)
 
+
 @admin.register(GroupInvitation)
 class GroupInvitationAdmin(admin.ModelAdmin):
     """Admin configuration for GroupInvitation."""
@@ -47,6 +52,7 @@ class GroupInvitationAdmin(admin.ModelAdmin):
     list_display = ("group", "invited_user", "invited_by", "created_at")
     search_fields = ("group__name", "invited_user__username", "invited_by__username")
     list_filter = ("created_at",)
+
 
 @admin.register(GroupOrigin)
 class GroupOriginAdmin(admin.ModelAdmin):

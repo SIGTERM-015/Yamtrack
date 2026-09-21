@@ -22,7 +22,7 @@ class Command(BaseCommand):
             help="Maximum number of items to process.",
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options):  # noqa: ARG002
         """Iterate items and persist their genres."""
         limit = options["limit"]
         items = Item.objects.order_by("id")

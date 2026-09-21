@@ -4,9 +4,9 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from app import config
 from app.models import TV, Item, MediaTypes, Sources, Status
 from groups.models import Group, GroupInvitation
-from app import config
 
 
 class GroupViewsTest(TestCase):
@@ -24,13 +24,16 @@ class GroupViewsTest(TestCase):
 
         user_model = get_user_model()
         self.user1 = user_model.objects.create_user(
-            username="user1", password="testpassword123",  # noqa: S106
+            username="user1",
+            password="testpassword123",  # noqa: S106
         )
         self.user2 = user_model.objects.create_user(
-            username="user2", password="testpassword123",  # noqa: S106
+            username="user2",
+            password="testpassword123",  # noqa: S106
         )
         self.user3 = user_model.objects.create_user(
-            username="user3", password="testpassword123",  # noqa: S106
+            username="user3",
+            password="testpassword123",  # noqa: S106
         )
 
         self.group = Group.objects.create(
@@ -159,6 +162,7 @@ class GroupViewsTest(TestCase):
             config.get_status_text_color(Status.IN_PROGRESS.value),
         )
 
+
 class GroupCreateInviteViewsTest(TestCase):
     """Test case for creating groups and managing invitations."""
 
@@ -166,10 +170,12 @@ class GroupCreateInviteViewsTest(TestCase):
         """Set up test data."""
         user_model = get_user_model()
         self.user1 = user_model.objects.create_user(
-            username="user1", password="testpassword123",  # noqa: S106
+            username="user1",
+            password="testpassword123",  # noqa: S106
         )
         self.user2 = user_model.objects.create_user(
-            username="user2", password="testpassword123",  # noqa: S106
+            username="user2",
+            password="testpassword123",  # noqa: S106
         )
         self.group = Group.objects.create(
             name="Existing Group",
@@ -210,9 +216,7 @@ class GroupCreateInviteViewsTest(TestCase):
         response = self.client.post(
             reverse("group_invite", args=[self.group.id]), {"username": "user2"}
         )
-        self.assertRedirects(
-            response, reverse("group_detail", args=[self.group.id])
-        )
+        self.assertRedirects(response, reverse("group_detail", args=[self.group.id]))
         self.assertTrue(
             GroupInvitation.objects.filter(
                 group=self.group, invited_user=self.user2, invited_by=self.user1
@@ -274,9 +278,7 @@ class GroupCreateInviteViewsTest(TestCase):
         response = self.client.post(
             reverse("group_invitation_accept", args=[invitation.id])
         )
-        self.assertRedirects(
-            response, reverse("group_detail", args=[self.group.id])
-        )
+        self.assertRedirects(response, reverse("group_detail", args=[self.group.id]))
         self.assertTrue(self.group.members.filter(id=self.user2.id).exists())
         membership = self.group.memberships.get(user=self.user2)
         self.assertIsNotNone(membership.joined_at)

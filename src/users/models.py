@@ -14,6 +14,7 @@ from users import helpers
 MAX_AVATAR_SIZE = 2 * 1024 * 1024  # 2 MB
 ALLOWED_AVATAR_FORMATS = {"JPEG", "PNG", "WEBP", "GIF"}
 
+
 def validate_avatar(image):
     """Reject avatars that are too large or not a supported image format."""
     if image.size > MAX_AVATAR_SIZE:

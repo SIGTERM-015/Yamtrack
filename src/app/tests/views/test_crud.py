@@ -142,7 +142,7 @@ class EditMedia(TestCase):
         self.client.login(**self.credentials)
 
     @patch("app.views.services.get_media_metadata", return_value={"max_progress": None})
-    def test_edit_movie_score(self, mock_metadata):
+    def test_edit_movie_score(self, mock_metadata):  # noqa: ARG002
         """Test the editing of a movie score."""
         item = Item.objects.create(
             media_id="10494",

@@ -174,4 +174,3 @@ class MediaSaveGenresTests(TestCase):
         mock_metadata.assert_not_called()
         names = set(self.item.genres.values_list("name", flat=True))
         self.assertEqual(names, {"Action"})
-

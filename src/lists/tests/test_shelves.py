@@ -13,7 +13,7 @@ class FeaturedShelvesTest(TestCase):
         """Create an owner with a public profile and one item."""
         self.user = get_user_model().objects.create_user(
             username="shelfowner",
-            password="12345",
+            password="12345",  # noqa: S106
             profile_private=False,
         )
         self.item = Item.objects.create(

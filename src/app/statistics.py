@@ -638,9 +638,7 @@ def get_media_heatmap(user, year=None):
         }
         for current_date in date_range
     ]
-    calendar_weeks = [
-        activity_data[i : i + 7] for i in range(0, len(activity_data), 7)
-    ]
+    calendar_weeks = [activity_data[i : i + 7] for i in range(0, len(activity_data), 7)]
 
     week_start_weekday = 6 if week_start_sunday else 0
     months, weeks_per_month = _build_month_labels(date_range, week_start_weekday)

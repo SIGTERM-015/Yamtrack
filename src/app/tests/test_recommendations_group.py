@@ -212,9 +212,7 @@ class RejectionTests(SimpleTestCase):
             _history("mild", 1, 1, status="Dropped", genre=HORROR),
         )
         lover = _member("lover", _history("lover", 10, 9, genre=HORROR))
-        self.assertGreater(
-            build_affinity(mild["history"])[HORROR], MIN_MEMBER_AFFINITY
-        )
+        self.assertGreater(build_affinity(mild["history"])[HORROR], MIN_MEMBER_AFFINITY)
 
         ranked = rank_group_candidates(
             [_candidate("horror", genres=[HORROR])], [mild, lover]
