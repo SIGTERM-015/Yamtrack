@@ -159,27 +159,50 @@ def apply_status_to_user(item, user, status) -> dict:
 
 def add_item_to_group(group: Group, item, added_by, status=Status.PLANNING) -> tuple:
     """
-    Add an item to a group and apply ``status`` to every member.
+    Add an item to a group, creating ``status`` only for members without it.
 
     Adding a title to the group's *to watch* adds it to every member's own
-    *to watch* without overwriting members who already track it.
+    *to watch* without touching members who already track it: existing
+    records keep their status, progress, score and notes intact. Unlike
+    :func:`apply_status_to_group_members` (an explicit status change), this
+    never updates existing entries.
 
     Args:
         group: The Group instance.
         item: The Item instance.
         added_by: The user adding the item.
-        status: Status applied to members; defaults to Planning (to watch).
+        status: Status for newly created records; defaults to Planning.
 
     Returns:
-        A ``(group_item, summary)`` tuple matching
-        :func:`apply_status_to_group_members`.
+        A ``(group_item, summary)`` tuple with ``created``/``updated``/
+        ``skipped`` counts matching :func:`apply_status_to_group_members`
+        (``updated`` is always 0 here).
     """
     group_item, _ = GroupItem.objects.get_or_create(
         group=group,
         item=item,
         defaults={"added_by": added_by},
     )
-    summary = apply_status_to_group_members(group, item, status)
+    status_value = status.value if hasattr(status, "value") else status
+    model = apps.get_model("app", item.media_type)
+    member_ids = list(group.members.values_list("id", flat=True))
+    existing_ids = set(
+        model.objects.filter(item=item, user_id__in=member_ids).values_list(
+            "user_id", flat=True
+        )
+    )
+    to_create = [
+        model(item=item, user_id=user_id, status=status_value)
+        for user_id in member_ids
+        if user_id not in existing_ids
+    ]
+    if to_create:
+        model.objects.bulk_create(to_create)
+    summary = {
+        "created": len(to_create),
+        "updated": 0,
+        "skipped": len(existing_ids),
+    }
     return group_item, summary
 
 

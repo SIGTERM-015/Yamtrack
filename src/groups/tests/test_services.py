@@ -3,7 +3,11 @@ from django.test import TestCase
 
 from app.models import TV, Episode, Item, Movie, Season, Status
 from groups.models import Group, GroupItem, GroupMembership, GroupOrigin
-from groups.services import get_group_progress, resolve_group_context
+from groups.services import (
+    add_item_to_group,
+    get_group_progress,
+    resolve_group_context,
+)
 
 User = get_user_model()
 
@@ -253,3 +257,59 @@ class ResolveGroupContextTest(TestCase):
         result = resolve_group_context(self.user1, self.item)
 
         self.assertEqual(result["policy"], "ask")
+
+
+class AddItemToGroupPreservesPersonalTest(TestCase):
+    """Alta en grupo: crear pendientes, preservar registros existentes."""
+
+    def setUp(self):
+        """Create a group with two tracked members and one fresh member."""
+        self.user1 = User.objects.create(username="gadd_user1")
+        self.user2 = User.objects.create(username="gadd_user2")
+        self.user3 = User.objects.create(username="gadd_user3")
+        self.group = Group.objects.create(name="G", owner=self.user1)
+        for u in (self.user1, self.user2, self.user3):
+            GroupMembership.objects.create(group=self.group, user=u)
+        self.item = Item.objects.create(
+            media_id="gadd_m1", title="M1", media_type="movie", source="tmdb"
+        )
+
+    def test_completed_and_in_progress_kept_new_member_pending(self):
+        """Existing entries keep data; only the fresh member gets Planning."""
+        Movie.objects.bulk_create(
+            [
+                Movie(
+                    user=self.user1,
+                    item=self.item,
+                    status=Status.COMPLETED,
+                    progress=1,
+                    score=8,
+                    notes="mine",
+                ),
+                Movie(
+                    user=self.user2,
+                    item=self.item,
+                    status=Status.IN_PROGRESS,
+                    progress=30,
+                    score=7,
+                    notes="wip",
+                ),
+            ]
+        )
+
+        add_item_to_group(self.group, self.item, added_by=self.user1)
+
+        done = Movie.objects.get(user=self.user1, item=self.item)
+        self.assertEqual(done.status, Status.COMPLETED.value)
+        self.assertEqual(done.progress, 1)
+        self.assertEqual(done.score, 8)
+        self.assertEqual(done.notes, "mine")
+
+        wip = Movie.objects.get(user=self.user2, item=self.item)
+        self.assertEqual(wip.status, Status.IN_PROGRESS.value)
+        self.assertEqual(wip.progress, 30)
+        self.assertEqual(wip.score, 7)
+        self.assertEqual(wip.notes, "wip")
+
+        fresh = Movie.objects.get(user=self.user3, item=self.item)
+        self.assertEqual(fresh.status, Status.PLANNING.value)
