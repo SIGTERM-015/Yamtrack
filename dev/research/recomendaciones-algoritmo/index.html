@@ -1,0 +1,896 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Yamtrack is a self hosted media tracker for movies, tv shows, anime, manga, video games, books, comics, and board games.">
+      
+      
+        <meta name="author" content="FuzzyGrim">
+      
+      
+        <link rel="canonical" href="https://FuzzyGrim.github.io/Yamtrack/dev/research/recomendaciones-algoritmo/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/logo.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>E8.1 — Algoritmo de recomendación (diseño) - Yamtrack Documentation</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#e81-algoritmo-de-recomendacion-diseno" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Yamtrack Documentation" class="md-header__button md-logo" aria-label="Yamtrack Documentation" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="Yamtrack Documentation">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Yamtrack Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              E8.1 — Algoritmo de recomendación (diseño)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sun-moon" viewBox="0 0 24 24"><path d="M12 2v2M14.837 16.385a6 6 0 1 1-7.223-7.222c.624-.147.97.66.715 1.248a4 4 0 0 0 5.26 5.259c.589-.255 1.396.09 1.248.715M16 12a4 4 0 0 0-4-4M19 5l-1.256 1.256M20 12h2"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/FuzzyGrim/Yamtrack" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    FuzzyGrim/Yamtrack
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../setup/" class="md-tabs__link">
+        
+  
+  Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../development/" class="md-tabs__link">
+        
+  
+  Development
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../env-variables/" class="md-tabs__link">
+        
+  
+  Environment Variables
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../media-imports/" class="md-tabs__link">
+        
+  
+  Media Imports
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../social-auth/" class="md-tabs__link">
+        
+  
+  Social Auth
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../administration/" class="md-tabs__link">
+        
+  
+  Administration
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Yamtrack Documentation" class="md-nav__button md-logo" aria-label="Yamtrack Documentation" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="Yamtrack Documentation">
+
+    </a>
+    Yamtrack Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/FuzzyGrim/Yamtrack" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    FuzzyGrim/Yamtrack
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Development
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../env-variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Environment Variables
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../media-imports/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Media Imports
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../social-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Social Auth
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../administration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Administration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+    <a href="https://github.com/FuzzyGrim/Yamtrack/edit/dev/docs/research/recomendaciones-algoritmo.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/FuzzyGrim/Yamtrack/raw/dev/docs/research/recomendaciones-algoritmo.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
+    </a>
+  
+
+
+<h1 id="e81-algoritmo-de-recomendacion-diseno">E8.1 — Algoritmo de recomendación (diseño)<a class="headerlink" href="#e81-algoritmo-de-recomendacion-diseno" title="Permanent link">&para;</a></h1>
+<ul>
+<li><strong>Tarea Vikunja:</strong> [48] E8.1 - Definir el algoritmo de recomendación (Épica 8)</li>
+<li><strong>Rama:</strong> <code>spike/e81-recomendaciones</code> (desde <code>dev</code>)</li>
+<li><strong>Estado:</strong> propuesta, CERO código productivo.</li>
+<li><strong>Depende de:</strong> [44] E7.1 — persistir géneros por título (aún no en <code>Item</code>).</li>
+</ul>
+<h2 id="1-objetivo-y-alcance">1. Objetivo y alcance<a class="headerlink" href="#1-objetivo-y-alcance" title="Permanent link">&para;</a></h2>
+<p>Definir <em>cómo</em> se recomiendan títulos a un usuario (y a un grupo) a partir de su
+historial y sus notas, antes de implementar. Este documento fija el algoritmo,
+su justificación, los casos límite y cómo se valida.</p>
+<p>Fuera de alcance: UI, endpoints, migraciones, rendimiento de queries.</p>
+<h2 id="2-estado-actual-solo-lectura">2. Estado actual (solo lectura)<a class="headerlink" href="#2-estado-actual-solo-lectura" title="Permanent link">&para;</a></h2>
+<p>Datos disponibles hoy en <code>src/app/models.py</code>:</p>
+<ul>
+<li><code>Item</code>: <code>media_id</code>, <code>source</code> (<code>tmdb</code>, <code>mal</code>, <code>mangaupdates</code>, <code>igdb</code>,
+  <code>openlibrary</code>, <code>hardcover</code>, <code>comicvine</code>, <code>bgg</code>, <code>manual</code>), <code>media_type</code>
+  (<code>tv</code>, <code>season</code>, <code>episode</code>, <code>movie</code>, <code>anime</code>, <code>manga</code>, <code>game</code>, <code>book</code>,
+  <code>comic</code>, <code>boardgame</code>), <code>title</code>, <code>image</code>. <strong>No hay campo <code>genres</code> todavía</strong>
+  (lo añade E7.1).</li>
+<li><code>Media</code> (abstracta; <code>BasicMedia</code>, <code>TV</code>, <code>Season</code>, <code>Manga</code>, <code>Anime</code>, <code>Movie</code>,
+  <code>Game</code>, <code>Book</code>, <code>Comic</code>, <code>BoardGame</code>): <code>item</code> FK, <code>user</code> FK,
+  <code>score DecimalField(null=True, 0–10, 1 decimal)</code>, <code>progress</code>,
+  <code>status</code> (<code>Completed</code>, <code>In progress</code>, <code>Planning</code>, <code>Paused</code>, <code>Dropped</code>),
+  <code>start_date</code>, <code>end_date</code>, <code>notes TextField</code> (privado).</li>
+<li>Programas: secciones de recomendaciones ya existen como
+  <code>enrich_items_with_user_data(..., section_name="recommendations")</code> y el flag
+  <code>User.hide_completed_recommendations</code> / <code>User.hide_zero_rating</code>. Hoy la
+  sección "recommendations" son los <em>related items</em> que devuelve la API del
+  proveedor (p. ej. <code>tmdb.py</code> → <code>response["recommendations"]</code>), sin ningún
+  modelo de gustos.</li>
+<li>Grupos (<code>src/groups/models.py</code>): <code>Group</code> con <code>members</code> M2M vía
+  <code>GroupMembership</code>. Un grupo comparte items, pero no hay señal de gusto
+  agregada.</li>
+</ul>
+<p>Cada proveedor (TMDB, MAL, IGDB, ComicVine, MangaUpdates) ya expone un endpoint
+de <em>recommendations</em>, por lo que existe un pool de candidatos por fuente.</p>
+<h2 id="3-opciones-evaluadas">3. Opciones evaluadas<a class="headerlink" href="#3-opciones-evaluadas" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Opción</th>
+<th>A favor</th>
+<th>En contra</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A. Afinidad de géneros ponderada por nota</strong></td>
+<td>No requiere API extra; funciona con cualquier fuente con géneros; resultados explicables ("te gustan los <em>thriller</em>"); soporta grupos de forma natural</td>
+<td>Necesita E7.1 (géneros persistidos); cold start serio; menos "descubrimiento" (sesgo a lo popular del género)</td>
+</tr>
+<tr>
+<td><strong>B. <em>Recommendations</em> de la API (TMDB y equivalentes)</strong></td>
+<td>Ya existe; 0 coste de cómputo; variedad dentro de un título semilla</td>
+<td>Solo cubre las fuentes que lo ofrecen; no usa las notas del usuario salvo para elegir la semilla; poco explicable; "lo que se vio junto" ≠ "lo que me gusta"</td>
+</tr>
+<tr>
+<td><strong>C. Híbrido</strong></td>
+<td>Pool de candidatos de B + ranking por gusto de A; aprovecha ambos; degrada con gracia si falta un lado</td>
+<td>Un poco más de complejidad de scoring</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Decisión: C (híbrido).</strong> El pool de candidatos lo aportan los endpoints de
+<em>recommendations</em> de cada proveedor, sembrado por los títulos mejor valorados
+del usuario; el orden final lo decide un score de afinidad de géneros derivado
+de sus notas. Justificación: B sola ignora el historial (el valor de la épica),
+A sola tiene cold start y techo de descubrimiento; juntas se compensan y el
+resultado es explicable. Si un título no tiene géneros o no tiene semilla
+válida, se cae a B (o a popularidad) sin romper.</p>
+<h2 id="4-senal-de-gusto-un-usuario">4. Señal de gusto (un usuario)<a class="headerlink" href="#4-senal-de-gusto-un-usuario" title="Permanent link">&para;</a></h2>
+<h3 id="41-normalizacion-de-la-nota">4.1 Normalización de la nota<a class="headerlink" href="#41-normalizacion-de-la-nota" title="Permanent link">&para;</a></h3>
+<p><code>score ∈ [0,10]</code> o <code>None</code>. Se centra en neutro 5 para que sirva de gusto
+positivo/negativo:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>r_i = (score_i - 5) / 5      # rango [-1, +1], 0 = neutro
+</span></code></pre></div>
+<p>Nota <code>0</code> se trata como rechazo fuerte (coherente con <code>hide_zero_rating</code>), no
+como "sin nota".</p>
+<h3 id="42-peso-por-estado">4.2 Peso por estado<a class="headerlink" href="#42-peso-por-estado" title="Permanent link">&para;</a></h3>
+<p>El estado matiza la nota. Un <code>Dropped</code> es desinterés aunque la nota sea media;
+un <code>Completed</code> con nota alta es señal fuerte.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>w(status):
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  Completed     -&gt;  1.0
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  Dropped       -&gt; -1.0   (se ignora score; abandono = negativo)
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  Paused        -&gt;  0.3
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  In progress   -&gt;  0.2
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  Planning      -&gt;  0.0   (interés, sin opinión; no contamina el perfil)
+</span></code></pre></div>
+<p>Contribución de un título al perfil: <code>c_i = w(status_i) * r_i</code>. Si
+<code>score is None</code>, el título no aporta señal de gusto (solo cuenta para
+"ya visto").</p>
+<h3 id="43-vector-de-afinidad-por-genero">4.3 Vector de afinidad por género<a class="headerlink" href="#43-vector-de-afinidad-por-genero" title="Permanent link">&para;</a></h3>
+<p>Por <strong>media_type</strong> (no global: los géneros de película y de videojuego no son
+comparables). Con <code>G_i</code> = géneros del título i:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>afinidad[g] = Σ_{i : g ∈ G_i} c_i  /  (n_g + K)
+</span></code></pre></div>
+<p>donde <code>n_g</code> = número de títulos valorados con género <code>g</code> y <code>K</code> = constante de
+suavizado (propuesta <strong>K = 5</strong>) para que un género con una sola nota media no
+domine. Es un encogimiento hacia 0 (neutralidad); a más datos, más confianza.</p>
+<h2 id="5-cold-start-cuantas-valoraciones-hacen-falta">5. Cold start — cuántas valoraciones hacen falta<a class="headerlink" href="#5-cold-start-cuantas-valoraciones-hacen-falta" title="Permanent link">&para;</a></h2>
+<p>Umbral propuesto (<strong>a validar con datos</strong>, ver §9):</p>
+<ul>
+<li><code>N_min = 10</code> títulos con nota por usuario <strong>en ese media_type</strong> para que su
+  vector de afinidad se considere fiable.</li>
+<li><code>N_min_seed = 3</code> títulos con <code>score ≥ 7</code> (o <code>n_g</code> suficiente) para sembrar
+  candidatos vía API.</li>
+</ul>
+<p>Comportamiento según madurez:</p>
+<ol>
+<li><strong>0 valoraciones</strong> → sin recomendaciones personalizadas; mostrar
+   popularidad / tendencias del proveedor.</li>
+<li><strong>1 .. N_min-1</strong> → usar la señal disponible pero con suavizado fuerte
+   (<code>K</code> alto); mezclar con pool de proveedor por títulos <code>Planning</code> de alto
+   interés.</li>
+<li><strong>≥ N_min</strong> → perfil completo (fórmula §4), ranking híbrido (§6).</li>
+</ol>
+<h2 id="6-ranking-de-candidatos">6. Ranking de candidatos<a class="headerlink" href="#6-ranking-de-candidatos" title="Permanent link">&para;</a></h2>
+<p>Para cada candidato <code>t</code> del pool (§7):</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>score_final(t) = α * relevancia_proveedor(t)
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>               + β * afinidad_genero(t)
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>               + γ * calidad(t)
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>               - δ * penalizaciones(t)
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>afinidad_genero(t) = media( afinidad[g] : g ∈ G_t )
+</span></code></pre></div>
+<p>Parámetros iniciales (a calibrar): <strong>α = 0.3, β = 0.5, γ = 0.2, δ libre</strong>.</p>
+<ul>
+<li><code>relevancia_proveedor</code>: normalizada a [0,1] desde el endpoint de
+  <em>recommendations</em> (o 1.0 si viene de semilla directa). Solo aplica a la
+  fuente que lo ofrece; si no, 0 y el peso se redistribuye.</li>
+<li><code>calidad</code>: nota media de la comunidad normalizada a [0,1] (escalas distintas
+  por proveedor → normalizar cada una).</li>
+<li><code>penalizaciones(t)</code>: ya visto (§7), mismo género ya saturado
+  (diversificación), <code>t</code> ya descartado por el usuario, etc.</li>
+</ul>
+<p><strong>Explicabilidad:</strong> junto al título se puede mostrar el género dominante que
+disparó el score ("porque te gusta <em>Sci-Fi</em>"), requisito implícito para que la
+recomendación sea de fiar.</p>
+<h2 id="7-exclusion-de-ya-visto">7. Exclusión de "ya visto"<a class="headerlink" href="#7-exclusion-de-ya-visto" title="Permanent link">&para;</a></h2>
+<p>Un título se excluye del pool si el usuario tiene fila <code>Media</code> con estado
+<code>Completed</code>, <code>In progress</code> o <code>Dropped</code>. <code>Planning</code> se excluye también de la
+sección de recomendaciones (ya está en su lista de pendientes).</p>
+<p>Clave de identidad de un título: <code>(source, media_id, media_type)</code>; para
+<code>season</code>, incluir además <code>season_number</code> (<code>episode</code> normalmente no se
+recomienda). Los items <code>manual</code> no tienen id de proveedor: se pueden excluir
+por <code>(title, media_type)</code> normalizado, como fallback conservador.</p>
+<h2 id="8-recomendaciones-de-grupo">8. Recomendaciones de grupo<a class="headerlink" href="#8-recomendaciones-de-grupo" title="Permanent link">&para;</a></h2>
+<p>Dos modos explícitos, no mezclados:</p>
+<ul>
+<li><strong>"Para el grupo" (least-misery):</strong> la puntuación del candidato es
+  <code>min_m( score_final_m(t) )</code> sobre los miembros. Evita recomendar algo que un
+  miembro odia; favorece lo que todos toleran. Si la afinidad de <strong>cualquier</strong>
+  miembro cae por debajo de un umbral negativo (<code>afinidad_genero &lt; -0.3</code>),
+  el candidato se descarta.</li>
+<li><strong>"Para mí (dentro del grupo)":</strong> ranking individual del §6, filtrado a
+  títulos que el resto del grupo no haya visto.</li>
+</ul>
+<p>Agregación del vector de grupo (opción simple y explicable): <strong>media ponderada
+por actividad</strong>, con peso <code>min(n_valoraciones_m, 50)</code>, para no dejar que un
+miembro que puntúa todo lo domine. Alternativa a evaluar: intersección de
+top-géneros de cada miembro.</p>
+<p>Un grupo de 1 miembro degenera al modo individual. Un grupo sin miembros con
+datos → fallback a popularidad.</p>
+<h2 id="9-casos-limite">9. Casos límite<a class="headerlink" href="#9-casos-limite" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Notas privadas:</strong> <code>notes</code> NUNCA se usa como señal (privacidad por diseño,
+  ver E9.4). Solo <code>score</code> + <code>status</code>.</li>
+<li><strong>Géneros ausentes</strong> (antes de E7.1 o en items manuales): candidato cae a
+  <code>relevancia_proveedor</code>/<code>calidad</code>; el usuario, a fallback §5.</li>
+<li><strong><code>score = None</code> masivo</strong> (usuarios que solo marcan "visto"): perfil débil →
+  tratar <code>Completed</code> sin nota como positivo leve (<code>+0.2</code> fijo, no <code>r_i</code>).</li>
+<li><strong>Escalas de comunidad distintas</strong> (MAL 0–10, IGDB 0–100, TMDB 0–10):
+  normalizar por proveedor antes de <code>calidad</code>.</li>
+<li><strong>Duplicados entre fuentes</strong>: desambiguar por <code>(media_title, media_type)</code>
+  aproximado; documentar como limitación conocida.</li>
+<li><strong>Tipos sin endpoint de recomendaciones</strong> (p. ej. <code>boardgame</code>): pool = solo
+  afinidad de géneros / popularidad del proveedor.</li>
+<li><strong>Sesgo de popularidad</strong>: géneros minoritarios nunca puntúan alto →
+  diversificación obligatoria (§8 y penalización δ).</li>
+<li><strong>Recálculo</strong>: el perfil se puede cachear por usuario+media_type e
+  invalidar al guardar <code>Media</code> (signal). Frecuencia propuesta: on-demand con
+  caché, no cron.</li>
+<li><strong>Volumen</strong>: limitar a top-K (p. ej. K=20) por sección; el resto no se
+  materializa.</li>
+</ul>
+<h2 id="10-metricas-y-validacion">10. Métricas y validación<a class="headerlink" href="#10-metricas-y-validacion" title="Permanent link">&para;</a></h2>
+<p><strong>Offline (sin tocar producción):</strong></p>
+<ul>
+<li><em>Recall@k / nDCG@k</em> sobre un <em>hold-out</em> temporal: ocultar los últimos ~20%
+  de títulos con nota <code>≥ 7</code> del usuario y medir si el algoritmo los
+  recuperaría.</li>
+<li><em>Purity</em> de géneros y <em>coverage</em> (¿recomienda algo fuera del top-10 de
+  popularidad?).</li>
+<li><em>Diversity</em> (genres distintos en el top-K) para detectar colapso.</li>
+</ul>
+<p><strong>Online (cuando exista UI):</strong></p>
+<ul>
+<li>CTR de la sección, % de recomendaciones añadidas a la biblioteca, y nota
+  posterior dada a lo recomendado.</li>
+<li>Tasa de "ocultar"/descartar como señal negativa.</li>
+<li>Guardrail técnico: latencia p95 y <em>cache hit ratio</em>.</li>
+</ul>
+<p><strong>Umbral de éxito de la propuesta:</strong> batir al baseline "recommendations de la
+API sin personalizar" en nDCG@10 sobre el hold-out, o al menos no empeorar
+CTR en A/B. Si con &lt;N_min valoraciones no bate al baseline, activar fallback
+§5 (no mostrar personalizado).</p>
+<h2 id="11-pasos-de-validacion-criterio-de-hecho-de-e81">11. Pasos de validación (criterio de "hecho" de E8.1)<a class="headerlink" href="#11-pasos-de-validacion-criterio-de-hecho-de-e81" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Dataset de ejemplo: exportar pares (usuario anónimo, títulos, <code>score</code>,
+   <code>status</code>, géneros) de una instancia de desarrollo.</li>
+<li>Implementar el scoring descrito como función pura en un <em>spike</em> aparte
+   (no código productivo) y cubrirlo con tests de casos límite (§9).</li>
+<li>Script offline de evaluación (nDCG@10, recall@20, purity) contra el baseline
+   del proveedor; registrar resultados.</li>
+<li>Calibrar <code>K</code>, <code>N_min</code>, <code>α/β/γ</code> con esos datos; documentar la elección.</li>
+<li>Revisar con datos reales que el modo grupo (§8) no recomienda títulos que
+   algún miembro haya descartado.</li>
+<li>Cerrar con A/B en la sección real una vez implementada la épica.</li>
+</ol>
+<h2 id="12-decisiones-abiertas">12. Decisiones abiertas<a class="headerlink" href="#12-decisiones-abiertas" title="Permanent link">&para;</a></h2>
+<ul>
+<li>¿Recomendación intra-media_type o cross-tipo (un juego porque te gustan los
+  libros de ese género)? Propuesta: intra-tipo.</li>
+<li>¿<code>Planning</code> cuenta como positivo leve o se ignora del todo en el perfil?</li>
+<li>¿El modo grupo es vista por defecto o requiere elegir integrantes?</li>
+<li>¿Top-K fijo o adaptativo por tamaño de historial?</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2022 - 2026 FuzzyGrim
+    </div>
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/FuzzyGrim/Yamtrack" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.action.edit","content.action.view","content.code.annotate","content.code.copy","header.autohide","navigation.footer","navigation.indexes","navigation.sections","navigation.tabs","navigation.top","navigation.tracking","search.highlight","search.share","search.suggest","toc.follow","toc.integrate"],"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"alias":true,"default":"release","provider":"mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>

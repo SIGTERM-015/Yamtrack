@@ -1,0 +1,728 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Yamtrack is a self hosted media tracker for movies, tv shows, anime, manga, video games, books, comics, and board games.">
+      
+      
+        <meta name="author" content="FuzzyGrim">
+      
+      
+        <link rel="canonical" href="https://FuzzyGrim.github.io/Yamtrack/dev/adr/0001-alcance-fork/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/logo.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>ADR 0001: Alcance de seguimiento social e integraciones del fork - Yamtrack Documentation</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#adr-0001-alcance-de-seguimiento-social-e-integraciones-del-fork" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Yamtrack Documentation" class="md-header__button md-logo" aria-label="Yamtrack Documentation" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="Yamtrack Documentation">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Yamtrack Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ADR 0001: Alcance de seguimiento social e integraciones del fork
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sun-moon" viewBox="0 0 24 24"><path d="M12 2v2M14.837 16.385a6 6 0 1 1-7.223-7.222c.624-.147.97.66.715 1.248a4 4 0 0 0 5.26 5.259c.589-.255 1.396.09 1.248.715M16 12a4 4 0 0 0-4-4M19 5l-1.256 1.256M20 12h2"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/FuzzyGrim/Yamtrack" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    FuzzyGrim/Yamtrack
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../setup/" class="md-tabs__link">
+        
+  
+  Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../development/" class="md-tabs__link">
+        
+  
+  Development
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../env-variables/" class="md-tabs__link">
+        
+  
+  Environment Variables
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../media-imports/" class="md-tabs__link">
+        
+  
+  Media Imports
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../social-auth/" class="md-tabs__link">
+        
+  
+  Social Auth
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../administration/" class="md-tabs__link">
+        
+  
+  Administration
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Yamtrack Documentation" class="md-nav__button md-logo" aria-label="Yamtrack Documentation" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="Yamtrack Documentation">
+
+    </a>
+    Yamtrack Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/FuzzyGrim/Yamtrack" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    FuzzyGrim/Yamtrack
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Development
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../env-variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Environment Variables
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../media-imports/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Media Imports
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../social-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Social Auth
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../administration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Administration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+    <a href="https://github.com/FuzzyGrim/Yamtrack/edit/dev/docs/adr/0001-alcance-fork.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/FuzzyGrim/Yamtrack/raw/dev/docs/adr/0001-alcance-fork.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
+    </a>
+  
+
+
+<h1 id="adr-0001-alcance-de-seguimiento-social-e-integraciones-del-fork">ADR 0001: Alcance de seguimiento social e integraciones del fork<a class="headerlink" href="#adr-0001-alcance-de-seguimiento-social-e-integraciones-del-fork" title="Permanent link">&para;</a></h1>
+<ul>
+<li><strong>Estado:</strong> aceptado como alcance de producto</li>
+<li><strong>Fecha:</strong> 2026-09-20</li>
+<li><strong>Decisor:</strong> producto</li>
+</ul>
+<h2 id="contexto">Contexto<a class="headerlink" href="#contexto" title="Permanent link">&para;</a></h2>
+<p>Yamtrack ya organiza el seguimiento de medios. El fork necesita expresar el alcance deseado para seguimiento individual y compartido, perfiles, integraciones y descubrimiento sin confundir acuerdos de producto con capacidades implementadas.</p>
+<p>El modelo debe conservar la responsabilidad personal: una persona puede seguir un medio por su cuenta o participar en el seguimiento de ese medio con otra persona o un grupo. El grupo coordina estado y progreso, pero las opiniones permanecen ligadas a cada persona.</p>
+<h2 id="decision">Decisión<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
+<ol>
+<li>El alcance incluye seguimiento de todos los tipos de medios de Yamtrack de forma individual y en pareja o grupo.</li>
+<li>El progreso compartido actualiza los registros personales participantes sin hacer retroceder el progreso personal ni reabrir registros completados. Por ejemplo, con progreso personal 8, de pareja 3 y de grupo 4, el resultado conserva 8 para la persona y 4 para el grupo. La corrección deliberada de progreso sigue acuerdo 17.</li>
+<li>Cualquier miembro puede gestionar el contenido y el progreso del grupo. La persona propietaria gestiona el grupo y sus miembros.</li>
+<li>Quitar contenido del grupo o salir de él conserva los registros personales, puntuaciones, valoraciones y comentarios de cada persona.</li>
+<li>Las valoraciones y comentarios son siempre individuales; no se modelan como valoración o comentario conjunto.</li>
+<li>Desde el buscador, la acción secundaria prevista es añadir el contenido a un grupo.</li>
+<li>La API de Yamtrack se plantea para integraciones con tokens personales identificables y revocables, con permisos de lectura y escritura separados y ligados a la identidad de quien los usa. Su alcance inicial cubre buscar obras y datos, consultar bibliotecas, historial y estadísticas propias o autorizadas, añadir contenido y actualizar estados y progreso personal y grupal, leer y editar las propias puntuaciones y comentarios, y quitar contenido de una biblioteca respetando los registros personales al salir de un grupo. Nadie puede editar puntuaciones ni comentarios ajenos. Las operaciones grupales usan los permisos de quien las ejecuta y las mismas reglas que la interfaz. Quedan fuera del alcance inicial crear grupos, gestionar miembros y configurar perfiles públicos.</li>
+<li>Solo se contemplan perfiles públicos personales. El perfil público deseado incluye avatar, heatmap, estanterías configurables y detalle por medio con información, valoración y comentario. Los grupos sirven para coordinar pendientes, contenido en curso y estados compartidos, no para funcionar como escaparate público grupal.</li>
+<li>La ruleta y el recomendador son features separadas, disponibles en ámbito personal y grupal. La ruleta elige únicamente entre pendientes y admite filtros de géneros y atributos, como multijugador en videojuegos. El recomendador descubre contenido nuevo basándose en historial, valoraciones y métricas todavía por definir.</li>
+<li>El grupo registra el consumo conjunto y posee estado y progreso contextuales independientes de los registros personales. El avance del grupo actualiza los registros personales participantes sin retrocesos ni reapertura de completados; el avance individual no actualiza el grupo de forma automática.</li>
+<li>Al incorporarse una persona a un grupo, solo se incorporan los pendientes como pendientes y se conservan sus registros personales previos. No se le atribuye consumo pasado ni progreso de obras ya empezadas.</li>
+<li>La ruleta elige únicamente entre pendientes, con filtros, tanto en ámbito personal como grupal. El sorteo propone una opción sin mutar el estado; permite repetir o confirmar «Empezar», que cambia el estado según las reglas de ámbito.</li>
+<li>El recomendador propone contenido nuevo en ámbito personal y grupal. La combinación de gustos grupales sigue el acuerdo 34.</li>
+<li>Las estadísticas contemplan cuatro vistas: completados y actividad por periodo y tipo; géneros consumidos y mejor valorados; distribución de puntuaciones; e individual frente a compartido.</li>
+<li>Las estadísticas no inventan horas de consumo sin datos. Los episodios y avances cuentan como actividad, no como series completas.</li>
+<li>La persona y la obra son conceptos separados. Las repeticiones reales de una obra cuentan para estadísticas y heatmap sin duplicar la obra. Puntuación y comentario son únicos por persona y obra y solo su autor puede editarlos.</li>
+<li>Una corrección deliberada de progreso es una acción grupal y nunca silenciosa: se muestra una vista previa y se confirma antes de aplicarla. Solo puede revertir cambios personales atribuibles a esa acción del grupo, debe preservar los avances independientes posteriores y avisa cuando no puede determinar con seguridad qué es atribuible a la acción del grupo.</li>
+<li>El recomendador grupal prioriza la afinidad compartida entre miembros y evita el dominio de un único miembro. Explica brevemente por qué recomienda, sin presentar certeza ficticia.</li>
+<li>El descubrimiento en ámbito grupal excluye por defecto las obras completadas por cualquier miembro y ofrece la opción de permitir obras ya conocidas por algún miembro. Excluye siempre la propia biblioteca del grupo.</li>
+<li>La visibilidad parte de la apertura: perfil personal público por defecto y privacidad opcional (opt-in). Los comentarios son públicos por defecto en un perfil público. La visibilidad se controla por secciones, no como un interruptor único.</li>
+<li>No mostrar la pertenencia de una persona a grupos que el recomendador haya propuesto previamente y no hayan sido contradichos.</li>
+<li>La apertura se diseña como estado inicial desde el principio, porque no hay usuarios ni datos existentes que preservar. No se contempla una migración de visibilidad ni una acción para publicar opiniones previas. Esta decisión es de diseño y no autoriza borrar datos de desarrollo.</li>
+<li>Una misma actividad compartida vinculada a participantes cuenta una vez por cada participante y una vez para el grupo; no se duplica el mismo cómputo. El origen del registro distingue si es individual o grupal, no la coincidencia de obra y fecha.</li>
+<li>El recomendador distingue recomendación general de personalizada. En arranque en frío admite géneros favoritos opcionales, aprovecha el historial disponible y completa con populares por medio. No descarta a un miembro por tener menos valoraciones.</li>
+<li>Al registrar el consumo de un grupo se eligen los participantes, con todos los miembros preseleccionados por defecto. El avance del grupo actualiza solo los registros personales de los participantes elegidos. Añadir un pendiente al grupo lo añade como pendiente a todos los miembros, conservando los registros personales existentes y creando el pendiente solo si no existe: no hace retroceder el progreso personal ni reabre un registro completado. Esto reconcilia el consumo conjunto con los participantes: los participantes por defecto son todos los miembros, pero el grupo solo avanza los registros personales de quienes participan en ese registro.</li>
+<li>El heatmap refleja el consumo diario (avances y finalizaciones) y permite abrir el detalle al hacer clic en un día. Añadir pendientes no cuenta como consumo, ni la edición de opiniones o correcciones cuenta como consumo nuevo.</li>
+<li>Las estanterías son siempre manuales y funcionan como escaparate de favoritos (por ejemplo, un TOP5); no son una función exclusiva del MVP. La persona configura su selección, orden, nombre y descripción, puede mezclar tipos de medio y mantiene el catálogo completo separado de las estanterías.</li>
+<li>En el detalle de perfil, el visitante ve la opinión, la puntuación, el estado y el historial de la persona propietaria, junto con la información de la obra, respetando la visibilidad configurada por secciones. El tracking del visitante es secundario.</li>
+<li>
+<p>Los metadatos provienen del proveedor y se pueden completar manualmente cuando faltan; se gestionan separados de las etiquetas personales. El filtro estricto excluye los medios con metadatos desconocidos y muestra cuántos quedan excluidos.</p>
+</li>
+<li>
+<p>Los filtros de la ruleta se podrán combinar entre categorías: tipo de medio, géneros, etiquetas personales, duración de películas y modalidades de videojuegos (single/cooperativo/competitivo y local/online), donde existan datos. Se mantienen las reglas de metadatos desconocidos y filtro estricto del acuerdo 29.</p>
+</li>
+<li>La ruleta usa azar uniforme entre los candidatos que cumplen los filtros. No repite candidatos durante la sesión hasta agotarlos y nunca relaja los filtros automáticamente.</li>
+<li>«No me interesa» es un descarte reversible y separado de la puntuación y del estado Dropped. El descarte personal afecta solo a esa persona y el grupal solo al grupo; los descartes se podrán consultar y restaurar.</li>
+<li>
+<p>El recomendador inicial usa puntuaciones, géneros e historial y prioriza las preferencias explícitas. Completar un medio no implica que haya gustado y abandonarlo no implica odio o rechazo. Inicialmente no se analizan comentarios con IA ni se envían a servicios externos.</p>
+</li>
+<li>
+<p>En el recomendador grupal cada miembro pesa igual, con independencia del número de valoraciones que tenga. La afinidad compartida penaliza las incompatibilidades claras sin vetar automáticamente por una diferencia. La popularidad apoya la recomendación, pero con pocas señales no se antepone a las preferencias.</p>
+</li>
+<li>Cuando escasean los candidatos, la ruleta y el recomendador muestran menos opciones y explican por qué. En la ruleta la única vía explícita es ampliar los filtros, siempre dentro de los pendientes: su universo de candidatos nunca cambia y no puede ofrecer obras fuera de ellos. En el recomendador, además de ampliar los filtros, se puede permitir explícitamente obras conocidas. Ninguna de las dos recupera descartes ni ignora restricciones en silencio.</li>
+<li>La interfaz inicial no incluye controles numéricos de pesos. Los pesos concretos son una decisión de implementación, bajo las reglas de producto, a validar con ejemplos de gustos y pruebas; no son una pregunta de producto abierta.</li>
+</ol>
+<p>Estos acuerdos describen intención de producto, no una afirmación sobre la implementación actual ni un contrato técnico final de API.</p>
+<h2 id="fuera-de-esta-decision">Fuera de esta decisión<a class="headerlink" href="#fuera-de-esta-decision" title="Permanent link">&para;</a></h2>
+<p>Las preguntas de producto sobre la ponderación del recomendador y la escasez de candidatos quedan cerradas por los acuerdos 34-36.</p>
+<p>Siguen como detalle técnico de implementación, no como pregunta de producto, la elección y calibración de los pesos concretos del recomendador dentro de las reglas de los acuerdos 18, 33 y 34, y el ajuste de la afinidad grupal con datos escasos o cuando todos han completado las obras del grupo.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2022 - 2026 FuzzyGrim
+    </div>
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/FuzzyGrim/Yamtrack" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.action.edit","content.action.view","content.code.annotate","content.code.copy","header.autohide","navigation.footer","navigation.indexes","navigation.sections","navigation.tabs","navigation.top","navigation.tracking","search.highlight","search.share","search.suggest","toc.follow","toc.integrate"],"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"alias":true,"default":"release","provider":"mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
