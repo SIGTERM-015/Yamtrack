@@ -1,0 +1,903 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Yamtrack is a self hosted media tracker for movies, tv shows, anime, manga, video games, books, comics, and board games.">
+      
+      
+        <meta name="author" content="FuzzyGrim">
+      
+      
+        <link rel="canonical" href="https://FuzzyGrim.github.io/Yamtrack/dev/research/stremio-spike/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/logo.png">
+      <meta name="generator" content="zensical-0.0.53">
+    
+    
+      
+        <title>Spike E10.1 — Integración con Stremio - Yamtrack Documentation</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.20815dad.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#spike-e101-integracion-con-stremio" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Yamtrack Documentation" class="md-header__button md-logo" aria-label="Yamtrack Documentation" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="Yamtrack Documentation">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Yamtrack Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Spike E10.1 — Integración con Stremio
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sun-moon" viewBox="0 0 24 24"><path d="M12 2v2M14.837 16.385a6 6 0 1 1-7.223-7.222c.624-.147.97.66.715 1.248a4 4 0 0 0 5.26 5.259c.589-.255 1.396.09 1.248.715M16 12a4 4 0 0 0-4-4M19 5l-1.256 1.256M20 12h2"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/FuzzyGrim/Yamtrack" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    FuzzyGrim/Yamtrack
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../setup/" class="md-tabs__link">
+        
+  
+  Setup
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../development/" class="md-tabs__link">
+        
+  
+  Development
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../env-variables/" class="md-tabs__link">
+        
+  
+  Environment Variables
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../media-imports/" class="md-tabs__link">
+        
+  
+  Media Imports
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../social-auth/" class="md-tabs__link">
+        
+  
+  Social Auth
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../administration/" class="md-tabs__link">
+        
+  
+  Administration
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Yamtrack Documentation" class="md-nav__button md-logo" aria-label="Yamtrack Documentation" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="Yamtrack Documentation">
+
+    </a>
+    Yamtrack Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/FuzzyGrim/Yamtrack" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    FuzzyGrim/Yamtrack
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Setup
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Development
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../env-variables/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Environment Variables
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../media-imports/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Media Imports
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../social-auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Social Auth
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../administration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Administration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+    <a href="https://github.com/FuzzyGrim/Yamtrack/edit/dev/docs/research/stremio-spike.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/FuzzyGrim/Yamtrack/raw/dev/docs/research/stremio-spike.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
+    </a>
+  
+
+
+<h1 id="spike-e101-integracion-con-stremio">Spike E10.1 — Integración con Stremio<a class="headerlink" href="#spike-e101-integracion-con-stremio" title="Permanent link">&para;</a></h1>
+<ul>
+<li><strong>Tarea:</strong> Vikunja #60 · E10.1 (ÉPICA 10 — Sincronización automática con Stremio)</li>
+<li><strong>Tipo:</strong> investigación, sin código productivo.</li>
+<li><strong>Fecha:</strong> 2026-09-19</li>
+<li><strong>Precede a:</strong> #61 E10.2 — Endpoint receptor de eventos de reproducción.</li>
+</ul>
+<h2 id="resumen-ejecutivo">Resumen ejecutivo<a class="headerlink" href="#resumen-ejecutivo" title="Permanent link">&para;</a></h2>
+<p>Stremio <strong>no ofrece forma limpia de notificar reproducción a un servicio externo</strong>. El
+protocolo de addons solo sirve para <em>meter</em> datos en Stremio (catálogos, metadata, streams,
+subtítulos); no existe resource de <code>progress</code>/<code>playback</code> ni webhooks. La petición de la
+comunidad para añadirlos sigue abierta.</p>
+<p>La vía viable y de menor coste es <strong>Trakt como intermediario</strong>: Stremio trae scrobbling
+nativo de Trakt y Yamtrack ya tiene importador de Trakt con OAuth y tarea periódica. Esto
+cubre el caso de uso principal (TV del salón / Android TV) sin desarrollo de addon.</p>
+<p><strong>Recomendación:</strong> opción C (Trakt intermediario) como vía principal; marcado manual rápido
+como fallback. Descartar por ahora addon propio (no puede recibir eventos) y polling directo
+de la API cloud de Stremio (no oficial y frágil).</p>
+<h2 id="caso-de-uso-y-restriccion-de-plataforma">Caso de uso y restricción de plataforma<a class="headerlink" href="#caso-de-uso-y-restriccion-de-plataforma" title="Permanent link">&para;</a></h2>
+<p>El objetivo es la <strong>TV del salón</strong>, el entorno más limitado: no se puede asumir instalar
+addons, sidecar services ni clientes alternativos. Cualquier diseño debe funcionar en la app
+oficial de Android TV / Google TV tal cual, configurada a lo sumo desde el móvil o la web.</p>
+<table>
+<thead>
+<tr>
+<th>Plataforma</th>
+<th>Scrobbling Trakt nativo</th>
+<th>Notas</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Web (<code>web.stremio.com</code>)</td>
+<td>Sí</td>
+<td>Configurable desde ajustes de cuenta.</td>
+</tr>
+<tr>
+<td>Desktop</td>
+<td>Sí</td>
+<td>Configurable desde ajustes de cuenta.</td>
+</tr>
+<tr>
+<td>Android móvil</td>
+<td>Sí</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Android TV / Google TV</strong></td>
+<td><strong>Sí (v1.5.6+)</strong></td>
+<td><strong>Hay que configurarlo antes en Android móvil, Desktop o el dashboard web.</strong> La TV no permite autenticar Trakt por sí sola.</td>
+</tr>
+<tr>
+<td>iOS / tvOS (Stremio Lite)</td>
+<td><strong>No</strong> (a nov-2025)</td>
+<td>Issue abierta en stremio-features; no aplica a nuestro caso (Android TV).</td>
+</tr>
+</tbody>
+</table>
+<p>Conclusión de plataforma: Android TV es viable <strong>solo si</strong> Trakt se autentica primero en otro
+dispositivo. Es un paso único de onboarding, asumible.</p>
+<h2 id="opciones-investigadas">Opciones investigadas<a class="headerlink" href="#opciones-investigadas" title="Permanent link">&para;</a></h2>
+<h3 id="a-addon-de-stremio-que-reciba-eventos-de-reproduccion-no-viable">A. Addon de Stremio que reciba eventos de reproducción — NO VIABLE<a class="headerlink" href="#a-addon-de-stremio-que-reciba-eventos-de-reproduccion-no-viable" title="Permanent link">&para;</a></h3>
+<p>El protocolo de addons define manifests con resources <code>catalog</code>, <code>meta</code>, <code>stream</code>,
+<code>subtitles</code> (y <code>addon_catalog</code>). <strong>No existe un resource de progreso/reproducción y Stremio no
+envía eventos de playback a los addons.</strong></p>
+<p>Evidencia:
+- Feature request <code>Stremio/stremio-features#1278</code> ("Track Progress via new Addon Resource or
+  Webhooks") sigue <strong>abierta</strong>. La propia discusión resume: <em>"addons are to get data INTO
+  stremio, and webhooks are for getting data OUT of stremio"</em> — es decir, hoy no existe el
+  canal de salida.
+- <code>Stremio/stremio-addon-sdk#212</code> pregunta por leer/escribir el estado "watched" vía API de
+  addon: la respuesta es que no está soportado.</p>
+<p><strong>Workaround conocido:</strong> algunos addons infieren reproducción a partir de las peticiones de
+subtítulos (el usuario reporta que usa <em>"the subtitle workaround, with all its drawbacks"</em>).
+Es un hack frágil, dependiente del comportamiento del reproductor, y <strong>no se recomienda</strong> como
+base de una épica.</p>
+<h3 id="b-api-cloud-de-stremio-apistremio-datastore-viable-pero-no-oficial">B. API cloud de Stremio (<code>api.strem.io</code>, datastore) — VIABLE PERO NO OFICIAL<a class="headerlink" href="#b-api-cloud-de-stremio-apistremio-datastore-viable-pero-no-oficial" title="Permanent link">&para;</a></h3>
+<p>Las apps de Stremio sincronizan biblioteca y "Continuar viendo" contra el backend
+<code>api.strem.io</code> (<code>datastoreGet</code> / <code>datastorePut</code>, autenticación de cuenta). Un cliente externo
+podría autenticarse como el usuario y <strong>hacer polling</strong> del estado de biblioteca/progreso,
+incluido el detalle por episodio. Existe cliente de referencia (<code>Stremio/stremio-api-client</code>)
+y wrappers de terceros.</p>
+<p>Pros:
+- Refleja la actividad de la TV directamente, sin depender de Trakt.
+- Incluye progreso por episodio (no solo "visto").</p>
+<p>Contras (por eso no es la recomendación principal):
+- <strong>No documentado como API pública</strong>, sin contrato ni garantía de estabilidad. Puede cambiar
+  sin aviso.
+- Requiere guardar credenciales de la cuenta Stremio del usuario; superficie de seguridad
+  mayor que un token OAuth de Trakt.
+- La semántica de "visto"/progreso hay que invertirla desde estructuras internas (fragilidad).
+- Alternativa de terceros relevante: <strong>StremThru</strong>, que se apoya en la funcionalidad de
+  biblioteca de Stremio y funciona incluso con reproductores externos.</p>
+<p>Recomendación: <strong>no</strong> construir sobre esto ahora; dejarlo documentado como plan B si Trakt
+resulta demasiado poco fiable.</p>
+<h3 id="c-trakt-como-intermediario-recomendado">C. Trakt como intermediario — RECOMENDADO<a class="headerlink" href="#c-trakt-como-intermediario-recomendado" title="Permanent link">&para;</a></h3>
+<p>Stremio incorpora <strong>scrobbling nativo de Trakt</strong> (Ajustes de cuenta → Integrations →
+<em>Authenticate</em> junto a "Trakt Scrobbling"). Al activarlo instala el "Trakt Integration addon".
+Stremio envía el historial de reproducción a Trakt; Yamtrack lo consume.</p>
+<p>Yamtrack ya tiene todo el lado Trakt:
+- <code>src/integrations/imports/trakt.py</code>: importador OAuth con refresco de token y soporte de
+  export; procesa <em>watch history</em> (<code>/history</code>) mapeando a los modelos de Yamtrack.
+- Tarea periódica registrada vía <code>django_celery_beat.PeriodicTask</code> (<code>"Import from Trakt"</code>),
+  con rotación de refresh token ya resuelta (<code>update_refresh_token</code>).
+- <code>Sources</code>/<code>MediaTypes</code> (<code>src/app/models.py</code>) y <code>Status</code> cubren película/serie/temporada/
+  episodio y el estado "visto" que Trakt reporta.</p>
+<p>Pros:
+- Cero desarrollo de addon; reutiliza importador y scheduler existentes.
+- OAuth, no credenciales de usuario.
+- Funciona en Android TV (previa configuración en otro dispositivo).
+- Trakt es además un formato de intercambio ya soportado por el proyecto.</p>
+<p>Contras:
+- Dependencia de terceros encadenada: Stremio → Trakt → Yamtrack.
+- La propia guía de referencia avisa: <em>"Trakt scrobbling can occasionally be unreliable for
+  some users"</em>.
+- Latencia: la sincronización es por polling (tarea periódica), no en tiempo real.</p>
+<h3 id="d-marcado-manual-rapido-fallback">D. Marcado manual rápido — FALLBACK<a class="headerlink" href="#d-marcado-manual-rapido-fallback" title="Permanent link">&para;</a></h3>
+<p>No es "automático", pero es barato y siempre funciona en cualquier plataforma/versión. Debe
+mantenerse como red de seguridad y como fallback si A/B/C fallan en el parque real del grupo.</p>
+<h2 id="comparativa">Comparativa<a class="headerlink" href="#comparativa" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Criterio</th>
+<th>A. Addon propio</th>
+<th>B. API cloud Stremio</th>
+<th>C. Trakt intermediario</th>
+<th>D. Manual</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>¿Recibe reproducción?</td>
+<td>No (imposible hoy)</td>
+<td>Sí (polling)</td>
+<td>Sí (vía Trakt)</td>
+<td>Sí (humano)</td>
+</tr>
+<tr>
+<td>Funciona en Android TV</td>
+<td>N/A</td>
+<td>Probable</td>
+<td>Sí (config. previa)</td>
+<td>Sí</td>
+</tr>
+<tr>
+<td>Oficial / estable</td>
+<td>N/A</td>
+<td>No</td>
+<td>Sí (APIs públicas)</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>Desarrollo necesario</td>
+<td>Alto e inútil</td>
+<td>Medio-alto</td>
+<td>Bajo (reutiliza importador)</td>
+<td>Nulo</td>
+</tr>
+<tr>
+<td>Credenciales sensibles</td>
+<td>—</td>
+<td>Cuenta Stremio</td>
+<td>OAuth Trakt</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Tiempo real</td>
+<td>—</td>
+<td>Casi</td>
+<td>No (periódico)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Riesgo principal</td>
+<td>No existe el evento</td>
+<td>Ruptura sin aviso</td>
+<td>Fiabilidad de Trakt</td>
+<td>Fricción usuario</td>
+</tr>
+<tr>
+<td>Veredicto</td>
+<td>Descartada</td>
+<td>Plan B</td>
+<td><strong>Recomendada</strong></td>
+<td>Fallback</td>
+</tr>
+</tbody>
+</table>
+<h2 id="encaje-con-los-modelos-actuales">Encaje con los modelos actuales<a class="headerlink" href="#encaje-con-los-modelos-actuales" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Metadatos / IDs:</strong> el historial de Trakt trae IDs resueltos por Trakt; el importador ya
+  sabe mapearlos a <code>Item</code> (<code>source</code>, <code>media_id</code>, <code>media_type</code>, <code>season_number</code>,
+  <code>episode_number</code>). No hay que tocar <code>Sources</code>: no se añade una fuente "stremio".</li>
+<li><strong>Webhooks existentes</strong> (<code>src/integrations/webhooks/</code>): <code>BaseWebhookProcessor</code> con
+  <code>process_payload</code> / <code>_is_supported_event</code> / <code>_extract_external_ids</code> / <code>_process_media</code>, y
+  autenticación por <code>User.token</code> con vistas <code>csrf_exempt</code> (<code>jellyfin_webhook</code>, <code>plex_webhook</code>,
+  <code>emby_webhook</code>). Este patrón <strong>solo será necesario si en el futuro aparece una fuente de
+  eventos real</strong>; con la vía Trakt no se requiere un receptor nuevo.</li>
+<li><strong>Configuración por usuario:</strong> el modelo <code>users.models.User</code> ya centraliza flags de
+  integración (<code>plex_usernames</code>, <code>jellyfin_mark_played_enabled</code>, …). Un ajuste de
+  "sincronizar con Trakt" encaja en el mismo sitio.</li>
+</ul>
+<h2 id="propuesta">Propuesta<a class="headerlink" href="#propuesta" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>E10.2 se reenfoca</strong>: no es "receptor de webhooks de Stremio" (no existe tal webhook) sino
+   <strong>job de sincronización periódica desde Trakt</strong>, reutilizando <code>TraktImporter</code> y el patrón de
+   <code>PeriodicTask</code> ya presente. Documentar el onboarding: activar Trakt Scrobbling en Stremio
+   (una vez, desde móvil/desktop/web) y conectar Trakt en Yamtrack.</li>
+<li><strong>No construir addon de Stremio</strong> mientras <code>stremio-features#1278</code> siga abierta.</li>
+<li><strong>Mantener el marcado manual rápido</strong> como fallback y para plataformas no cubiertas.</li>
+<li><strong>Plan B documentado:</strong> si la fiabilidad de Trakt es insuficiente en uso real, evaluar
+   polling de <code>api.strem.io</code> (<code>datastoreGet</code>) asumiendo su naturaleza no oficial.</li>
+</ol>
+<h2 id="preguntas-abiertas-verificar-antes-de-implementar">Preguntas abiertas (verificar antes de implementar)<a class="headerlink" href="#preguntas-abiertas-verificar-antes-de-implementar" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Fiabilidad real del scrobbling Trakt en Android TV dentro del grupo (probar en el parque
+  real, no en laboratorio).</li>
+<li>¿La app de Android TV exige configuración previa de Trakt en otro dispositivo en todas las
+  versiones desplegadas? (Tech Update #19 indica que sí desde v1.5.6.)</li>
+<li>¿Qué granularidad de "visto" reporta Trakt desde Stremio (película/episodio vs temporada)?</li>
+<li>¿Aceptable que la sincronización sea por polling en lugar de en tiempo real?</li>
+</ul>
+<h2 id="fuentes">Fuentes<a class="headerlink" href="#fuentes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Stremio Addon SDK / protocolo: <a href="https://www.stremio.com/addon-sdk">https://www.stremio.com/addon-sdk</a></li>
+<li>Feature request (abierta) webhooks/progress: <a href="https://github.com/Stremio/stremio-features/issues/1278">https://github.com/Stremio/stremio-features/issues/1278</a></li>
+<li>"Read/write stremio watched status": <a href="https://github.com/Stremio/stremio-addon-sdk/issues/212">https://github.com/Stremio/stremio-addon-sdk/issues/212</a></li>
+<li>Guía de Trakt en Stremio (scrobbling nativo): <a href="https://guides.viren070.me/stremio/extras/trakt">https://guides.viren070.me/stremio/extras/trakt</a></li>
+<li>Stremio Tech Update #19 — Trakt scrobbling y VLC en Android TV: <a href="https://blog.stremio.com/stremio-tech-update-19-trakt-scrobbling-and-vlc-on-android-tv">https://blog.stremio.com/stremio-tech-update-19-trakt-scrobbling-and-vlc-on-android-tv</a></li>
+<li>Trakt scrobbling ausente en iOS/tvOS: <a href="https://github.com/Stremio/stremio-features/issues/1476">https://github.com/Stremio/stremio-features/issues/1476</a></li>
+<li>Cliente API Stremio: <a href="https://github.com/Stremio/stremio-api-client">https://github.com/Stremio/stremio-api-client</a></li>
+<li>Código Yamtrack relevante: <code>src/app/models.py</code>, <code>src/integrations/imports/trakt.py</code>,
+  <code>src/integrations/webhooks/</code>, <code>src/integrations/views.py</code>, <code>src/users/models.py</code>.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2022 - 2026 FuzzyGrim
+    </div>
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/FuzzyGrim/Yamtrack" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M216.5 362.5c-66-8-112.5-55.5-112.5-117 0-25 9-52 24-70-6.5-16.5-5.5-51.5 2-66 20-2.5 47 8 63 22.5 19-6 39-9 63.5-9s44.5 3 62.5 8.5c15.5-14 43-24.5 63-22 7 13.5 8 48.5 1.5 65.5 16 19 24.5 44.5 24.5 70.5 0 61.5-46.5 108-113.5 116.5 17 11 28.5 35 28.5 62.5v52c0 15 12.5 23.5 27.5 17.5C441 459.5 512 369 512 257 512 115.5 397 0 255.5 0S0 115.5 0 257c0 111 70.5 203 165.5 237.5 13.5 5 26.5-4 26.5-17.5v-40c-7 3-16 5-24 5-33 0-52.5-18-66.5-51.5-5.5-13.5-11.5-21.5-23-23-6-.5-8-3-8-6 0-6 10-10.5 20-10.5 14.5 0 27 9 40 27.5 10 14.5 20.5 21 33 21s20.5-4.5 32-16c8.5-8.5 15-16 21-21"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.action.edit","content.action.view","content.code.annotate","content.code.copy","header.autohide","navigation.footer","navigation.indexes","navigation.sections","navigation.tabs","navigation.top","navigation.tracking","search.highlight","search.share","search.suggest","toc.follow","toc.integrate"],"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"alias":true,"default":"release","provider":"mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.69c251d7.min.js"></script>
+      
+    
+  </body>
+</html>
