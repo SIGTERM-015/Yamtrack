@@ -12,7 +12,7 @@
         <meta name="author" content="FuzzyGrim">
       
       
-        <link rel="canonical" href="https://FuzzyGrim.github.io/Yamtrack/dev/FORK-MAINTENANCE/">
+        <link rel="canonical" href="https://FuzzyGrim.github.io/Yamtrack/dev/BRANCHING/">
       
       
       
@@ -25,7 +25,7 @@
     
     
       
-        <title>Fork maintenance: syncing with upstream - Yamtrack Documentation</title>
+        <title>Fork branching and integration workflow - Yamtrack Documentation</title>
       
     
     
@@ -83,7 +83,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fork-maintenance-syncing-with-upstream" class="md-skip">
+        <a href="#fork-branching-and-integration-workflow" class="md-skip">
           Skip to content
         </a>
       
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Fork maintenance: syncing with upstream
+              Fork branching and integration workflow
             
           </span>
         </div>
@@ -563,7 +563,7 @@
                 
                   
   
-    <a href="https://github.com/FuzzyGrim/Yamtrack/edit/dev/docs/FORK-MAINTENANCE.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/FuzzyGrim/Yamtrack/edit/dev/docs/BRANCHING.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -572,21 +572,20 @@
     
       
     
-    <a href="https://github.com/FuzzyGrim/Yamtrack/raw/dev/docs/FORK-MAINTENANCE.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/FuzzyGrim/Yamtrack/raw/dev/docs/BRANCHING.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="fork-maintenance-syncing-with-upstream">Fork maintenance: syncing with upstream<a class="headerlink" href="#fork-maintenance-syncing-with-upstream" title="Permanent link">&para;</a></h1>
-<p>This repository is a fork of <a href="https://github.com/FuzzyGrim/Yamtrack">FuzzyGrim/Yamtrack</a>.
-The fork carries its own features on top of upstream <code>dev</code>, so it needs to be
-regularly rebased to stay current with upstream fixes and releases.</p>
-<p>This document is the procedure to bring upstream changes into the fork.
-Day-to-day feature integration into <code>dev</code> is a separate workflow, documented
-in <a href="../BRANCHING/">BRANCHING.md</a>.</p>
-<h2 id="branches-and-remotes">Branches and remotes<a class="headerlink" href="#branches-and-remotes" title="Permanent link">&para;</a></h2>
+<h1 id="fork-branching-and-integration-workflow">Fork branching and integration workflow<a class="headerlink" href="#fork-branching-and-integration-workflow" title="Permanent link">&para;</a></h1>
+<p>This is a personal fork: there are no pull requests and no merge commits.
+Feature work lands on <code>dev</code> via rebase plus fast-forward merge, performed
+locally by the maintainer.</p>
+<p>Upstream sync is a separate procedure, documented in
+<a href="../FORK-MAINTENANCE/">FORK-MAINTENANCE.md</a>. Do not mix the two.</p>
+<h2 id="branch-hierarchy">Branch hierarchy<a class="headerlink" href="#branch-hierarchy" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -596,114 +595,111 @@ in <a href="../BRANCHING/">BRANCHING.md</a>.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>origin</code></td>
-<td>The fork: <code>SIGTERM-015/Yamtrack</code>. Push targets live here only.</td>
-</tr>
-<tr>
-<td><code>upstream</code></td>
-<td>The original project: <code>FuzzyGrim/Yamtrack</code>. Read-only.</td>
-</tr>
-<tr>
 <td><code>dev</code></td>
-<td>Fork working baseline.</td>
+<td>Fork working baseline. Default branch of <code>origin</code>. Pushing here triggers the full CI.</td>
 </tr>
 <tr>
-<td><code>feat/add-api</code></td>
-<td>Fork integration branch that carries the custom API (<code>src/api/</code>). This is the branch that is rebased onto upstream.</td>
+<td><code>integ/noche</code></td>
+<td>Integration branch where feature merges accumulated before going up to <code>dev</code>.</td>
+</tr>
+<tr>
+<td><code>docs/product-grill</code></td>
+<td>Product documentation branch.</td>
+</tr>
+<tr>
+<td><code>feat/eXX-description</code></td>
+<td>Feature branch, <code>XX</code> = epic/ticket number.</td>
+</tr>
+<tr>
+<td><code>fix/description</code></td>
+<td>Bugfix branch.</td>
+</tr>
+<tr>
+<td><code>spike/eXX-topic</code></td>
+<td>Research spike. Usually contributes only a doc under <code>docs/research/</code>.</td>
+</tr>
+<tr>
+<td><code>docs/description</code></td>
+<td>Documentation branch.</td>
 </tr>
 </tbody>
 </table>
-<p>Note: <code>feat/add-api</code> exists on <code>origin</code> only, not in local checkouts, and the
-fork's real working baseline is <code>dev</code> (see <a href="../BRANCHING/">BRANCHING.md</a>).
-Treat the table entry above as the sync procedure's target, not as a
-description of where daily work happens.</p>
-<p>Never push to <code>upstream</code>, and never push <code>dev</code>/feature branches to it.</p>
-<h2 id="one-time-setup">One-time setup<a class="headerlink" href="#one-time-setup" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>remote<span class="w"> </span>add<span class="w"> </span>upstream<span class="w"> </span>https://github.com/FuzzyGrim/Yamtrack.git
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>git<span class="w"> </span>fetch<span class="w"> </span>upstream
+<p>In practice <code>dev</code>, <code>integ/noche</code>, and <code>docs/product-grill</code> end up pointing at
+the same commit after each integration.</p>
+<h2 id="worktrees">Worktrees<a class="headerlink" href="#worktrees" title="Permanent link">&para;</a></h2>
+<p>Each working branch is developed in its own git worktree, so several can be
+open in parallel. Observed convention:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>/home/sigterm/.worktrees/yamtrack-&lt;id&gt;
 </span></code></pre></div>
-<p>Verify:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>remote<span class="w"> </span>-v
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># origin    git@github.com:SIGTERM-015/Yamtrack.git (fetch/push)</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># upstream  https://github.com/FuzzyGrim/Yamtrack.git (fetch/push)</span>
+<p><strong>Warning: never create worktrees under <code>/tmp</code>.</strong> They are lost on machine
+reboot, including uncommitted work. This almost caused data loss once; keep
+worktrees on persistent storage only.</p>
+<h2 id="integration-procedure">Integration procedure<a class="headerlink" href="#integration-procedure" title="Permanent link">&para;</a></h2>
+<p>Merge with rebase + <code>merge --ff-only</code>. Never merge commits, never PRs.</p>
+<p>The working branch has a worktree attached, so it cannot be checked out from
+the main repo. Rebase a throwaway copy instead:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># 1. From the main repo, branch a throwaway copy off the working branch tip.</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>git<span class="w"> </span>fetch<span class="w"> </span>origin
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>rebase/&lt;id&gt;<span class="w"> </span>&lt;sha&gt;
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1"># 2. Rebase onto dev. Resolve conflicts keeping dev&#39;s content plus what the</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1">#    feature adds.</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>git<span class="w"> </span>rebase<span class="w"> </span>dev
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># 3. Abort and retry if the rebase goes wrong.</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>git<span class="w"> </span>rebase<span class="w"> </span>--abort
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="c1"># 4. Validate (see below). Only when everything is green, fast-forward dev.</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>git<span class="w"> </span>checkout<span class="w"> </span>dev
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>git<span class="w"> </span>merge<span class="w"> </span>--ff-only<span class="w"> </span>rebase/&lt;id&gt;
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="c1"># 5. Propagate to the other integration branches.</span>
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>git<span class="w"> </span>checkout<span class="w"> </span>integ/noche<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>git<span class="w"> </span>merge<span class="w"> </span>--ff-only<span class="w"> </span>dev
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>git<span class="w"> </span>checkout<span class="w"> </span>docs/product-grill<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>git<span class="w"> </span>merge<span class="w"> </span>--ff-only<span class="w"> </span>dev
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="c1"># 6. Push all three.</span>
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>dev<span class="w"> </span>integ/noche<span class="w"> </span>docs/product-grill
+</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>
+</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="c1"># 7. Clean up: remove the worktree, delete the working and throwaway</span>
+</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="c1">#    branches, delete the remote branch.</span>
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>git<span class="w"> </span>worktree<span class="w"> </span>remove<span class="w"> </span>/home/sigterm/.worktrees/yamtrack-&lt;id&gt;
+</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>git<span class="w"> </span>branch<span class="w"> </span>-d<span class="w"> </span>feat/eXX-description
+</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>git<span class="w"> </span>branch<span class="w"> </span>-d<span class="w"> </span>rebase/&lt;id&gt;
+</span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>--delete<span class="w"> </span>feat/eXX-description
 </span></code></pre></div>
-<h2 id="sync-procedure">Sync procedure<a class="headerlink" href="#sync-procedure" title="Permanent link">&para;</a></h2>
-<p>Always work on a throwaway copy first so the rebase can be abandoned without
-touching <code>feat/add-api</code> directly.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># 1. Fetch both remotes.</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>git<span class="w"> </span>fetch<span class="w"> </span>origin
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>git<span class="w"> </span>fetch<span class="w"> </span>upstream
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># 2. Branch a working copy off the integration branch.</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>sync/upstream-<span class="k">$(</span>date<span class="w"> </span>+%F<span class="k">)</span><span class="w"> </span>feat/add-api
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1"># 3. Rebase onto upstream dev.</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>git<span class="w"> </span>rebase<span class="w"> </span>upstream/dev
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1"># 4. Resolve conflicts (see below), then continue.</span>
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>git<span class="w"> </span>rebase<span class="w"> </span>--continue
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="c1"># 5. Validate (see below). Only when green, fast-forward the integration branch.</span>
-</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>git<span class="w"> </span>checkout<span class="w"> </span>feat/add-api
-</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>git<span class="w"> </span>merge<span class="w"> </span>--ff-only<span class="w"> </span>sync/upstream-<span class="k">$(</span>date<span class="w"> </span>+%F<span class="k">)</span>
-</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>feat/add-api
+<p>Replace <code>&lt;id&gt;</code>, <code>&lt;sha&gt;</code>, and <code>feat/eXX-description</code> with the actual worktree
+name, tip commit, and branch.</p>
+<h2 id="validation-gates">Validation gates<a class="headerlink" href="#validation-gates" title="Permanent link">&para;</a></h2>
+<p>All of these must exit 0 before merging into <code>dev</code>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Lint.</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>./.venv/bin/ruff<span class="w"> </span>check<span class="w"> </span>--output-format<span class="o">=</span>concise<span class="w"> </span>src
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Format.</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>./.venv/bin/ruff<span class="w"> </span>format<span class="w"> </span>--check<span class="w"> </span>src
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># Tests for the touched app.</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="nb">cd</span><span class="w"> </span>src<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>../.venv/bin/python<span class="w"> </span>manage.py<span class="w"> </span><span class="nb">test</span><span class="w"> </span>&lt;app&gt;<span class="w"> </span>--parallel
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># Full suite. The test count may go up, never down.</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="nb">cd</span><span class="w"> </span>src<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>../.venv/bin/python<span class="w"> </span>manage.py<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--parallel
 </span></code></pre></div>
-<p>To abort a bad rebase: <code>git rebase --abort</code>.</p>
-<h2 id="expected-conflict-zones">Expected conflict zones<a class="headerlink" href="#expected-conflict-zones" title="Permanent link">&para;</a></h2>
-<p>The fork and upstream both touch the central model definitions, so conflicts
-concentrate in two files:</p>
-<ul>
-<li><strong><code>src/app/models.py</code></strong> — upstream adds media types, fields, and status
-  handling here; the fork adds its own model fields. Conflicts show up as
-  overlapping field blocks and <code>MediaTypes</code>/<code>Status</code> choice changes. Keep both
-  sides: upstream additions plus fork fields. Watch for duplicated enum
-  values and for migrations that assume a specific field order.</li>
-<li><strong><code>src/lists/models.py</code></strong> — list and list-item models. The fork extends
-  list behaviour; upstream refactors it periodically. Re-apply the fork's
-  additions on top of the upstream structure rather than restoring the old
-  file wholesale.</li>
-</ul>
-<p>After resolving, regenerate or renumber migrations if upstream shipped
-migrations that collide with the fork's:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">cd</span><span class="w"> </span>src
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>uv<span class="w"> </span>run<span class="w"> </span>manage.py<span class="w"> </span>makemigrations
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>uv<span class="w"> </span>run<span class="w"> </span>manage.py<span class="w"> </span>migrate
+<p>Environment note: <code>uv</code> and <code>ruff</code> are not always on <code>PATH</code>. Use the venv
+binaries (<code>./.venv/bin/ruff</code>, <code>../.venv/bin/python</code>).
+<a href="../FORK-MAINTENANCE/">FORK-MAINTENANCE.md</a> assumes <code>uv run</code>, which may not
+work here.</p>
+<p>Pushing to <code>dev</code> runs the full CI: Lint, App Tests, CodeQL, Docker Image,
+and build-docs. All five must stay green.</p>
+<h2 id="branch-hygiene">Branch hygiene<a class="headerlink" href="#branch-hygiene" title="Permanent link">&para;</a></h2>
+<p>Delete branches and worktrees once integrated. Before deleting, confirm the
+work is safely on <code>dev</code>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># The tip commit must be an ancestor of dev.</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>git<span class="w"> </span>merge-base<span class="w"> </span>--is-ancestor<span class="w"> </span>&lt;sha&gt;<span class="w"> </span>dev<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span>integrated
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># The worktree must have no uncommitted changes.</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>git<span class="w"> </span>-C<span class="w"> </span>/home/sigterm/.worktrees/yamtrack-&lt;id&gt;<span class="w"> </span>status<span class="w"> </span>--porcelain
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="c1"># (empty output = clean)</span>
 </span></code></pre></div>
-<p>Commit any new migrations as part of the sync.</p>
-<h2 id="validation">Validation<a class="headerlink" href="#validation" title="Permanent link">&para;</a></h2>
-<p>Run from <code>src/</code>. A rebase is not accepted until all of these pass.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">cd</span><span class="w"> </span>src
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># Full suite.</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>uv<span class="w"> </span>run<span class="w"> </span>manage.py<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--parallel
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="c1"># Or pytest, if the environment is set up for it.</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="c1"># Lint/format, if ruff is available.</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>.
-</span></code></pre></div>
-<p>Then verify the fork-specific API surface still loads, since the API lives on
-<code>feat/add-api</code> and is the part most likely to break:</p>
-<ul>
-<li><code>GET /api/v1/</code> endpoint tree responds (no import errors on boot).</li>
-<li><code>GET /api/schema/</code> returns the OpenAPI schema.</li>
-<li><code>GET /api/docs/</code> renders the Swagger UI.</li>
-<li>Spot-check <code>src/api/tests/</code>:</li>
-</ul>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">cd</span><span class="w"> </span>src
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>uv<span class="w"> </span>run<span class="w"> </span>manage.py<span class="w"> </span><span class="nb">test</span><span class="w"> </span>api.tests<span class="w"> </span>--parallel
-</span></code></pre></div>
-<h2 id="known-limitation">Known limitation<a class="headerlink" href="#known-limitation" title="Permanent link">&para;</a></h2>
-<p>This procedure has <strong>not been dry-run in the current environment</strong>. There is no
-real <code>upstream</code> remote configured here, so it is not possible to run a test
-merge/rebase against actual upstream history. The commands above are the
-documented procedure, verified against the repository layout (branch names,
-conflict files, test entry points), but the rebase itself must be executed by
-someone with network access to both remotes before relying on the conflict
-guidance.</p>
-<p>Re-validate this document the first time a real sync is performed and correct
-anything that differs.</p>
+<p>Never delete <code>release</code>, <code>gh-pages</code>, <code>feat/add-api</code>, or dependabot branches.</p>
 
 
 
