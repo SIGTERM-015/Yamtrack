@@ -5,6 +5,8 @@ The fork carries its own features on top of upstream `dev`, so it needs to be
 regularly rebased to stay current with upstream fixes and releases.
 
 This document is the procedure to bring upstream changes into the fork.
+Day-to-day feature integration into `dev` is a separate workflow, documented
+in [BRANCHING.md](BRANCHING.md).
 
 ## Branches and remotes
 
@@ -14,6 +16,11 @@ This document is the procedure to bring upstream changes into the fork.
 | `upstream` | The original project: `FuzzyGrim/Yamtrack`. Read-only. |
 | `dev` | Fork working baseline. |
 | `feat/add-api` | Fork integration branch that carries the custom API (`src/api/`). This is the branch that is rebased onto upstream. |
+
+Note: `feat/add-api` exists on `origin` only, not in local checkouts, and the
+fork's real working baseline is `dev` (see [BRANCHING.md](BRANCHING.md)).
+Treat the table entry above as the sync procedure's target, not as a
+description of where daily work happens.
 
 Never push to `upstream`, and never push `dev`/feature branches to it.
 
