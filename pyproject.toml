@@ -27,6 +27,8 @@ dependencies = [
   "django-select2~=8.4.8",
   "django-simple-history~=3.13.0",
   "django-widget-tweaks~=1.5.1",
+  "djangorestframework~=3.16.1",
+  "drf-spectacular~=0.29.0",
   "gunicorn~=26.0.0",
   "icalendar~=7.2.2",
   "pillow~=12.3.0",
@@ -72,7 +74,9 @@ force-exclude = true
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["ANN", "PT", "PD", "D100", "D104", "RUF012", "SLF001", "COM812", "CPY001"]
+# TD002/TD003/TD004/FIX002: TODO annotation style (author/issue link). Upstream
+# ignores these too; they police comment formatting, not code quality.
+ignore = ["ANN", "PT", "PD", "D100", "D104", "RUF012", "SLF001", "COM812", "CPY001", "TD002", "TD003", "TD004", "FIX002"]
 
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 88
