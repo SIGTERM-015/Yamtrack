@@ -3,6 +3,7 @@ from unittest.mock import patch
 from urllib.parse import urlencode
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
@@ -54,6 +55,10 @@ class YamtrackApiTestCase(APITestCase):
 
     def setUp(self):
         """Create auth fixtures and patch noisy side effects."""
+        # Throttle counters live in the default cache, which is shared between
+        # tests in a process. Clear it so the rate limits are deterministic.
+        cache.clear()
+
         self.user1 = get_user_model().objects.create_user(
             username="api-test-user1",
         )

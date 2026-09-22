@@ -3670,6 +3670,9 @@ class SearchProviderView(drf_views.APIView):
 
     serializer_class = MediaSerializer
     permission_classes = [permissions.IsAuthenticated]
+    # Search hits third-party providers (TMDB, ...), so it gets its own
+    # stricter throttle scope.
+    throttle_scope = "search"
 
     def get(self, request, media_type):
         """Search for media using the specified provider."""

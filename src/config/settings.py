@@ -147,6 +147,25 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Throttle counters live in the default cache (Redis, see CACHES below),
+    # so limits are shared across workers and survive process restarts.
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        # Unauthenticated requests (health, info). One per second per IP is
+        # plenty for uptime monitoring and blunts scraping.
+        "anon": "60/minute",
+        # Authenticated clients. A single page of the web UI fires bursts of
+        # parallel requests, and the Stremio addon will do the same, so this
+        # only bounds runaway or leaked clients.
+        "user": "300/minute",
+        # Provider-backed endpoints (search). Five times stricter than the
+        # general user limit to protect third-party API quotas.
+        "search": "60/minute",
+    },
 }
 
 
