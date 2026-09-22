@@ -2,6 +2,8 @@
 
 from django.db import migrations, models
 
+BATCH_SIZE = 1000
+
 
 def populate_list_item_id(apps, schema_editor):
     """Populate list_item_id for existing custom list items ordered by date_added."""
@@ -12,14 +14,22 @@ def populate_list_item_id(apps, schema_editor):
         .distinct()
     )
 
-    for custom_list_id in custom_list_ids:
-        list_items = CustomListItem.objects.filter(custom_list_id=custom_list_id).order_by(
-            'date_added',
-            'id',
+    to_update = []
+    for custom_list_id in custom_list_ids.iterator():
+        list_items = (
+            CustomListItem.objects.filter(custom_list_id=custom_list_id)
+            .order_by('date_added', 'id')
+            .only('id', 'list_item_id')
+            .iterator()
         )
         for index, list_item in enumerate(list_items):
             list_item.list_item_id = index
-            list_item.save(update_fields=['list_item_id'])
+            to_update.append(list_item)
+            if len(to_update) >= BATCH_SIZE:
+                CustomListItem.objects.bulk_update(to_update, ['list_item_id'])
+                to_update = []
+    if to_update:
+        CustomListItem.objects.bulk_update(to_update, ['list_item_id'])
 
 
 def reverse_populate_list_item_id(apps, schema_editor):
