@@ -808,6 +808,7 @@ class ListDetailView(drf_views.APIView):
         serialized_list = serialize_data(
             user_list,
             context={
+                "request": request,
                 "paginated_items": paginated_data,
                 "lists_by_item_id": lists_by_item_id,
             },
@@ -945,6 +946,7 @@ class ListItemsView(drf_views.APIView):
             paginated_data["results"],
             many=True,
             context={
+                "request": request,
                 "serialize_items_as_media": True,
                 "lists_by_item_id": lists_by_item_id,
             },
@@ -1276,7 +1278,10 @@ class MediaTypeListView(drf_views.APIView):
             )
 
         media_form.save()
-        serialized_data = serialize_data(media_form.instance)
+        serialized_data = serialize_data(
+            media_form.instance,
+            context={"request": request},
+        )
         return Response(serialized_data, status=HTTP.CREATED)
 
     def _track_provider_item(self, request, body, media_type):
@@ -1352,7 +1357,10 @@ class MediaTypeListView(drf_views.APIView):
             )
 
         media_form.save()
-        serialized_data = serialize_data(media_form.instance)
+        serialized_data = serialize_data(
+            media_form.instance,
+            context={"request": request},
+        )
         return Response(serialized_data, status=HTTP.CREATED)
 
 
@@ -1474,6 +1482,7 @@ class MediaDetailView(drf_views.APIView):
         serialized = serialize_data(
             data,
             serializer_class=CompleteMediaSerializer,
+            context={"request": request},
         )
         return Response(serialized, status=HTTP.OK)
 
@@ -1545,6 +1554,7 @@ class MediaDetailView(drf_views.APIView):
         serialized = serialize_data(
             data,
             serializer_class=CompleteMediaSerializer,
+            context={"request": request},
         )
         return Response(serialized, status=HTTP.OK)
 
@@ -1643,6 +1653,7 @@ class MediaConsumptionHistoryView(drf_views.APIView):
             paginated_data["results"],
             serializer_class=HistorySerializer,
             many=True,
+            context={"request": request},
         )
         paginated_data["results"] = consumptions
         return Response(paginated_data, status=HTTP.OK)
@@ -1718,6 +1729,7 @@ class MediaConsumptionEntryDetailView(drf_views.APIView):
         serialized_data = serialize_data(
             consumption,
             serializer_class=HistorySerializer,
+            context={"request": request},
         )
         return Response(serialized_data, status=HTTP.OK)
 
@@ -1776,6 +1788,7 @@ class MediaConsumptionEntryDetailView(drf_views.APIView):
         serialized_data = serialize_data(
             consumption,
             serializer_class=HistorySerializer,
+            context={"request": request},
         )
         return Response(serialized_data, status=HTTP.OK)
 
@@ -2217,6 +2230,7 @@ class MediaSeasonDetailView(drf_views.APIView):
         serialized = serialize_data(
             data,
             serializer_class=CompleteMediaSerializer,
+            context={"request": request},
         )
         return Response(serialized, status=HTTP.OK)
 
@@ -2293,6 +2307,7 @@ class MediaSeasonDetailView(drf_views.APIView):
         serialized = serialize_data(
             data,
             serializer_class=CompleteMediaSerializer,
+            context={"request": request},
         )
         return Response(serialized, status=HTTP.OK)
 
@@ -2495,6 +2510,7 @@ class MediaSeasonConsumptionHistoryView(drf_views.APIView):
             paginated_data["results"],
             serializer_class=HistorySerializer,
             many=True,
+            context={"request": request},
         )
         paginated_data["results"] = consumptions
         return Response(paginated_data, status=HTTP.OK)
@@ -2590,6 +2606,7 @@ class MediaSeasonConsumptionEntryDetailView(drf_views.APIView):
         serialized_data = serialize_data(
             consumption,
             serializer_class=HistorySerializer,
+            context={"request": request},
         )
         return Response(serialized_data, status=HTTP.OK)
 
@@ -2662,6 +2679,7 @@ class MediaSeasonConsumptionEntryDetailView(drf_views.APIView):
         serialized_data = serialize_data(
             consumption,
             serializer_class=HistorySerializer,
+            context={"request": request},
         )
         return Response(serialized_data, status=HTTP.OK)
 
@@ -3066,6 +3084,7 @@ class MediaEpisodeDetailView(drf_views.APIView):
         serialized = serialize_data(
             data,
             serializer_class=CompleteEpisodeSerializer,
+            context={"request": request},
         )
         return Response(serialized, status=HTTP.OK)
 
@@ -3159,6 +3178,7 @@ class MediaEpisodeDetailView(drf_views.APIView):
         serialized = serialize_data(
             data,
             serializer_class=CompleteEpisodeSerializer,
+            context={"request": request},
         )
         return Response(serialized, status=HTTP.OK)
 
@@ -3265,6 +3285,7 @@ class MediaEpisodeConsumptionHistoryView(drf_views.APIView):
             paginated_data["results"],
             serializer_class=HistorySerializer,
             many=True,
+            context={"request": request},
         )
         paginated_data["results"] = consumptions
         return Response(paginated_data, status=HTTP.OK)
@@ -3368,6 +3389,7 @@ class MediaEpisodeConsumptionEntryDetailView(drf_views.APIView):
         serialized_data = serialize_data(
             consumption,
             serializer_class=HistorySerializer,
+            context={"request": request},
         )
         return Response(serialized_data, status=HTTP.OK)
 
@@ -3440,6 +3462,7 @@ class MediaEpisodeConsumptionEntryDetailView(drf_views.APIView):
         serialized_data = serialize_data(
             consumption,
             serializer_class=HistorySerializer,
+            context={"request": request},
         )
         return Response(serialized_data, status=HTTP.OK)
 
@@ -3792,7 +3815,11 @@ class StatisticsView(drf_views.APIView):
             "activity_data": activity_data,
             "media_type_distribution": media_type_distribution,
             "score_distribution": score_distribution,
-            "top_rated": serialize_data(top_rated, many=True),
+            "top_rated": serialize_data(
+                top_rated,
+                many=True,
+                context={"request": request},
+            ),
             "status_distribution": status_distribution,
             "status_pie_chart_data": status_pie_chart_data,
             "timeline": {

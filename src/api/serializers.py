@@ -31,6 +31,32 @@ from .helpers import (
 )
 
 
+def visible_notes(instance, context):
+    """Return the notes on ``instance`` that the requester is allowed to see.
+
+    Mirrors the web behaviour (``app.views`` public reviews): the owner always
+    sees their own notes, other users only when the owner enabled
+    ``notes_public``. When no request is in the context the viewer cannot be
+    identified, so anything but an empty note is withheld.
+    """
+    notes = getattr(instance, "notes", None)
+    if not notes:
+        return notes
+
+    request = (context or {}).get("request")
+    viewer_id = getattr(getattr(request, "user", None), "pk", None)
+    owner_id = getattr(instance, "user_id", None)
+
+    if (
+        owner_id is not None
+        and viewer_id != owner_id
+        and not getattr(instance, "notes_public", False)
+    ):
+        return None
+
+    return notes
+
+
 class ItemIdField(serializers.Field):
     """Custom field to generate item_id string."""
 
@@ -147,6 +173,7 @@ class CompleteEpisodeSerializer(serializers.Serializer):
             user_medias,
             serializer_class=HistorySerializer,
             many=True,
+            context=self.context,
         )
 
         return {
@@ -320,6 +347,7 @@ class CompleteMediaSerializer(serializers.Serializer):
             user_medias,
             serializer_class=HistorySerializer,
             many=True,
+            context=self.context,
         )
 
         # TODO: Check why some informations take a while to update after a change
@@ -564,9 +592,7 @@ class HistorySerializer(serializers.Serializer):
             "end_date": instance.end_date
             if hasattr(instance, "end_date") and instance.end_date is not None
             else None,
-            "notes": instance.notes
-            if hasattr(instance, "notes") and instance.notes is not None
-            else None,
+            "notes": visible_notes(instance, self.context),
         }
 
 
@@ -693,7 +719,7 @@ class MediaSerializer(serializers.ModelSerializer):
             if hasattr(instance, "start_date")
             else None,
             "end_date": instance.end_date if hasattr(instance, "end_date") else None,
-            "notes": instance.notes if hasattr(instance, "notes") else None,
+            "notes": visible_notes(instance, self.context),
             "lists": lists,
         }
 
@@ -772,6 +798,12 @@ class TimelineItemSerializer(serializers.ModelSerializer):
     class Meta:  # noqa: D106
         model = BasicMedia
         exclude = ("user",)
+
+    def to_representation(self, instance):
+        """Hide notes the requester is not allowed to see."""
+        data = super().to_representation(instance)
+        data["notes"] = visible_notes(instance, self.context)
+        return data
 
 
 serializer_map = {
