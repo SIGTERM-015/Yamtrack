@@ -4038,13 +4038,17 @@ components:
                 description: Error message if the health check failed
     InfoResponse:
       type: object
+      description: >-
+        Application information. The `version`, `debug` and `admin_enabled`
+        fields are only returned to authenticated requests; anonymous requests
+        receive the remaining fields.
       properties:
         version:
           type: string
-          description: Application version
+          description: Application version (authenticated requests only)
         debug:
           type: boolean
-          description: Whether the application is in debug mode
+          description: Whether the application is in debug mode (authenticated requests only)
         frontend_url:
           type: string
           format: uri
@@ -4057,7 +4061,7 @@ components:
           description: Application timezone
         admin_enabled:
           type: boolean
-          description: Whether admin interface is enabled
+          description: Whether admin interface is enabled (authenticated requests only)
         track_time:
           type: boolean
           description: Whether time tracking is enabled

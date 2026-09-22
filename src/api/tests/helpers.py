@@ -173,21 +173,27 @@ def check_health_structure(test_case, item):
         test_case.assertIn("error", check)
 
 
-def check_info_structure(test_case, item):
+def check_info_structure(test_case, item, authenticated=False):  # noqa: FBT002
     """Assert that the given item follows the expected info endpoint structure."""
-    test_case.assertIn("version", item)
-    test_case.assertEqual(item["version"], settings.VERSION)
-    test_case.assertIn("debug", item)
-    test_case.assertEqual(item["debug"], settings.DEBUG)
     test_case.assertIn("frontend_url", item)
     test_case.assertIn("language", item)
     test_case.assertEqual(item["language"], settings.LANGUAGE_CODE)
     test_case.assertIn("timezone", item)
     test_case.assertEqual(item["timezone"], settings.TIME_ZONE)
-    test_case.assertIn("admin_enabled", item)
-    test_case.assertEqual(item["admin_enabled"], settings.ADMIN_ENABLED)
     test_case.assertIn("track_time", item)
     test_case.assertEqual(item["track_time"], settings.TRACK_TIME)
+
+    if authenticated:
+        test_case.assertIn("version", item)
+        test_case.assertEqual(item["version"], settings.VERSION)
+        test_case.assertIn("debug", item)
+        test_case.assertEqual(item["debug"], settings.DEBUG)
+        test_case.assertIn("admin_enabled", item)
+        test_case.assertEqual(item["admin_enabled"], settings.ADMIN_ENABLED)
+    else:
+        test_case.assertNotIn("version", item)
+        test_case.assertNotIn("debug", item)
+        test_case.assertNotIn("admin_enabled", item)
 
 
 def check_item_id_structure(test_case, item):

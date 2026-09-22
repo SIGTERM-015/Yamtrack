@@ -593,15 +593,15 @@ class HealthView(drf_views.APIView):
 class InfoView(drf_views.APIView):
     """Info endpoint."""
 
-    authentication_classes = []
     permission_classes = []
 
-    def get(self, request):  # noqa: ARG002
+    def get(self, request):
         """Get application information."""
         info_data = {}
         response_data = serialize_data(
             info_data,
             serializer_class=InfoSerializer,
+            context={"request": request},
         )
         return Response(response_data, status=HTTP.OK)
 

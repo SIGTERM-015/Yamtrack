@@ -601,15 +601,19 @@ class InfoSerializer(serializers.Serializer):
 
     def to_representation(self, instance):  # noqa: ARG002
         """Transform to representation."""
-        return {
-            "version": settings.VERSION,
-            "debug": settings.DEBUG,
+        representation = {
             "frontend_url": settings.BASE_URL or "http://localhost:8000",
             "language": settings.LANGUAGE_CODE,
             "timezone": settings.TIME_ZONE,
-            "admin_enabled": settings.ADMIN_ENABLED,
             "track_time": settings.TRACK_TIME,
         }
+        request = self.context.get("request") if self.context else None
+        user = getattr(request, "user", None)
+        if user is not None and getattr(user, "is_authenticated", False):
+            representation["version"] = settings.VERSION
+            representation["debug"] = settings.DEBUG
+            representation["admin_enabled"] = settings.ADMIN_ENABLED
+        return representation
 
 
 class ListSerializer(serializers.Serializer):
