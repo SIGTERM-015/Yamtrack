@@ -48,4 +48,19 @@ urlpatterns = [
         views.group_item_add,
         name="group_item_add",
     ),
+    path(
+        "groups_modal/<source:source>/<media_type:media_type>/<str:media_id>",
+        views.groups_modal,
+        name="groups_modal",
+    ),
+    path(
+        "groups_modal/<source:source>/<media_type:media_type>/<str:media_id>/<int:season_number>",
+        views.groups_modal,
+        name="groups_modal",
+    ),
+    path(
+        "groups_modal/<source:source>/<media_type:media_type>/<str:media_id>/<int:season_number>/<int:episode_number>",
+        views.groups_modal,
+        name="groups_modal",
+    ),
 ]

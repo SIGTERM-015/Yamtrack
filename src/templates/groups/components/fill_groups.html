@@ -1,0 +1,29 @@
+
+<div class="bg-[#2a2f35] p-6 rounded-lg max-h-[70svh] overflow-y-auto">
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-2xl font-bold text-white">Groups</h2>
+    <button class="text-gray-400 hover:text-white cursor-pointer"
+            @click="groupsOpen = false">{% include "app/icons/x.svg" with classes="w-6 h-6" %}</button>
+  </div>
+  <ul class="space-y-3">
+    {% for group in groups %}
+      <li class="flex items-center justify-between bg-[#39404b] p-3 rounded-md gap-1">
+        <span class="text-white">{{ group.name }}</span>
+        {% if group.has_item %}
+          <span class="px-3 py-1 rounded bg-emerald-600/20 text-emerald-400 text-sm">Added</span>
+        {% else %}
+          <form method="post" action="{% url 'group_item_add' group.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="item_id" value="{{ item.id }}">
+            <button type="submit"
+                    class="px-3 py-1 rounded transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-opacity-50 bg-gray-500 hover:bg-gray-600">
+              Add
+            </button>
+          </form>
+        {% endif %}
+      </li>
+    {% empty %}
+      <li class="text-gray-200">You don't belong to any groups yet.</li>
+    {% endfor %}
+  </ul>
+</div>

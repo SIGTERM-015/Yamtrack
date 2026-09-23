@@ -1,13 +1,14 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.db.models import Exists, OuterRef
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from app import config
 from app.models import Item, Status
-from groups.models import Group, GroupInvitation, GroupOrigin
+from groups.models import Group, GroupInvitation, GroupItem, GroupOrigin
 from groups.services import (
     add_item_to_group,
     apply_status_to_group_members,
@@ -16,6 +17,7 @@ from groups.services import (
     get_group_genre_stats,
     get_group_progress,
 )
+from lists.views import get_or_create_item
 
 
 @login_required
@@ -241,6 +243,36 @@ def group_item_add(request, group_id):
     add_item_to_group(group, item, request.user)
     messages.success(request, f"{item.title} was added to '{group.name}'.")
     return redirect("group_detail", group_id=group.id)
+
+
+@login_required
+@require_GET
+def groups_modal(
+    request,
+    source,
+    media_type,
+    media_id,
+    season_number=None,
+    episode_number=None,
+):
+    """Return the modal showing the user's groups and allowing to add the item."""
+    item = get_or_create_item(
+        media_type,
+        media_id,
+        source,
+        season_number,
+        episode_number,
+    )
+
+    groups = request.user.joined_groups.annotate(
+        has_item=Exists(GroupItem.objects.filter(group=OuterRef("pk"), item=item)),
+    ).order_by("name")
+
+    return render(
+        request,
+        "groups/components/fill_groups.html",
+        {"item": item, "groups": groups},
+    )
 
 
 @login_required

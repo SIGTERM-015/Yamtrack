@@ -399,3 +399,53 @@ class GroupItemAddViewsTest(TestCase):
         response = self.client.get(reverse("group_item_add", args=[self.group.id]))
         self.assertEqual(response.status_code, 405)
         self.assertFalse(self.group.group_items.filter(item=self.item).exists())
+
+
+class GroupsModalViewTests(TestCase):
+    """Tests for the groups_modal view."""
+
+    def setUp(self):
+        """Set up test data."""
+        patcher = patch("app.models.providers.services.get_media_metadata")
+        mock_get_media_metadata = patcher.start()
+        mock_get_media_metadata.return_value = {
+            "title": "Item 1",
+            "image": "http://example.com/image.jpg",
+        }
+        self.addCleanup(patcher.stop)
+
+        self.member = get_user_model().objects.create_user(
+            username="member",
+            password="testpassword123",  # noqa: S106
+        )
+        self.group = Group.objects.create(
+            name="Modal Group",
+            description="Test Description",
+            owner=self.member,
+        )
+        self.group.members.add(self.member)
+
+    def test_modal_lists_user_groups(self):
+        """A member gets the modal listing their groups."""
+        self.client.login(username="member", password="testpassword123")  # noqa: S106
+        response = self.client.get(
+            reverse(
+                "groups_modal",
+                args=[Sources.TMDB.value, MediaTypes.TV.value, "101"],
+            ),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "groups/components/fill_groups.html")
+        self.assertContains(response, "Modal Group")
+        self.assertIn("item", response.context)
+
+    def test_modal_requires_login(self):
+        """Anonymous users are redirected to login."""
+        response = self.client.get(
+            reverse(
+                "groups_modal",
+                args=[Sources.TMDB.value, MediaTypes.TV.value, "101"],
+            ),
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith("/accounts/login/"))

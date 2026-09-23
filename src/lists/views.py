@@ -249,18 +249,16 @@ def delete(request):
     return helpers.redirect_back(request)
 
 
-@require_GET
-def lists_modal(
-    request,
-    source,
+def get_or_create_item(
     media_type,
     media_id,
+    source,
     season_number=None,
     episode_number=None,
 ):
-    """Return the modal showing all custom lists and allowing to add to them."""
+    """Return the Item for the given media, creating it from metadata if needed."""
     try:
-        item = Item.objects.get(
+        return Item.objects.get(
             media_id=media_id,
             source=source,
             media_type=media_type,
@@ -275,7 +273,7 @@ def lists_modal(
             [season_number],
             episode_number,
         )
-        item = Item.objects.create(
+        return Item.objects.create(
             media_id=media_id,
             source=source,
             media_type=media_type,
@@ -284,6 +282,25 @@ def lists_modal(
             title=metadata["title"],
             image=metadata["image"],
         )
+
+
+@require_GET
+def lists_modal(
+    request,
+    source,
+    media_type,
+    media_id,
+    season_number=None,
+    episode_number=None,
+):
+    """Return the modal showing all custom lists and allowing to add to them."""
+    item = get_or_create_item(
+        media_type,
+        media_id,
+        source,
+        season_number,
+        episode_number,
+    )
 
     custom_lists = CustomList.objects.get_user_lists_with_item(request.user, item)
 

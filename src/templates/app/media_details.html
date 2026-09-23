@@ -325,6 +325,33 @@
             </div>
           </div>
 
+          {# Groups #}
+          {% if request.user.joined_groups.exists %}
+            <div x-data="{ groupsOpen: false }">
+              <button class="w-full flex items-center gap-x-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#343a40] transition-colors duration-200 cursor-pointer"
+                      title="Add to group"
+                      hx-get="{% media_view_url 'groups_modal' media %}"
+                      hx-vals='{"return_url": "{{ request.get_full_path|urlencode }}"}'
+                      hx-target="#{% component_id 'groups' media %}"
+                      hx-trigger="click once"
+                      @click="groupsOpen = true">
+                <span class="flex items-center justify-center w-8 h-8 rounded-md bg-sky-600/15 text-sky-400 shrink-0">
+                  {% include "app/icons/persons.svg" with classes="w-4 h-4" %}
+                </span>
+                <span class="font-medium">Add to group</span>
+              </button>
+
+              <div x-show="groupsOpen"
+                   @keydown.escape.window="groupsOpen = false"
+                   class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div class="w-96 max-h-[90vh] px-4 md:px-0 relative z-60"
+                     @click.outside="groupsOpen = false">
+                  <div id="{% component_id 'groups' media %}"></div>
+                </div>
+              </div>
+            </div>
+          {% endif %}
+
           {# Activity History #}
           <div x-data="{ historyOpen: false }">
             <button class="w-full flex items-center gap-x-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#343a40] transition-colors duration-200 cursor-pointer"

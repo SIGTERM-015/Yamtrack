@@ -1,7 +1,7 @@
 {% load app_tags %}
 
 <div class="bg-[#2a2f35] rounded-lg overflow-hidden hover:bg-[#39404b] transition-colors duration-200"
-     x-data="{ trackOpen: false, listsOpen: false, historyOpen: false }">
+     x-data="{ trackOpen: false, listsOpen: false, groupsOpen: false, historyOpen: false }">
   <div class="flex items-center p-4 gap-4">
     <div class="shrink-0 relative">
       <a href="{{ item|media_url }}">
@@ -52,6 +52,17 @@
                   hx-trigger="click once"
                   @click="listsOpen = true">{% include "app/icons/list-add.svg" with classes="w-4 h-4" %}</button>
 
+          {# Groups Button #}
+          {% if request.user.joined_groups.exists %}
+            <button class="p-2.5 bg-sky-600 text-white rounded-full hover:bg-sky-500 hover:scale-110 hover:shadow-[0_0_15px_rgba(14,165,233,0.5)] transition-all duration-200 cursor-pointer"
+                    title="Add to group"
+                    hx-get="{% media_view_url 'groups_modal' item %}"
+                    hx-vals='{"return_url": "{{ request.get_full_path|urlencode }}"}'
+                    hx-target="#{% component_id 'groups' item %}"
+                    hx-trigger="click once"
+                    @click="groupsOpen = true">{% include "app/icons/persons.svg" with classes="w-4 h-4" %}</button>
+          {% endif %}
+
           {# History Button #}
           <button class="p-2.5 bg-amber-600 text-white rounded-full hover:bg-amber-500 hover:scale-110 hover:shadow-[0_0_15px_rgba(245,158,11,0.5)] transition-all duration-200 cursor-pointer"
                   title="View your activity history"
@@ -88,6 +99,18 @@
       <div id="{% component_id 'lists' item %}"></div>
     </div>
   </div>
+
+  {# Groups Modal #}
+  {% if request.user.joined_groups.exists %}
+    <div x-show="groupsOpen"
+         @keydown.escape.window="groupsOpen = false"
+         class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="w-96 max-h-[90vh] px-4 md:px-0 relative z-60"
+           @click.outside="groupsOpen = false">
+        <div id="{% component_id 'groups' item %}"></div>
+      </div>
+    </div>
+  {% endif %}
 
   {# History Modal #}
   <div x-show="historyOpen"
