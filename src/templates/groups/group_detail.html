@@ -26,6 +26,16 @@
           </div>
         </div>
       </div>
+      <div class="flex items-center gap-2">
+        <a href="{% url 'group_comparison' group.id %}"
+           class="rounded-lg border border-[#39404b] px-4 py-2 font-medium text-gray-300 hover:bg-[#2a2f35]">
+          Ratings comparison
+        </a>
+        <a href="{% url 'group_genre_stats' group.id %}"
+           class="rounded-lg border border-[#39404b] px-4 py-2 font-medium text-gray-300 hover:bg-[#2a2f35]">
+          Genre comparison
+        </a>
+      </div>
     </div>
   </div>
 
