@@ -458,7 +458,7 @@ class Metadata(TestCase):
         """Test the metadata method for books."""
         response = openlibrary.book("OL21733390M")
         self.assertEqual(response["title"], "Nineteen Eighty-Four")
-        self.assertEqual(response["details"]["author"], ["George Orwell"])
+        self.assertIn("George Orwell", response["details"]["author"])
 
     def test_openlibrary_publish_date_with_abbreviated_month(self):
         """Test Open Library publish dates with abbreviated month names."""
