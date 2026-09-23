@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.db import models
 
-from app.models import Item
+from app.models import Item, Status
 
 
 class Group(models.Model):
@@ -79,6 +79,15 @@ class GroupItem(models.Model):
         related_name="added_group_items",
     )
     added_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(
+        max_length=255,
+        choices=Status,
+        default=Status.PLANNING.value,
+    )
+    progress = models.PositiveIntegerField(default=0)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    progressed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         """Meta class."""
@@ -90,6 +99,37 @@ class GroupItem(models.Model):
     def __str__(self):
         """Return string representation."""
         return f"{self.item} in {self.group}"
+
+
+class GroupEpisodeWatch(models.Model):
+    """
+    Model representing an episode watched by a group.
+
+    The group tracks its own episode ledger (one row per episode) instead of a
+    counter, so propagation can tell exactly which episodes the group watched.
+    """
+
+    group_item = models.ForeignKey(
+        GroupItem, on_delete=models.CASCADE, related_name="watched_episodes"
+    )
+    item = models.ForeignKey(
+        Item, on_delete=models.CASCADE, related_name="group_episode_watches"
+    )
+    watched_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        """Meta class."""
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["group_item", "item"], name="unique_group_episode_watch"
+            ),
+        ]
+        indexes = [models.Index(fields=["group_item"])]
+
+    def __str__(self):
+        """Return string representation."""
+        return f"{self.item} watched by {self.group_item.group}"
 
 
 class GroupOrigin(models.Model):

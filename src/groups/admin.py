@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import Group, GroupInvitation, GroupItem, GroupMembership, GroupOrigin
+from .models import (
+    Group,
+    GroupEpisodeWatch,
+    GroupInvitation,
+    GroupItem,
+    GroupMembership,
+    GroupOrigin,
+)
 
 
 class GroupMembershipInline(admin.TabularInline):
@@ -43,6 +50,15 @@ class GroupItemAdmin(admin.ModelAdmin):
     list_display = ("group", "item", "added_by", "added_at")
     search_fields = ("group__name", "item__title", "added_by__username")
     list_filter = ("added_at",)
+
+
+@admin.register(GroupEpisodeWatch)
+class GroupEpisodeWatchAdmin(admin.ModelAdmin):
+    """Admin configuration for GroupEpisodeWatch."""
+
+    list_display = ("group_item", "item", "watched_at")
+    search_fields = ("group_item__group__name", "item__title")
+    list_filter = ("watched_at",)
 
 
 @admin.register(GroupInvitation)
