@@ -40,7 +40,7 @@ class MarkGroupItemStatusTest(TestCase):
     def test_in_progress_sets_started_and_touches_no_personal_rows(self):
         """In progress fills started_at without creating personal records."""
         before = _media_counts()
-        mark_group_item_status(self.group_item, Status.IN_PROGRESS)
+        mark_group_item_status(self.group_item, Status.IN_PROGRESS, participants=[])
         self.group_item.refresh_from_db()
         self.assertEqual(self.group_item.status, Status.IN_PROGRESS.value)
         self.assertIsNotNone(self.group_item.started_at)
@@ -56,8 +56,8 @@ class MarkGroupItemStatusTest(TestCase):
             score=7,
             notes="keep",
         )
-        mark_group_item_status(self.group_item, Status.IN_PROGRESS)
-        mark_group_item_status(self.group_item, Status.COMPLETED)
+        mark_group_item_status(self.group_item, Status.IN_PROGRESS, participants=[])
+        mark_group_item_status(self.group_item, Status.COMPLETED, participants=[])
         entry.refresh_from_db()
         self.assertEqual(entry.status, Status.PLANNING.value)
         self.assertEqual(entry.progress, 3)
@@ -66,7 +66,7 @@ class MarkGroupItemStatusTest(TestCase):
 
     def test_completed_sets_completed_at(self):
         """Completed fills completed_at."""
-        mark_group_item_status(self.group_item, Status.COMPLETED)
+        mark_group_item_status(self.group_item, Status.COMPLETED, participants=[])
         self.group_item.refresh_from_db()
         self.assertEqual(self.group_item.status, Status.COMPLETED.value)
         self.assertIsNotNone(self.group_item.completed_at)

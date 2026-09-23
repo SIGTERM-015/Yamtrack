@@ -2,10 +2,10 @@ from collections import defaultdict
 
 from django.apps import apps
 from django.contrib.auth import get_user_model
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
-from app.models import Status
+from app.models import MediaTypes, Status
 from groups.models import Group, GroupItem
 
 # Minimum number of submitted scores needed to report a comparison difference.
@@ -451,44 +451,157 @@ def get_group_genre_stats(group: Group, genre_getter=None) -> dict:
     }
 
 
+# Media types whose propagation is episode-based and handled in S4.
+_TV_MEDIA_TYPES = {
+    MediaTypes.TV.value,
+    MediaTypes.SEASON.value,
+    MediaTypes.EPISODE.value,
+}
+
+# Personal status only ever advances along this order (design §2.2); Paused and
+# Dropped are handled separately (Paused keeps its status, Dropped is terminal).
+_STATUS_ORDER = {
+    Status.PLANNING.value: 0,
+    Status.IN_PROGRESS.value: 1,
+    Status.COMPLETED.value: 2,
+}
+
+# Only positive group advances propagate; a Paused/Dropped group changes nothing.
+_PROPAGATING_GROUP_STATUSES = {Status.IN_PROGRESS.value, Status.COMPLETED.value}
+
+
+def _resolve_participant_ids(group: Group, participants) -> list:
+    """Return participant user ids; ``None`` means every member of the group."""
+    if participants is None:
+        return list(group.members.values_list("id", flat=True))
+    return [p.id if hasattr(p, "id") else p for p in participants]
+
+
+def propagate_group_progress(group_item: GroupItem, participants=None) -> dict:
+    """
+    Merge the group's status/progress into the personal records of participants.
+
+    Monotone merge (design §2.2): progress and status only advance, never
+    decrease, and completed or dropped records are never reopened. Existing
+    ``score``/``notes`` are left untouched. TV media is skipped here (S4 owns
+    episode-level propagation).
+
+    ``participants=None`` propagates to every member; an empty list propagates
+    to nobody (a group-only update). The operation is idempotent.
+
+    Args:
+        group_item: The GroupItem holding the group's status/progress.
+        participants: Iterable of user ids (or users) to update; None = all.
+
+    Returns:
+        A summary dict with ``created``, ``updated`` and ``skipped`` counts.
+    """
+    item = group_item.item
+    participant_ids = _resolve_participant_ids(group_item.group, participants)
+    group_status = group_item.status
+    group_progress = group_item.progress
+
+    if (
+        item.media_type in _TV_MEDIA_TYPES
+        or group_status not in _PROPAGATING_GROUP_STATUSES
+    ):
+        return {"created": 0, "updated": 0, "skipped": len(participant_ids)}
+
+    model = apps.get_model("app", item.media_type)
+    existing = {
+        entry.user_id: entry
+        for entry in model.objects.filter(item=item, user_id__in=participant_ids)
+    }
+
+    now = timezone.now()
+    created = 0
+    updated = 0
+    skipped = 0
+
+    for user_id in participant_ids:
+        entry = existing.get(user_id)
+        if entry is None:
+            entry = model(
+                item=item,
+                user_id=user_id,
+                status=group_status,
+                progress=group_progress,
+            )
+            if group_status == Status.COMPLETED.value:
+                entry.end_date = group_item.completed_at or now
+            entry.save()
+            created += 1
+            continue
+
+        # Completed and Dropped are terminal for propagation (design §2.2).
+        if entry.status in (Status.COMPLETED.value, Status.DROPPED.value):
+            skipped += 1
+            continue
+
+        changed = False
+        if entry.progress < group_progress:
+            entry.progress = group_progress
+            changed = True
+
+        if entry.status != Status.PAUSED.value and _STATUS_ORDER.get(
+            group_status,
+            0,
+        ) > _STATUS_ORDER.get(entry.status, 0):
+            entry.status = group_status
+            changed = True
+            if group_status == Status.COMPLETED.value and entry.end_date is None:
+                entry.end_date = group_item.completed_at or now
+
+        if changed:
+            entry.save()
+            updated += 1
+        else:
+            skipped += 1
+
+    return {"created": created, "updated": updated, "skipped": skipped}
+
+
 def mark_group_item_status(
     group_item: GroupItem,
     status,
-    participants=None,  # noqa: ARG001 - S3 will use it for propagation
+    participants=None,
 ) -> GroupItem:
     """
-    Write the group's own status on a GroupItem without touching members.
+    Write the group's own status on a GroupItem and propagate it to members.
 
-    Only ``GroupItem.status`` and its date fields change: no personal
-    tracking record is created or modified (propagation arrives in S3/S4).
-    ``participants`` is accepted for forward compatibility and ignored.
+    The GroupItem keeps its own status/dates; then non-TV participants receive a
+    monotone merge of the group's status and progress
+    (:func:`propagate_group_progress`). ``participants=None`` targets every
+    member, an empty list targets nobody. TV propagation arrives in S4.
 
     Args:
         group_item: The GroupItem to update.
         status: A Status value or member.
-        participants: Ignored in S2.
+        participants: Iterable of user ids (or users); None = all members.
 
     Returns:
         The saved GroupItem.
     """
     status_value = status.value if hasattr(status, "value") else status
     now = timezone.now()
-    group_item.status = status_value
-    group_item.progressed_at = now
-    if status_value == Status.IN_PROGRESS.value:
-        if group_item.started_at is None:
-            group_item.started_at = now
-        group_item.completed_at = None
-    elif status_value == Status.COMPLETED.value:
-        if group_item.started_at is None:
-            group_item.started_at = now
-        group_item.completed_at = now
-    elif status_value == Status.PLANNING.value:
-        group_item.started_at = None
-        group_item.completed_at = None
-    group_item.save(
-        update_fields=["status", "started_at", "completed_at", "progressed_at"],
-    )
+    with transaction.atomic():
+        group_item.status = status_value
+        group_item.progressed_at = now
+        if status_value == Status.IN_PROGRESS.value:
+            if group_item.started_at is None:
+                group_item.started_at = now
+            group_item.completed_at = None
+        elif status_value == Status.COMPLETED.value:
+            if group_item.started_at is None:
+                group_item.started_at = now
+            group_item.completed_at = now
+        elif status_value == Status.PLANNING.value:
+            group_item.started_at = None
+            group_item.completed_at = None
+        group_item.save(
+            update_fields=["status", "started_at", "completed_at", "progressed_at"],
+        )
+        propagate_group_progress(group_item, participants)
     return group_item
 
 
