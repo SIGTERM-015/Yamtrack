@@ -3,6 +3,7 @@ from collections import defaultdict
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.utils import timezone
 
 from app.models import Status
 from groups.models import Group, GroupItem
@@ -448,3 +449,74 @@ def get_group_genre_stats(group: Group, genre_getter=None) -> dict:
         "disagreements": disagreements,
         "volume": volume,
     }
+
+
+def mark_group_item_status(
+    group_item: GroupItem,
+    status,
+    participants=None,  # noqa: ARG001 - S3 will use it for propagation
+) -> GroupItem:
+    """
+    Write the group's own status on a GroupItem without touching members.
+
+    Only ``GroupItem.status`` and its date fields change: no personal
+    tracking record is created or modified (propagation arrives in S3/S4).
+    ``participants`` is accepted for forward compatibility and ignored.
+
+    Args:
+        group_item: The GroupItem to update.
+        status: A Status value or member.
+        participants: Ignored in S2.
+
+    Returns:
+        The saved GroupItem.
+    """
+    status_value = status.value if hasattr(status, "value") else status
+    now = timezone.now()
+    group_item.status = status_value
+    group_item.progressed_at = now
+    if status_value == Status.IN_PROGRESS.value:
+        if group_item.started_at is None:
+            group_item.started_at = now
+        group_item.completed_at = None
+    elif status_value == Status.COMPLETED.value:
+        if group_item.started_at is None:
+            group_item.started_at = now
+        group_item.completed_at = now
+    elif status_value == Status.PLANNING.value:
+        group_item.started_at = None
+        group_item.completed_at = None
+    group_item.save(
+        update_fields=["status", "started_at", "completed_at", "progressed_at"],
+    )
+    return group_item
+
+
+_TAB_STATUS_BUCKETS = {
+    Status.PLANNING.value: "pending",
+    Status.IN_PROGRESS.value: "watching",
+    Status.COMPLETED.value: "watched",
+}
+
+
+def get_group_tab_items(group: Group) -> dict:
+    """
+    Classify a group's items into tabs from the group's own status.
+
+    Planning goes to pending, In progress to watching, Completed to
+    watched; Paused and Dropped fall into others (never mixed into the
+    three main tabs).
+
+    Args:
+        group: The Group instance.
+
+    Returns:
+        A dict with ``pending``/``watching``/``watched``/``others`` lists
+        of GroupItem.
+    """
+    tabs = {"pending": [], "watching": [], "watched": [], "others": []}
+    for group_item in group.group_items.select_related("item").all():
+        tabs[_TAB_STATUS_BUCKETS.get(group_item.status, "others")].append(
+            group_item,
+        )
+    return tabs
