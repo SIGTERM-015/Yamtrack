@@ -43,4 +43,9 @@ urlpatterns = [
         views.group_genre_stats,
         name="group_genre_stats",
     ),
+    path(
+        "<int:group_id>/add_item/",
+        views.group_item_add,
+        name="group_item_add",
+    ),
 ]

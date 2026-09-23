@@ -310,3 +310,92 @@ class GroupCreateInviteViewsTest(TestCase):
         self.assertRedirects(response, reverse("group_list"))
         self.assertFalse(GroupInvitation.objects.filter(id=invitation.id).exists())
         self.assertFalse(self.group.members.filter(id=self.user2.id).exists())
+
+
+class GroupItemAddViewsTest(TestCase):
+    """Test cases for the group item add view."""
+
+    def setUp(self):
+        """Set up test data."""
+        patcher = patch("app.models.providers.services.get_media_metadata")
+        mock_get_media_metadata = patcher.start()
+        mock_get_media_metadata.return_value = {
+            "max_progress": 1,
+            "related": {"seasons": []},
+        }
+        self.addCleanup(patcher.stop)
+
+        user_model = get_user_model()
+        self.user1 = user_model.objects.create_user(
+            username="user1",
+            password="testpassword123",  # noqa: S106
+        )
+        self.user2 = user_model.objects.create_user(
+            username="user2",
+            password="testpassword123",  # noqa: S106
+        )
+        self.outsider = user_model.objects.create_user(
+            username="outsider",
+            password="testpassword123",  # noqa: S106
+        )
+        self.group = Group.objects.create(
+            name="Test Group",
+            description="Test Description",
+            owner=self.user1,
+        )
+        self.group.members.add(self.user1)
+        self.group.members.add(self.user2)
+
+        self.item = Item.objects.create(
+            title="Item 1",
+            media_id="101",
+            media_type=MediaTypes.TV.value,
+            source=Sources.TMDB.value,
+        )
+
+    def test_member_adds_item_creates_planning_for_all_members(self):
+        """Adding an item creates Planning records for every member."""
+        self.client.login(username="user1", password="testpassword123")  # noqa: S106
+        response = self.client.post(
+            reverse("group_item_add", args=[self.group.id]),
+            {"item_id": self.item.id},
+        )
+        self.assertRedirects(response, reverse("group_detail", args=[self.group.id]))
+        self.assertTrue(self.group.group_items.filter(item=self.item).exists())
+        self.assertEqual(
+            TV.objects.filter(item=self.item, status=Status.PLANNING).count(), 2
+        )
+
+    def test_member_add_keeps_existing_tracking_intact(self):
+        """Existing member records keep their status and score."""
+        TV.objects.create(user=self.user1, item=self.item, status="Watching", score=8)
+        self.client.login(username="user2", password="testpassword123")  # noqa: S106
+        response = self.client.post(
+            reverse("group_item_add", args=[self.group.id]),
+            {"item_id": self.item.id},
+        )
+        self.assertRedirects(response, reverse("group_detail", args=[self.group.id]))
+        existing = TV.objects.get(user=self.user1, item=self.item)
+        self.assertEqual(existing.status, "Watching")
+        self.assertEqual(existing.score, 8)
+        self.assertTrue(
+            TV.objects.get(user=self.user2, item=self.item).status == Status.PLANNING
+        )
+
+    def test_non_member_add_returns_404_and_creates_nothing(self):
+        """A non-member gets 404 and no item is linked to the group."""
+        self.client.login(username="outsider", password="testpassword123")  # noqa: S106
+        response = self.client.post(
+            reverse("group_item_add", args=[self.group.id]),
+            {"item_id": self.item.id},
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(self.group.group_items.filter(item=self.item).exists())
+        self.assertFalse(TV.objects.filter(item=self.item).exists())
+
+    def test_get_is_not_allowed(self):
+        """The endpoint only accepts POST."""
+        self.client.login(username="user1", password="testpassword123")  # noqa: S106
+        response = self.client.get(reverse("group_item_add", args=[self.group.id]))
+        self.assertEqual(response.status_code, 405)
+        self.assertFalse(self.group.group_items.filter(item=self.item).exists())

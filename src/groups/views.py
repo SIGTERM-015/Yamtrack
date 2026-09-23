@@ -9,6 +9,7 @@ from app import config
 from app.models import Item, Status
 from groups.models import Group, GroupInvitation, GroupOrigin
 from groups.services import (
+    add_item_to_group,
     apply_status_to_group_members,
     apply_status_to_user,
     get_group_comparison,
@@ -223,6 +224,22 @@ def group_set_item_status(request, group_id):
         msg = "Invalid scope"
         raise Http404(msg)
 
+    return redirect("group_detail", group_id=group.id)
+
+
+@login_required
+@require_POST
+def group_item_add(request, group_id):
+    """Add an item to a group, creating Planning for members without it."""
+    group = get_object_or_404(Group, id=group_id)
+
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    item = get_object_or_404(Item, id=request.POST.get("item_id"))
+    add_item_to_group(group, item, request.user)
+    messages.success(request, f"{item.title} was added to '{group.name}'.")
     return redirect("group_detail", group_id=group.id)
 
 
