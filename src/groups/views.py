@@ -4,20 +4,96 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Exists, OuterRef
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from app import config
-from app.models import Item, Status
+from app.models import Item, MediaTypes, Status
 from groups.models import Group, GroupInvitation, GroupItem, GroupOrigin
 from groups.services import (
     add_item_to_group,
-    apply_status_to_group_members,
     apply_status_to_user,
+    episodes_up_to,
     get_group_comparison,
     get_group_genre_stats,
     get_group_progress,
+    get_group_tab_items,
+    mark_group_episodes_watched,
+    mark_group_item_status,
 )
 from lists.views import get_or_create_item
+
+# TODO(roulette): another agent is wiring up the roulette feature behind a
+# real `roulette` URL; flip this once that lands so the placeholder link in
+# the Planning tab renders.
+ROULETTE_ENABLED = False
+
+_TAB_LABELS = {
+    "pending": "Planning",
+    "watching": "Watching",
+    "watched": "Watched",
+    "others": "Other",
+}
+_VALID_TABS = {"pending", "watching", "watched", "others", "stats", "settings"}
+
+
+def _resolve_participants_or_404(request, group):
+    """
+    Resolve the ``participants[]`` POST field into a list of user ids.
+
+    Missing field means "every member" (``None``). Any id that is not a
+    member of the group aborts with 404 *before* any write happens.
+    """
+    raw_ids = request.POST.getlist("participants")
+    if not raw_ids:
+        return None
+
+    try:
+        ids = [int(raw_id) for raw_id in raw_ids]
+    except (TypeError, ValueError):
+        msg = "Invalid participant"
+        raise Http404(msg) from None
+
+    member_ids = set(group.members.values_list("id", flat=True))
+    if not set(ids) <= member_ids:
+        msg = "Invalid participant"
+        raise Http404(msg)
+
+    return ids
+
+
+def _build_item_view(group_item, progress_data, members):
+    """Build one poster-grid entry: group state + per-member rows."""
+    item = group_item.item
+    p_data = progress_data.get(item.id, {"completed_count": 0, "members": {}})
+
+    member_rows = []
+    for member in members:
+        m_data = p_data["members"].get(member.id, {"status": None, "progress": 0})
+        status = m_data["status"]
+        status_config = config.get_status_config(status) if status else None
+        member_rows.append(
+            {
+                "user": member,
+                "status": status,
+                "status_color": (
+                    status_config["text_color"] if status_config else "text-gray-500"
+                ),
+                "progress": m_data["progress"],
+                # Preselected, except a member whose personal record is
+                # Dropped (design decision: respected, unchecked by default).
+                "default_checked": status != Status.DROPPED.value,
+            }
+        )
+
+    return {
+        "group_item": group_item,
+        "item": item,
+        "is_tv": item.media_type == MediaTypes.TV.value,
+        "completed_count": p_data["completed_count"],
+        "total_members": len(members),
+        "member_progress": member_rows,
+    }
 
 
 @login_required
@@ -34,7 +110,7 @@ def group_list(request):
 
 @login_required
 def group_detail(request, group_id):
-    """View to display group detail."""
+    """View to display group detail: five tabs driven by the group's own status."""
     group = get_object_or_404(Group, id=group_id)
 
     is_member = group.members.filter(id=request.user.id).exists()
@@ -44,54 +120,84 @@ def group_detail(request, group_id):
         msg = "Group not found"
         raise Http404(msg)
 
-    progress_data = get_group_progress(group)
-
-    items_data = []
-
-    group_items = Item.objects.filter(id__in=progress_data.keys())
-    items_dict = {item.id: item for item in group_items}
+    tab = request.GET.get("tab", "pending")
+    if tab not in _VALID_TABS:
+        tab = "pending"
 
     members = list(group.members.all())
-    members_dict = {m.id: m for m in members}
+    progress_data = get_group_progress(group)
+    tab_items = get_group_tab_items(group)
 
-    for item_id, p_data in progress_data.items():
-        item = items_dict.get(item_id)
-        if not item:
-            continue
-
-        member_progress = []
-        for m_id, m_data in p_data["members"].items():
-            status = m_data["status"]
-            status_config = config.get_status_config(status) if status else None
-            member_progress.append(
-                {
-                    "user": members_dict.get(m_id),
-                    "status": status,
-                    "status_color": (
-                        status_config["text_color"]
-                        if status_config
-                        else "text-gray-500"
-                    ),
-                    "progress": m_data["progress"],
-                }
-            )
-
-        items_data.append(
-            {
-                "item": item,
-                "completed_count": p_data["completed_count"],
-                "total_members": p_data["total_members"],
-                "member_progress": member_progress,
-            }
-        )
+    nav_tabs = [
+        {"key": key, "label": _TAB_LABELS[key], "count": len(tab_items[key])}
+        for key in ("pending", "watching", "watched", "others")
+    ]
 
     context = {
         "group": group,
-        "items_data": items_data,
         "is_member": is_member,
         "invitation": invitation,
         "status_choices": Status.choices,
+        "tab": tab,
+        "nav_tabs": nav_tabs,
+        "members": members,
+        "roulette_enabled": ROULETTE_ENABLED,
+        "MediaTypes": MediaTypes,
     }
+
+    if tab in ("pending", "watching", "watched", "others"):
+        items_data = [
+            _build_item_view(group_item, progress_data, members)
+            for group_item in tab_items[tab]
+        ]
+        context["items_data"] = items_data
+    elif tab == "stats":
+        comparison_data = get_group_comparison(group)
+        comparison_items = {
+            item.id: item
+            for item in Item.objects.filter(
+                id__in=[row["item_id"] for row in comparison_data],
+            )
+        }
+        context["rows"] = [
+            {
+                "item": comparison_items[row["item_id"]],
+                "scores": [
+                    {"user": member, "score": row["scores"].get(member.id)}
+                    for member in members
+                ],
+                "average": row["average"],
+                "difference": row["difference"],
+            }
+            for row in comparison_data
+            if row["item_id"] in comparison_items
+        ]
+
+        genre_stats = get_group_genre_stats(group)
+        context["genres"] = [
+            {
+                "genre": genre["genre"],
+                "average": genre["average"],
+                "difference": genre["difference"],
+                "count": genre["count"],
+                "members": [
+                    {
+                        "user": member,
+                        "average": genre["members"][member.id]["average"],
+                        "count": genre["members"][member.id]["count"],
+                    }
+                    for member in members
+                ],
+            }
+            for genre in genre_stats["genres"]
+        ]
+        context["agreements"] = genre_stats["agreements"]
+        context["disagreements"] = genre_stats["disagreements"]
+        context["member_volumes"] = [
+            {"user": member, "count": genre_stats["volume"].get(member.id, 0)}
+            for member in members
+        ]
+
     return render(request, "groups/group_detail.html", context)
 
 
@@ -201,15 +307,23 @@ def _detach_group_origins(user, group):
 @login_required
 @require_POST
 def group_set_item_status(request, group_id):
-    """Apply a status to every member of a group, without overwriting data."""
+    """
+    Set the group's own status/progress on an item and propagate it.
+
+    ``scope=mine`` (default the requester unaffected by ``participants[]``)
+    replaces the requester's own record explicitly. ``scope=group`` (the
+    default) writes the group's status/progress on the GroupItem and merges
+    it monotonically into the selected ``participants[]`` (all members when
+    omitted); an id that is not a member aborts with 404 before any write.
+    """
     group = get_object_or_404(Group, id=group_id)
 
     if not group.members.filter(id=request.user.id).exists():
         msg = "Group not found"
         raise Http404(msg)
 
-    item = get_object_or_404(
-        Item, id=request.POST.get("item_id"), group_items__group=group
+    group_item = get_object_or_404(
+        GroupItem, group=group, item_id=request.POST.get("item_id")
     )
 
     status = request.POST.get("status")
@@ -219,13 +333,123 @@ def group_set_item_status(request, group_id):
 
     scope = request.POST.get("scope", "group")
     if scope == "mine":
-        apply_status_to_user(item, request.user, status)
+        apply_status_to_user(group_item.item, request.user, status)
     elif scope == "group":
-        apply_status_to_group_members(group, item, status)
+        participants = _resolve_participants_or_404(request, group)
+
+        progress_raw = request.POST.get("progress")
+        if progress_raw not in (None, ""):
+            try:
+                progress_value = max(int(progress_raw), 0)
+            except ValueError:
+                messages.error(request, "Invalid progress value.")
+                return redirect("group_detail", group_id=group.id)
+            group_item.progress = progress_value
+            group_item.save(update_fields=["progress"])
+
+        mark_group_item_status(group_item, status, participants)
     else:
         msg = "Invalid scope"
         raise Http404(msg)
 
+    return redirect("group_detail", group_id=group.id)
+
+
+@login_required
+@require_POST
+def group_mark_episodes(request, group_id):
+    """
+    Mark TV episodes as watched by the group and propagate them to members.
+
+    Accepts ``season_number``/``episode_number`` and an optional
+    ``mode=up_to`` to expand to every episode from 1 up to that number
+    (the "up to episode N" shortcut). Same ``participants[]`` semantics as
+    :func:`group_set_item_status`.
+    """
+    group = get_object_or_404(Group, id=group_id)
+
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    group_item = get_object_or_404(
+        GroupItem,
+        group=group,
+        item_id=request.POST.get("item_id"),
+        item__media_type=MediaTypes.TV.value,
+    )
+
+    participants = _resolve_participants_or_404(request, group)
+
+    try:
+        season_number = int(request.POST.get("season_number"))
+        episode_number = int(request.POST.get("episode_number"))
+    except (TypeError, ValueError):
+        messages.error(request, "Invalid season or episode number.")
+        return redirect("group_detail", group_id=group.id)
+
+    mode = request.POST.get("mode", "single")
+    episodes = (
+        episodes_up_to(season_number, episode_number)
+        if mode == "up_to"
+        else [(season_number, episode_number)]
+    )
+
+    mark_group_episodes_watched(group_item, episodes, participants)
+    messages.success(request, f"Marked episodes watched for '{group_item.item.title}'.")
+    return redirect(f"{reverse('group_detail', args=[group.id])}?tab=watching")
+
+
+@login_required
+@require_POST
+def group_bulk_set_status(request, group_id):
+    """
+    Apply a status to several items at once, using the monotone merge.
+
+    Never overwrites or reduces a participant's personal progress (E4.2):
+    each selected item is routed through :func:`mark_group_item_status`. TV
+    items are skipped here; episode-based progress uses
+    :func:`group_mark_episodes`.
+    """
+    group = get_object_or_404(Group, id=group_id)
+
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    status = request.POST.get("status")
+    if status not in {choice.value for choice in Status}:
+        msg = "Invalid status"
+        raise Http404(msg)
+
+    participants = _resolve_participants_or_404(request, group)
+
+    item_ids = request.POST.getlist("item_ids")
+    group_items = GroupItem.objects.filter(group=group, item_id__in=item_ids).exclude(
+        item__media_type=MediaTypes.TV.value
+    )
+
+    for group_item in group_items:
+        mark_group_item_status(group_item, status, participants)
+
+    messages.success(request, f"Updated {len(group_items)} item(s).")
+    return redirect("group_detail", group_id=group.id)
+
+
+@login_required
+@require_POST
+def group_item_remove(request, group_id, item_id):
+    """Remove an item from the group. Any member can do it; personal records stay."""
+    group = get_object_or_404(Group, id=group_id)
+
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    group_item = get_object_or_404(GroupItem, group=group, item_id=item_id)
+    title = group_item.item.title
+    group_item.delete()
+    messages.success(request, f"'{title}' was removed from the group.")
     return redirect("group_detail", group_id=group.id)
 
 

@@ -174,10 +174,10 @@ class GroupMembershipViewsTest(TestCase):
     # --- detail page ---
 
     def test_group_detail_lists_members_and_marks_owner(self):
-        """The detail page lists members and flags the owner."""
+        """The Settings tab lists members and flags the owner."""
         self.login("member")
         url = reverse("group_detail", args=[self.group.id])
-        response = self.client.get(url)
+        response = self.client.get(url, {"tab": "settings"})
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "owner")

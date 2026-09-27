@@ -1,4 +1,5 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -17,6 +18,15 @@ class GroupBulkStatusTest(TestCase):
 
     def setUp(self):
         """Create a group with three members and one movie."""
+        # Movie.save() -> process_status() fetches metadata whenever its
+        # status changes (e.g. to Completed); the view now writes personal
+        # records through the ORM (not bulk_create), so this is exercised
+        # by every view-level test in this file.
+        patcher = patch("app.models.providers.services.get_media_metadata")
+        self.mock_metadata = patcher.start()
+        self.mock_metadata.return_value = {"max_progress": 1000}
+        self.addCleanup(patcher.stop)
+
         self.owner = User.objects.create(username="owner")
         self.alice = User.objects.create(username="alice")
         self.bob = User.objects.create(username="bob")

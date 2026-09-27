@@ -23,6 +23,21 @@ urlpatterns = [
         name="group_set_item_status",
     ),
     path(
+        "<int:group_id>/mark-episodes/",
+        views.group_mark_episodes,
+        name="group_mark_episodes",
+    ),
+    path(
+        "<int:group_id>/bulk-set-status/",
+        views.group_bulk_set_status,
+        name="group_bulk_set_status",
+    ),
+    path(
+        "<int:group_id>/items/<int:item_id>/remove/",
+        views.group_item_remove,
+        name="group_item_remove",
+    ),
+    path(
         "<int:group_id>/members/<int:user_id>/remove/",
         views.group_remove_member,
         name="group_remove_member",
