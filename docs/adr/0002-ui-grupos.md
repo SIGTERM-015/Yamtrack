@@ -27,6 +27,33 @@ La UI actual de grupos pone la gestión antes que el uso: el detalle (`group_det
 
 Hay que construir las cinco pestañas con el estado propio del grupo como fuente, el buscador dentro del grupo y el botón «añadir a grupo» en ficha y búsqueda, la ruleta de grupo sobre pendientes, la comparativa y los géneros integrados en la pestaña de estadísticas, y el flujo de descarte con «deshacer» y sección «Descartados» en ambos ámbitos. La gestión de miembros e invitaciones se repliega a la pestaña de Ajustes.
 
+## Progreso del grupo
+
+Decisiones tomadas durante la implementación de S4 (propagación de episodios de TV)
+y S5 (rediseño de la pantalla de grupo), complementarias a la §7 de la Decisión:
+
+1. **Paused/Dropped del grupo van a un filtro «Otros», no se propagan.** Las tres
+   pestañas Pendientes/Viendo/Vistos se basan en el estado propio del grupo
+   (Planning/In progress/Completed); un grupo en Paused o Dropped no encaja en
+   ninguna sin distorsionar su semántica, así que ambos caen en un filtro «Otros»
+   separado. Ni Paused ni Dropped del grupo se propagan a los registros
+   personales de los participantes (solo In progress y Completed avanzan algo).
+2. **Un miembro con registro personal Dropped se respeta, no se reanima.** Al
+   marcar progreso o estado desde el grupo, la lista de participantes preselecciona
+   a todos los miembros excepto a quien ya tenga el medio en Dropped en su perfil
+   personal: aparece sin marcar por defecto (puede marcarse a mano si alguien
+   quiere reactivarlo explícitamente). Esto es consistente con que Dropped es
+   terminal para la propagación (ADR 0001 acuerdo 17).
+3. **Los episodios de grupo se pueden marcar en cualquier orden.** El ledger
+   `GroupEpisodeWatch` es un conjunto de episodios vistos, no un puntero de
+   "último episodio", así que no impone secuencialidad; existe además el atajo
+   «hasta el episodio N», que expande a marcar los episodios 1..N de una
+   temporada de una sola vez.
+4. **Un episodio visto por el grupo cuenta una sola vez.** El ledger tiene una
+   fila por `(group_item, item)` con restricción de unicidad; volver a marcar el
+   mismo episodio no lo duplica ni lo cuenta dos veces en el progreso agregado
+   del grupo.
+
 ## Alternativas descartadas
 
 - **Diseño específico de pareja:** se descarta por el acuerdo 2; el diseño genérico con contadores «X/Y» cubre la pareja sin casos especiales.
