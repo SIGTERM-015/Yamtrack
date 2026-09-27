@@ -1,33 +1,152 @@
 {% extends "base.html" %}
 
 {% block title %}
-  Recomendaciones - Yamtrack
+  Recommendations - Yamtrack
 {% endblock title %}
 
 {% block content %}
   <div class="space-y-6">
-    <h1 class="text-3xl font-bold">Recomendaciones</h1>
+    <h1 class="text-3xl font-bold">Recommendations</h1>
+
+    {% if request.GET.discarded_title %}
+      <div class="flex items-center justify-between gap-3 rounded-md border border-gray-700 bg-[#2a2f35] px-4 py-3 text-sm text-gray-200">
+        <span>"{{ request.GET.discarded_title }}" won't be suggested again.</span>
+        <form method="post" action="{% url 'restore_item' request.GET.discarded_item %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.path }}?mode={{ mode }}{% if group %}&group={{ group.id }}{% endif %}">
+          <button type="submit"
+                  class="cursor-pointer rounded-md border border-indigo-500 px-3 py-1 font-medium text-indigo-300 transition-colors hover:bg-indigo-500 hover:text-white">
+            Undo
+          </button>
+        </form>
+      </div>
+    {% endif %}
 
     <nav class="flex gap-x-6 overflow-x-auto border-b border-[#2c3136]">
       <a href="{% url 'recommendations' %}?mode=mine"
          class="pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors {% if mode == 'mine' %}text-white border-indigo-500{% else %}text-gray-400 border-transparent hover:text-white{% endif %}">
-        Para mí
+        For me
       </a>
       <a href="{% url 'recommendations' %}?mode=group"
          class="pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors {% if mode == 'group' %}text-white border-indigo-500{% else %}text-gray-400 border-transparent hover:text-white{% endif %}">
-        Para el grupo
+        For the group
+      </a>
+      <a href="{% url 'recommendations' %}?mode=discarded"
+         class="pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors {% if mode == 'discarded' %}text-white border-indigo-500{% else %}text-gray-400 border-transparent hover:text-white{% endif %}">
+        Discarded
       </a>
     </nav>
 
-    {% if mode == 'group' %}
-      <div class="rounded-lg border border-gray-700 bg-[#2a2f35] p-6 text-gray-300">
-        <p class="font-medium text-white">Recomendaciones de grupo: próximamente (E8.5).</p>
-        <p class="mt-1 text-sm">
-          El motor de grupo (least-misery y el modo «para mí» dentro del grupo) ya
-          está implementado; falta exponer el perfil de cada miembro para poder
-          combinarlos en esta pantalla.
-        </p>
-      </div>
+    {% if mode == 'discarded' %}
+
+      {% if discarded %}
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {% for discard in discarded %}
+            <article class="flex flex-col overflow-hidden rounded-lg border border-gray-700 bg-[#2a2f35]">
+              {% if discard.item.image %}
+                <img src="{{ discard.item.image }}" alt="{{ discard.item.title }}" class="h-48 w-full object-cover">
+              {% endif %}
+              <div class="flex flex-1 flex-col gap-2 p-4">
+                <h2 class="font-semibold text-white">{{ discard.item.title }}</h2>
+                <p class="text-xs tracking-wide text-gray-400 uppercase">{{ discard.item.media_type }}</p>
+                <form method="post" action="{% url 'restore_item' discard.item.id %}" class="mt-auto pt-2">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{% url 'recommendations' %}?mode=discarded">
+                  <button type="submit"
+                          class="w-full cursor-pointer rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
+                    Restore
+                  </button>
+                </form>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-gray-400">You haven't discarded anything yet. Titles you mark "Not interested" in the roulette or in recommendations show up here.</p>
+      {% endif %}
+
+    {% elif mode == 'group' %}
+
+      {% if not groups %}
+        <p class="text-gray-400">You're not in any group yet. Join or create one to get group recommendations.</p>
+      {% else %}
+        <form method="get" class="flex flex-wrap items-center gap-3">
+          <input type="hidden" name="mode" value="group">
+          <label for="group-select" class="text-sm text-gray-400">Group:</label>
+          <select id="group-select"
+                  name="group"
+                  onchange="this.form.submit()"
+                  class="rounded-md border border-gray-700 bg-[#2a2f35] px-3 py-2 text-sm text-white">
+            {% for candidate_group in groups %}
+              <option value="{{ candidate_group.id }}" {% if group.id == candidate_group.id %}selected{% endif %}>{{ candidate_group.name }}</option>
+            {% endfor %}
+          </select>
+          <label class="flex items-center gap-2 text-sm text-gray-300">
+            <input type="checkbox"
+                   name="allow_known"
+                   value="1"
+                   onchange="this.form.submit()"
+                   {% if allow_known %}checked{% endif %}>
+            Allow titles some of us already completed
+          </label>
+        </form>
+
+        {% if scarce %}
+          <div class="rounded-lg border border-gray-700 bg-[#2a2f35] p-4 text-sm text-gray-300">
+            Not many candidates match right now, so this list is shorter than usual.
+            {% if not allow_known %}Allow already-completed titles above to see more.{% endif %}
+          </div>
+        {% endif %}
+
+        {% if candidates %}
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {% for candidate in candidates %}
+              <article class="flex flex-col overflow-hidden rounded-lg border border-gray-700 bg-[#2a2f35]">
+                {% if candidate.image %}
+                  <img src="{{ candidate.image }}" alt="{{ candidate.title }}" class="h-48 w-full object-cover">
+                {% endif %}
+                <div class="flex flex-1 flex-col gap-2 p-4">
+                  <h2 class="font-semibold text-white">{{ candidate.title }}</h2>
+                  <p class="text-xs tracking-wide text-gray-400 uppercase">{{ candidate.media_type }} · {{ candidate.source }}</p>
+                  {% if candidate.top_genre %}
+                    <p class="text-sm text-gray-300">Because the group likes {{ candidate.top_genre }}</p>
+                  {% else %}
+                    <p class="text-sm text-gray-500">Not enough shared ratings yet to explain this pick; ranked by relevance and quality.</p>
+                  {% endif %}
+                  <div class="mt-auto flex flex-wrap items-center gap-3 pt-2">
+                    <form method="post" action="{% url 'group_recommend_add' group.id %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="media_id" value="{{ candidate.media_id }}">
+                      <input type="hidden" name="source" value="{{ candidate.source }}">
+                      <input type="hidden" name="media_type" value="{{ candidate.media_type }}">
+                      {% if candidate.season_number %}<input type="hidden" name="season_number" value="{{ candidate.season_number }}">{% endif %}
+                      <button type="submit"
+                              class="cursor-pointer rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
+                        Add to group
+                      </button>
+                    </form>
+                    <form method="post" action="{% url 'group_discard_item' group.id %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="media_id" value="{{ candidate.media_id }}">
+                      <input type="hidden" name="source" value="{{ candidate.source }}">
+                      <input type="hidden" name="media_type" value="{{ candidate.media_type }}">
+                      {% if candidate.season_number %}<input type="hidden" name="season_number" value="{{ candidate.season_number }}">{% endif %}
+                      <input type="hidden" name="next" value="{% url 'recommendations' %}?mode=group&group={{ group.id }}">
+                      <button type="submit"
+                              class="cursor-pointer rounded-md border border-gray-700 px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white">
+                        Not interested
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </article>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-gray-400">No group recommendations yet: rate a few titles together and check back.</p>
+        {% endif %}
+      {% endif %}
+
     {% elif candidates %}
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {% for candidate in candidates %}
@@ -41,11 +160,11 @@
               <h2 class="font-semibold text-white">{{ candidate.title }}</h2>
               <p class="text-xs tracking-wide text-gray-400 uppercase">{{ candidate.media_type }} · {{ candidate.source }}</p>
               {% if candidate.top_genre %}
-                <p class="text-sm text-gray-300">Porque te gusta {{ candidate.top_genre }}</p>
+                <p class="text-sm text-gray-300">Because you like {{ candidate.top_genre }}</p>
               {% else %}
-                <p class="text-sm text-gray-500">Aún sin señales de gustos: E7.1 (géneros persistidos) no está en esta rama, así que ordenamos por relevancia del proveedor.</p>
+                <p class="text-sm text-gray-500">Not enough taste signal yet: ranked by provider relevance for now.</p>
               {% endif %}
-              <div class="mt-auto flex items-center gap-3 pt-2">
+              <div class="mt-auto flex flex-wrap items-center gap-3 pt-2">
                 <form method="post"
                       action="{% url 'media_save' %}?next={% url 'recommendations' %}">
                   {% csrf_token %}
@@ -59,13 +178,23 @@
                   <input type="hidden" name="progress" value="0">
                   <button type="submit"
                           class="cursor-pointer rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
-                    Añadir a plan
+                    Add to plan
                   </button>
                 </form>
-                <a href="{% url 'recommendations' %}?{{ candidate.dismiss_query }}"
-                   class="rounded-md border border-gray-700 px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white">
-                  Descartar
-                </a>
+                <form method="post" action="{% url 'discard_item' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="media_id" value="{{ candidate.media_id }}">
+                  <input type="hidden" name="source" value="{{ candidate.source }}">
+                  <input type="hidden" name="media_type" value="{{ candidate.media_type }}">
+                  {% if candidate.season_number %}
+                    <input type="hidden" name="season_number" value="{{ candidate.season_number }}">
+                  {% endif %}
+                  <input type="hidden" name="next" value="{% url 'recommendations' %}?mode=mine">
+                  <button type="submit"
+                          class="cursor-pointer rounded-md border border-gray-700 px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white">
+                    Not interested
+                  </button>
+                </form>
               </div>
             </div>
           </article>
@@ -73,8 +202,8 @@
       </div>
     {% else %}
       <p class="text-gray-400">
-        Aún no hay recomendaciones. Añade y puntúa algunas series o películas y
-        vuelve a mirar: se usan tus títulos recientes para buscar sugerencias.
+        No recommendations yet. Add and rate a few shows or movies and check
+        back: your recent titles are used to find suggestions.
       </p>
     {% endif %}
   </div>

@@ -11,7 +11,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from app.models import Item, MediaTypes, Movie, Sources, Status
+from app.models import Discard, Item, MediaTypes, Movie, Sources, Status
+from groups.models import Group, GroupItem
 
 
 class RecommendationViewTests(TestCase):
@@ -77,9 +78,10 @@ class RecommendationViewTests(TestCase):
                     ],
                 },
             }
+        titles = {"rec1": "Recommended One", "rec2": "Recommended Two"}
         return {
-            "title": media_id,
-            "image": "",
+            "title": titles.get(media_id, media_id),
+            "image": f"http://example.com/{media_id}.jpg",
             "max_progress": 0,
             "related": {"recommendations": []},
         }
@@ -100,24 +102,108 @@ class RecommendationViewTests(TestCase):
         self.assertIn(reverse("media_save"), content)
         self.assertIn('value="Planning"', content)
 
-    def test_group_mode_is_stub(self):
-        """The group tab renders its pending note instead of candidates."""
+    def test_group_mode_without_groups_shows_message(self):
+        """A user with no groups sees an explanatory message, not candidates."""
         response = self.client.get(reverse("recommendations"), {"mode": "group"})
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
-        self.assertIn("E8.5", content)
         self.assertNotIn("Recommended One", content)
+        self.assertIn("You're not in any group yet", content)
 
-    def test_exclude_hides_candidate(self):
-        """A dismissed identity is removed from the ranking."""
+    def test_group_mode_shows_group_candidates(self):
+        """Group mode ranks candidates seeded from every member's history."""
+        other = get_user_model().objects.create_user(
+            username="other",
+            password="12345",  # noqa: S106
+        )
+        group = Group.objects.create(name="Watch club", owner=self.user)
+        group.members.add(self.user, other)
+
         response = self.client.get(
-            reverse("recommendations"),
-            {"exclude": f"{Sources.TMDB.value}|rec1|{MediaTypes.MOVIE.value}"},
+            reverse("recommendations"), {"mode": "group", "group": group.id}
         )
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
+        self.assertIn("Recommended One", content)
+        self.assertIn(reverse("group_recommend_add", args=[group.id]), content)
+        self.assertIn(reverse("group_discard_item", args=[group.id]), content)
+
+    def test_group_mode_excludes_group_library_and_discards(self):
+        """The group's own items and its discards never show up as candidates."""
+        other = get_user_model().objects.create_user(
+            username="other",
+            password="12345",  # noqa: S106
+        )
+        group = Group.objects.create(name="Watch club", owner=self.user)
+        group.members.add(self.user, other)
+
+        rec2_item = Item.objects.create(
+            media_id="rec2",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Recommended Two",
+            image="http://example.com/2.jpg",
+        )
+        GroupItem.objects.create(group=group, item=rec2_item, added_by=self.user)
+
+        response = self.client.post(
+            reverse("group_discard_item", args=[group.id]),
+            {
+                "media_id": "rec1",
+                "source": Sources.TMDB.value,
+                "media_type": MediaTypes.MOVIE.value,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+
+        response = self.client.get(
+            reverse("recommendations"), {"mode": "group", "group": group.id}
+        )
+        content = response.content.decode()
+        self.assertNotIn("Recommended One", content)
+        self.assertNotIn("Recommended Two", content)
+
+    def test_discard_hides_candidate_and_persists(self):
+        """Discarding a candidate removes it from the ranking, for good."""
+        response = self.client.post(
+            reverse("discard_item"),
+            {
+                "media_id": "rec1",
+                "source": Sources.TMDB.value,
+                "media_type": MediaTypes.MOVIE.value,
+                "next": reverse("recommendations"),
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            Discard.objects.filter(user=self.user, item__media_id="rec1").exists()
+        )
+
+        response = self.client.get(reverse("recommendations"))
+        content = response.content.decode()
         self.assertNotIn("Recommended One", content)
         self.assertIn("Recommended Two", content)
+
+    def test_discarded_tab_lists_and_restores(self):
+        """The Discarded tab lists a discard and its Restore action undoes it."""
+        self.client.post(
+            reverse("discard_item"),
+            {
+                "media_id": "rec1",
+                "source": Sources.TMDB.value,
+                "media_type": MediaTypes.MOVIE.value,
+            },
+        )
+        response = self.client.get(reverse("recommendations"), {"mode": "discarded"})
+        self.assertIn("Recommended One", response.content.decode())
+
+        item = Item.objects.get(media_id="rec1")
+        response = self.client.post(reverse("restore_item", args=[item.id]))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Discard.objects.filter(user=self.user, item=item).exists())
+
+        response = self.client.get(reverse("recommendations"))
+        self.assertIn("Recommended One", response.content.decode())
 
     def test_one_click_adds_to_planning(self):
         """The rendered form payload plans the candidate and returns to the page."""

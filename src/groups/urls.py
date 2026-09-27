@@ -88,4 +88,24 @@ urlpatterns = [
         views.groups_modal,
         name="groups_modal",
     ),
+    path(
+        "<int:group_id>/discard/",
+        views.group_discard_item,
+        name="group_discard_item",
+    ),
+    path(
+        "<int:group_id>/restore/",
+        views.group_restore_item,
+        name="group_restore_item",
+    ),
+    path(
+        "<int:group_id>/discarded/",
+        views.group_discarded,
+        name="group_discarded",
+    ),
+    path(
+        "<int:group_id>/recommend_add/",
+        views.group_recommend_add,
+        name="group_recommend_add",
+    ),
 ]

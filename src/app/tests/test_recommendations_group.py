@@ -288,9 +288,7 @@ class AllowKnownTests(SimpleTestCase):
             members,
             allow_known=True,
         )
-        self.assertEqual(
-            {item["media_id"] for item in ranked}, {"known", "fresh"}
-        )
+        self.assertEqual({item["media_id"] for item in ranked}, {"known", "fresh"})
 
     def test_allow_known_still_excludes_in_progress_and_planning(self):
         """Allowing known works never lets back in the group's own pending pile."""

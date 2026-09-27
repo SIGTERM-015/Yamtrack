@@ -1,6 +1,6 @@
 from django.urls import path, register_converter
 
-from app import converters, views
+from app import converters, roulette_views, views
 
 register_converter(converters.MediaTypeChecker, "media_type")
 register_converter(converters.SourceChecker, "source")
@@ -88,5 +88,9 @@ urlpatterns = [
     ),
     path("statistics", views.statistics, name="statistics"),
     path("journal", views.journal, name="journal"),
+    path("discard", views.discard_item_view, name="discard_item"),
+    path("restore/<int:item_id>", views.restore_item_view, name="restore_item"),
+    path("roulette", roulette_views.roulette, name="roulette"),
+    path("roulette/start", roulette_views.roulette_start, name="roulette_start"),
     path("serviceworker.js", views.service_worker, name="service_worker"),
 ]

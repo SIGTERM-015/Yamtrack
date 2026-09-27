@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from app import config, helpers, history_processor
+from app import discards as discard_service
 from app import home as home_helpers
 from app import recommendations as recommendation_engine
 from app import statistics as stats
@@ -36,6 +37,7 @@ from app.providers import manual, services, tmdb
 from app.templatetags import app_tags
 from events.models import Event
 from lists.models import CustomList
+from lists.views import get_or_create_item
 from users.models import (
     DateFormatChoices,
     HomeSortChoices,
@@ -1123,23 +1125,28 @@ _RECOMMENDATION_MEDIA_TYPES = (
 RECOMMENDATION_SOURCE_LIMIT = 8
 RECOMMENDATION_LIMIT = 24
 
-# Length of an ``?exclude=`` identity token: ``source|media_id|media_type``.
-_IDENTITY_KEY_LENGTH = 3
-
 
 def _serialise_key(key):
     """Join an ``item_key`` tuple into a URL-safe ``|``-separated token."""
     return "|".join(key)
 
 
-def _parse_excluded(raw):
-    """Parse a comma-separated ``?exclude=`` value back into identity tuples."""
-    excluded = set()
-    for chunk in (raw or "").split(","):
-        parts = [part for part in chunk.split("|") if part]
-        if len(parts) >= _IDENTITY_KEY_LENGTH:
-            excluded.add(tuple(parts))
-    return excluded
+def _item_identity(item):
+    """Return the ``item_key``-shaped dict for a persisted ``Item``."""
+    return {
+        "source": item.source,
+        "media_id": item.media_id,
+        "media_type": item.media_type,
+        "season_number": item.season_number,
+    }
+
+
+def _discarded_keys(discards):
+    """Return the ``item_key`` identities for an iterable of Discard-like rows."""
+    return {
+        recommendation_engine.item_key(_item_identity(discard.item))
+        for discard in discards
+    }
 
 
 def _user_media(user):
@@ -1153,13 +1160,15 @@ def _user_media(user):
     return pairs
 
 
-def _history_entry(media_type, media):
-    """Build a scoring-engine history entry from a stored media row.
+def _item_genre_names(item_or_dict):
+    """Return an item's genre names, from a persisted Item or a plain dict."""
+    if isinstance(item_or_dict, dict):
+        return [str(g) for g in item_or_dict.get("genres") or () if g]
+    return [str(genre) for genre in item_or_dict.genres.all()]
 
-    ``genres`` is empty until E7.1 (persisted genres) is merged, so the taste
-    profile carries no signal on this branch and ranking falls back to the tied
-    provider/quality defaults.  This is documented in the delivery report.
-    """
+
+def _history_entry(media_type, media):
+    """Build a scoring-engine history entry from a stored media row."""
     item = media.item
     return {
         "source": item.source,
@@ -1169,7 +1178,7 @@ def _history_entry(media_type, media):
         "season_number": item.season_number,
         "score": float(media.score) if media.score is not None else None,
         "status": media.status,
-        "genres": [],
+        "genres": _item_genre_names(item),
     }
 
 
@@ -1180,29 +1189,10 @@ def _candidate_season_numbers(media_type, item):
     return None
 
 
-@login_required
-@require_GET
-def recommendations(request):
-    """Show ranked suggestions with one-click "to watch" and dismiss actions.
-
-    ``?mode=mine`` (default) is the individual ranking.  ``?mode=group`` is a
-    placeholder until the couple profiles land.
-    """
-    mode = request.GET.get("mode") or "mine"
-    if mode == "group":
-        return render(
-            request,
-            "app/recommendations.html",
-            {"mode": "group", "candidates": [], "excluded": []},
-        )
-
-    pairs = _user_media(request.user)
-    history = [_history_entry(media_type, media) for media_type, media in pairs]
-    excluded = _parse_excluded(request.GET.get("exclude"))
-    excluded_keys = sorted(_serialise_key(key) for key in excluded)
-
+def _provider_candidates(pairs, limit):
+    """Fetch provider "recommendations" seeded from the given history pairs."""
     candidates = {}
-    for media_type, media in pairs[:RECOMMENDATION_SOURCE_LIMIT]:
+    for media_type, media in pairs[:limit]:
         item = media.item
         try:
             metadata = services.get_media_metadata(
@@ -1217,25 +1207,163 @@ def recommendations(request):
         related = metadata.get("related") or {}
         for candidate in related.get("recommendations") or []:
             candidates.setdefault(recommendation_engine.item_key(candidate), candidate)
+    return candidates
+
+
+# Below this many ranked results, the UI explains that candidates are scarce
+# instead of silently showing a short list (acuerdo 35).
+RECOMMENDATION_SCARCE_THRESHOLD = 6
+
+
+def _mine_recommendations(request):
+    """Render the individual ranking (default tab)."""
+    pairs = _user_media(request.user)
+    history = [_history_entry(media_type, media) for media_type, media in pairs]
+    discarded = _discarded_keys(discard_service.discarded_items(request.user))
+    candidates = _provider_candidates(pairs, RECOMMENDATION_SOURCE_LIMIT)
 
     ranked = recommendation_engine.rank_candidates(
         list(candidates.values()),
         history,
         limit=RECOMMENDATION_LIMIT,
-        excluded=excluded,
+        excluded=discarded,
     )
-    for entry in ranked:
-        key = _serialise_key(recommendation_engine.item_key(entry))
-        entry["key"] = key
-        entry["dismiss_query"] = urlencode(
-            {"mode": "mine", "exclude": ",".join([*excluded_keys, key])},
-        )
-
     return render(
         request,
         "app/recommendations.html",
-        {"mode": "mine", "candidates": ranked, "excluded": excluded_keys},
+        {"mode": "mine", "candidates": ranked},
     )
+
+
+def _discarded_recommendations(request):
+    """Render the "Discarded" tab: the user's own reversible discards."""
+    return render(
+        request,
+        "app/recommendations.html",
+        {
+            "mode": "discarded",
+            "discarded": discard_service.discarded_items(request.user),
+        },
+    )
+
+
+def _group_recommendations(request):
+    """Render the group ranking: least-misery, shared-affinity candidates."""
+    from groups import discards as group_discard_service  # noqa: PLC0415
+
+    groups = list(request.user.joined_groups.all())
+    group_id = request.GET.get("group")
+    group = (
+        next((g for g in groups if str(g.id) == group_id), None) if group_id else None
+    )
+    if group is None and groups:
+        group = groups[0]
+
+    context = {"mode": "group", "groups": groups, "group": group, "candidates": []}
+    if group is None:
+        return render(request, "app/recommendations.html", context)
+
+    allow_known = request.GET.get("allow_known") == "1"
+    members = list(group.members.all())
+    member_pairs = {member.id: _user_media(member) for member in members}
+    member_dicts = [
+        {
+            "history": [
+                _history_entry(media_type, media)
+                for media_type, media in member_pairs[member.id]
+            ],
+        }
+        for member in members
+    ]
+
+    per_member_limit = max(2, RECOMMENDATION_SOURCE_LIMIT // max(len(members), 1))
+    candidates = {}
+    for pairs in member_pairs.values():
+        candidates.update(_provider_candidates(pairs, per_member_limit))
+
+    own_library_ids = set(group.group_items.values_list("item_id", flat=True))
+    own_library_keys = {
+        recommendation_engine.item_key(_item_identity(item))
+        for item in Item.objects.filter(id__in=own_library_ids)
+    }
+    excluded = own_library_keys | _discarded_keys(
+        group_discard_service.group_discarded_items(group),
+    )
+
+    ranked = recommendation_engine.rank_group_candidates(
+        list(candidates.values()),
+        member_dicts,
+        limit=RECOMMENDATION_LIMIT,
+        excluded=excluded,
+        allow_known=allow_known,
+    )
+    context.update(
+        {
+            "candidates": ranked,
+            "allow_known": allow_known,
+            "scarce": len(ranked) < RECOMMENDATION_SCARCE_THRESHOLD,
+        },
+    )
+    return render(request, "app/recommendations.html", context)
+
+
+@login_required
+@require_GET
+def recommendations(request):
+    """Show ranked suggestions with one-click "to watch" and discard actions.
+
+    ``?mode=mine`` (default) is the individual ranking, ``?mode=group`` the
+    group ranking (``?group=<id>`` selects which of the user's groups) and
+    ``?mode=discarded`` lists the user's own reversible discards.
+    """
+    mode = request.GET.get("mode") or "mine"
+    if mode == "group":
+        return _group_recommendations(request)
+    if mode == "discarded":
+        return _discarded_recommendations(request)
+    return _mine_recommendations(request)
+
+
+def _safe_next(request, default):
+    """Return ``?next=`` if it is a same-site relative path, else ``default``."""
+    next_url = request.POST.get("next") or request.GET.get("next")
+    if next_url and next_url.startswith("/"):
+        return next_url
+    return default
+
+
+@login_required
+@require_POST
+def discard_item_view(request):
+    """Mark an item as personally "not interesting" (reversible, E9)."""
+    item = (
+        get_object_or_404(Item, id=request.POST["item_id"])
+        if request.POST.get("item_id")
+        else get_or_create_item(
+            request.POST.get("media_type"),
+            request.POST.get("media_id"),
+            request.POST.get("source"),
+            int(request.POST["season_number"])
+            if request.POST.get("season_number")
+            else None,
+        )
+    )
+    discard_service.discard_item(request.user, item)
+    next_url = _safe_next(request, reverse("recommendations"))
+    return redirect(
+        f"{next_url}{'&' if '?' in next_url else '?'}"
+        f"{urlencode({'discarded_item': item.id, 'discarded_title': item.title})}",
+    )
+
+
+@login_required
+@require_POST
+def restore_item_view(request, item_id):
+    """Undo a personal discard."""
+    item = get_object_or_404(Item, id=item_id)
+    discard_service.restore_item(request.user, item)
+    messages.success(request, f'"{item.title}" is back in your recommendations.')
+    return redirect(_safe_next(request, f"{reverse('recommendations')}?mode=discarded"))
 
 
 @require_GET

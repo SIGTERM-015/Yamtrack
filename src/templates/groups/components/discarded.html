@@ -1,0 +1,30 @@
+{# Reusable "Discarded" section for a group. Include with `group` and
+   `discards` (groups.discards.group_discarded_items queryset) in context. #}
+<div class="space-y-4">
+  {% if discards %}
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {% for discard in discards %}
+        <article class="flex flex-col overflow-hidden rounded-lg border border-gray-700 bg-[#2a2f35]">
+          {% if discard.item.image %}
+            <img src="{{ discard.item.image }}" alt="{{ discard.item.title }}" class="h-40 w-full object-cover">
+          {% endif %}
+          <div class="flex flex-1 flex-col gap-2 p-4">
+            <h3 class="font-semibold text-white">{{ discard.item.title }}</h3>
+            <p class="text-xs tracking-wide text-gray-400 uppercase">{{ discard.item.media_type }}</p>
+            <p class="text-xs text-gray-500">Discarded by {{ discard.discarded_by.username }}</p>
+            <form method="post" action="{% url 'group_restore_item' group.id %}" class="mt-auto pt-2">
+              {% csrf_token %}
+              <input type="hidden" name="item_id" value="{{ discard.item.id }}">
+              <button type="submit"
+                      class="w-full cursor-pointer rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
+                Restore
+              </button>
+            </form>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-gray-400">Nothing discarded for this group yet. Titles marked "Not interested" from the roulette or recommendations show up here, for every member to restore.</p>
+  {% endif %}
+</div>

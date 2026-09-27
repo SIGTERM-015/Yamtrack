@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Discarded - {{ group.name }} - Yamtrack
+{% endblock title %}
+
+{% block content %}
+  <div class="space-y-6">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-3xl font-bold">Discarded in {{ group.name }}</h1>
+      <a href="{% url 'group_detail' group.id %}" class="text-sm text-indigo-300 hover:text-white">
+        &larr; Back to {{ group.name }}
+      </a>
+    </div>
+
+    {% include "groups/components/discarded.html" with group=group discards=discards %}
+  </div>
+{% endblock content %}

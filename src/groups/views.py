@@ -1,4 +1,5 @@
 from collections import defaultdict
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
@@ -12,6 +13,7 @@ from django.views.decorators.http import require_GET, require_POST
 from app import config
 from app.models import Item, MediaTypes, Status
 from app.providers import services as provider_services
+from groups import discards as discard_service
 from groups.models import Group, GroupInvitation, GroupItem, GroupOrigin
 from groups.services import (
     add_item_to_group,
@@ -841,3 +843,94 @@ def group_genre_stats(request, group_id):
         ],
     }
     return render(request, "groups/group_genre_stats.html", context)
+
+
+# --- Group discards ("Not interested"), E9 ----------------------------------
+
+
+def _safe_next(request, default):
+    """Return ``?next=`` if it is a same-site relative path, else ``default``."""
+    next_url = request.POST.get("next") or request.GET.get("next")
+    if next_url and next_url.startswith("/"):
+        return next_url
+    return default
+
+
+def _resolve_group_item(request):
+    """Return the Item named in the POST body, creating it if needed."""
+    if request.POST.get("item_id"):
+        return get_object_or_404(Item, id=request.POST["item_id"])
+    return get_or_create_item(
+        request.POST.get("media_type"),
+        request.POST.get("media_id"),
+        request.POST.get("source"),
+        int(request.POST["season_number"])
+        if request.POST.get("season_number")
+        else None,
+    )
+
+
+@login_required
+@require_POST
+def group_discard_item(request, group_id):
+    """Mark an item "not interesting" for a group. Any member can do this."""
+    group = get_object_or_404(Group, id=group_id)
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    item = _resolve_group_item(request)
+    discard_service.discard_group_item(group, item, request.user)
+    next_url = _safe_next(request, reverse("group_detail", args=[group.id]))
+    separator = "&" if "?" in next_url else "?"
+    query = urlencode({"discarded_item": item.id, "discarded_title": item.title})
+    return redirect(f"{next_url}{separator}{query}")
+
+
+@login_required
+@require_POST
+def group_restore_item(request, group_id):
+    """Undo a group discard. Any member can do this."""
+    group = get_object_or_404(Group, id=group_id)
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    item = get_object_or_404(Item, id=request.POST.get("item_id"))
+    discard_service.restore_group_item(group, item)
+    messages.success(request, f'"{item.title}" is back for the group.')
+    return redirect(_safe_next(request, reverse("group_discarded", args=[group.id])))
+
+
+@login_required
+@require_GET
+def group_discarded(request, group_id):
+    """Standalone page listing a group's discarded items, with restore."""
+    group = get_object_or_404(Group, id=group_id)
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    discards = discard_service.group_discarded_items(group)
+    return render(
+        request,
+        "groups/group_discarded.html",
+        {"group": group, "discards": discards},
+    )
+
+
+@login_required
+@require_POST
+def group_recommend_add(request, group_id):
+    """Add a recommendation candidate to the group, creating its Item first."""
+    group = get_object_or_404(Group, id=group_id)
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    item = _resolve_group_item(request)
+    add_item_to_group(group, item, request.user)
+    messages.success(request, f"{item.title} was added to '{group.name}'.")
+    return redirect(
+        _safe_next(request, f"{reverse('recommendations')}?mode=group&group={group.id}")
+    )
