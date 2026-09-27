@@ -87,6 +87,11 @@ urlpatterns = [
         name="search_parent_season",
     ),
     path("statistics", views.statistics, name="statistics"),
+    path(
+        "statistics/heatmap_day",
+        views.heatmap_day_detail,
+        name="heatmap_day_detail",
+    ),
     path("journal", views.journal, name="journal"),
     path("discard", views.discard_item_view, name="discard_item"),
     path("restore/<int:item_id>", views.restore_item_view, name="restore_item"),

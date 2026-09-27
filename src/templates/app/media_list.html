@@ -217,8 +217,15 @@
         <div class="space-y-4">
           {% for review in public_reviews %}
             <article class="bg-[#2a2f35] p-4 rounded-lg">
-              <h3 class="font-semibold text-white">{{ review.item.title }}</h3>
+              <div class="flex items-start justify-between gap-4">
+                <a href="{{ review.item|media_url }}"
+                   class="font-semibold text-white hover:text-[#4a9eff]">{{ review.item.title }}</a>
+                {% if review.formatted_score %}
+                  <span class="shrink-0 text-sm font-semibold text-indigo-300">&#9733; {{ review.formatted_score }}</span>
+                {% endif %}
+              </div>
               <p class="text-gray-300 mt-2 whitespace-pre-line">{{ review.notes }}</p>
+              <p class="text-xs text-gray-500 mt-2">{{ review.end_date|default:review.created_at|date }}</p>
             </article>
           {% endfor %}
         </div>

@@ -14,6 +14,7 @@ from django.http import Http404, HttpResponse, HttpResponseBadRequest, JsonRespo
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from app import config, helpers, history_processor
@@ -243,6 +244,8 @@ def media_list(request, username, media_type):
         apps.get_model(app_label="app", model_name=media_type)
         .objects.filter(user=target_user, notes_public=True)
         .exclude(notes="")
+        .select_related("item")
+        .order_by("-end_date", "-created_at")
     )
 
     context = {
@@ -1024,6 +1027,24 @@ def statistics(request):
     }
 
     return render(request, "app/statistics.html", context)
+
+
+@require_GET
+def heatmap_day_detail(request):
+    """Return the detail panel for a single heatmap day (progress/completions).
+
+    Scoped to ``request.user`` only, so the response never depends on any
+    visibility setting: whoever is logged in only ever sees their own detail.
+    """
+    day = parse_date(request.GET.get("date", ""))
+    if day is None:
+        return HttpResponse(status=400)
+
+    context = {
+        "day": day,
+        "entries": stats.get_day_detail(request.user, day),
+    }
+    return render(request, "app/components/heatmap_day_detail.html", context)
 
 
 @require_GET

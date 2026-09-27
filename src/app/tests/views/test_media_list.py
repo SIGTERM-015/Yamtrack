@@ -200,7 +200,7 @@ class MediaListViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("media_list", response.context)
 
-    def _create_note(self, user, notes, notes_public):
+    def _create_note(self, user, notes, notes_public, score=None):
         """Create a completed movie entry carrying a note."""
         item = Item.objects.create(
             media_id="550",
@@ -215,6 +215,7 @@ class MediaListViewTests(TestCase):
             status=Status.COMPLETED.value,
             notes=notes,
             notes_public=notes_public,
+            score=score,
         )
 
     def test_public_review_visible_to_anonymous(self):
@@ -252,6 +253,28 @@ class MediaListViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotIn(review, response.context["public_reviews"])
         self.assertNotContains(response, "Secret note")
+
+    def test_public_review_shows_score_and_link_to_media_detail(self):
+        """A public review renders its score and links to the media's detail page."""
+        review = self._create_note(
+            self.external_user,
+            "Loved it",
+            notes_public=True,
+            score=9,
+        )
+        self.external_user.profile_private = False
+        self.external_user.save(update_fields=["profile_private"])
+        self.client.logout()
+
+        response = self.client.get(
+            reverse(
+                "medialist", args=[self.external_user.username, MediaTypes.MOVIE.value]
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "9")
+        self.assertContains(response, app_tags.media_url(review.item))
 
     def test_notes_public_defaults_to_false(self):
         """New entries keep their notes private by default."""

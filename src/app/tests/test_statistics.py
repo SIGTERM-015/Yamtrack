@@ -1155,3 +1155,132 @@ class GetMediaHeatmapTests(TestCase):
         }
         self.assertEqual(days_2026["2026-01-05"], 1)
         self.assertEqual(days_2026.get("2025-03-10", 0), 0)
+
+
+class GetDayDetailTests(TestCase):
+    """Tests for get_day_detail: the click-through behind the heatmap."""
+
+    @patch("app.models.providers.services.get_media_metadata")
+    def setUp(self, mock_get_metadata):
+        """Create a movie completion and a watched episode on the same day."""
+        mock_get_metadata.return_value = {
+            "max_progress": 1,
+            "title": "Detail Show",
+            "image": "detail.jpg",
+            "details": {"seasons": 1},
+            "season/1": {
+                "episodes": [{"episode_number": 1}, {"episode_number": 2}],
+            },
+        }
+        self.user = get_user_model().objects.create_user(
+            username="detail_user",
+            password="testpassword",  # noqa: S106
+        )
+        self.day = datetime.date(2025, 3, 10)
+
+        movie_item = Item.objects.create(
+            media_id="700",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Detail Movie",
+        )
+        self.movie = Movie.objects.create(
+            user=self.user,
+            item=movie_item,
+            status=Status.COMPLETED.value,
+            score=8,
+            end_date=datetime.datetime(2025, 3, 10, 12, 0, tzinfo=datetime.UTC),
+        )
+
+        tv_item = Item.objects.create(
+            media_id="800",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.TV.value,
+            title="Detail Show",
+        )
+        self.tv = TV.objects.create(
+            user=self.user,
+            item=tv_item,
+            status=Status.IN_PROGRESS.value,
+        )
+        season_item = Item.objects.create(
+            media_id="800",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.SEASON.value,
+            title="Detail Show",
+            season_number=1,
+        )
+        episode_item = Item.objects.create(
+            media_id="800",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.EPISODE.value,
+            title="Detail Show",
+            season_number=1,
+            episode_number=3,
+        )
+        self.season = Season.objects.create(
+            user=self.user,
+            item=season_item,
+            related_tv=self.tv,
+            status=Status.IN_PROGRESS.value,
+        )
+        Episode.objects.create(
+            item=episode_item,
+            related_season=self.season,
+            end_date=datetime.datetime(2025, 3, 10, 20, 0, tzinfo=datetime.UTC),
+        )
+
+        # Noise: a different day and a pending item without an end_date.
+        other_day_item = Item.objects.create(
+            media_id="701",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Other Day Movie",
+        )
+        Movie.objects.create(
+            user=self.user,
+            item=other_day_item,
+            status=Status.COMPLETED.value,
+            end_date=datetime.datetime(2025, 3, 11, 0, 0, tzinfo=datetime.UTC),
+        )
+        pending_item = Item.objects.create(
+            media_id="702",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Pending Movie",
+        )
+        Movie.objects.create(
+            user=self.user,
+            item=pending_item,
+            status=Status.PLANNING.value,
+        )
+
+    def test_returns_completions_and_episodes_for_the_day(self):
+        """Only entries whose end_date falls on the requested day are returned."""
+        entries = statistics.get_day_detail(self.user, self.day)
+
+        self.assertEqual(len(entries), 2)
+        kinds = {entry["kind"] for entry in entries}
+        self.assertEqual(kinds, {"completed", "episode"})
+
+        completed = next(e for e in entries if e["kind"] == "completed")
+        self.assertEqual(completed["item"], self.movie.item)
+        self.assertEqual(completed["status"], Status.COMPLETED.value)
+
+        episode_entry = next(e for e in entries if e["kind"] == "episode")
+        self.assertEqual(episode_entry["episode_number"], 3)
+        self.assertEqual(episode_entry["season_number"], 1)
+        self.assertEqual(episode_entry["tv_title"], "Detail Show")
+
+    def test_other_days_and_pending_items_are_excluded(self):
+        """A different day's completion and a still-pending item never appear."""
+        entries = statistics.get_day_detail(self.user, self.day)
+        titles = {entry["item"].title for entry in entries}
+
+        self.assertNotIn("Other Day Movie", titles)
+        self.assertNotIn("Pending Movie", titles)
+
+    def test_empty_day_returns_no_entries(self):
+        """A day with no activity returns an empty list."""
+        entries = statistics.get_day_detail(self.user, datetime.date(2025, 6, 1))
+        self.assertEqual(entries, [])

@@ -729,6 +729,66 @@ def get_media_heatmap(user, year=None):
     }
 
 
+def get_day_detail(user, date):
+    """Return the media actually consumed on ``date``: progress and completions.
+
+    Mirrors the counting rules of :func:`get_media_heatmap`: an entry only
+    appears here because it set a real ``end_date`` on that day, so adding a
+    pending item, editing an opinion or correcting a record never shows up
+    (they don't touch ``end_date``).
+    """
+    local_tz = timezone.get_current_timezone()
+    day_start = datetime.datetime.combine(date, datetime.time.min, tzinfo=local_tz)
+    day_end = datetime.datetime.combine(date, datetime.time.max, tzinfo=local_tz)
+
+    entries = []
+    for model_name in user.get_active_media_types():
+        model = apps.get_model(app_label="app", model_name=model_name)
+        if model in (TV, Season):
+            # TV/Season have no end_date; episodes are counted separately below.
+            continue
+
+        queryset = model.objects.filter(
+            user=user,
+            end_date__range=(day_start, day_end),
+        ).select_related("item")
+        entries.extend(
+            {
+                "kind": "completed",
+                "item": media.item,
+                "status": media.status,
+                "score": media.formatted_score,
+                "progress": media.progress,
+            }
+            for media in queryset
+        )
+
+    episodes = Episode.objects.filter(
+        related_season__user=user,
+        end_date__range=(day_start, day_end),
+    ).select_related(
+        "item",
+        "related_season__item",
+        "related_season__related_tv__item",
+    )
+    for episode in episodes:
+        season = episode.related_season
+        entries.append(
+            {
+                "kind": "episode",
+                "item": season.item,
+                "tv_title": season.related_tv.item.title,
+                "season_number": season.item.season_number,
+                "episode_number": episode.item.episode_number,
+                "status": season.status,
+                "score": season.formatted_score,
+            },
+        )
+
+    entries.sort(key=lambda entry: entry["item"].title.lower())
+    return entries
+
+
 def get_aligned_week_start(datetime_obj, *, week_start_sunday=False):
     """Get the first day of the week containing the given date."""
     if datetime_obj is None:

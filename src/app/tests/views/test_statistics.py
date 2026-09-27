@@ -310,3 +310,71 @@ class StatisticsViewTests(TestCase):
         )
 
         self.assertTrue(date_is_none)
+
+
+class HeatmapDayDetailViewTests(TestCase):
+    """Test the heatmap day-detail HTMX endpoint."""
+
+    def setUp(self):
+        """Create a user and log in."""
+        self.credentials = {"username": "detailview", "password": "12345"}
+        self.user = get_user_model().objects.create_user(**self.credentials)
+        self.client.login(**self.credentials)
+
+    def test_returns_consumption_for_the_day(self):
+        """A day with a completion renders its title and status."""
+        item = Item.objects.create(
+            media_id="900",
+            source=Sources.MANUAL.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Detail View Movie",
+            image="none.jpg",
+        )
+        Movie.objects.bulk_create(
+            [
+                Movie(
+                    item=item,
+                    user=self.user,
+                    status=Status.COMPLETED.value,
+                    end_date=datetime.datetime(
+                        2025,
+                        5,
+                        4,
+                        tzinfo=datetime.UTC,
+                    ),
+                ),
+            ],
+        )
+
+        response = self.client.get(
+            reverse("heatmap_day_detail"),
+            {"date": "2025-05-04"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "app/components/heatmap_day_detail.html")
+        self.assertContains(response, "Detail View Movie")
+
+    def test_empty_day_shows_no_consumption_message(self):
+        """A day without any activity shows the empty state."""
+        response = self.client.get(
+            reverse("heatmap_day_detail"),
+            {"date": "2025-05-04"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No consumption recorded")
+
+    def test_missing_date_returns_bad_request(self):
+        """An unparsable/missing date is rejected instead of guessing."""
+        response = self.client.get(reverse("heatmap_day_detail"))
+        self.assertEqual(response.status_code, 400)
+
+    def test_requires_login(self):
+        """Anonymous requests never reach another user's consumption data."""
+        self.client.logout()
+        response = self.client.get(
+            reverse("heatmap_day_detail"),
+            {"date": "2025-05-04"},
+        )
+        self.assertNotEqual(response.status_code, 200)

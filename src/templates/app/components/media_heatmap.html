@@ -50,8 +50,18 @@ GitHub-style media consumption heatmap. Expects:
           {% for week in heatmap.calendar_weeks %}
             <div class="flex flex-col gap-1">
               {% for day in week %}
-                <div class="w-4 h-4 rounded-sm transition-colors duration-200 hover:ring-2 hover:ring-white {% if day.level == 0 %}bg-[#3a414c]{% elif day.level == 1 %}bg-indigo-600{% elif day.level == 2 %}bg-indigo-500{% elif day.level == 3 %}bg-indigo-400{% elif day.level == 4 %}bg-indigo-300{% endif %}"
-                     title="{{ day.date }}: {{ day.count }} consum{{ day.count|pluralize:"ption,ptions" }}"></div>
+                {% if day.count > 0 %}
+                  <button type="button"
+                          hx-get="{% url 'heatmap_day_detail' %}?date={{ day.date }}"
+                          hx-target="#heatmap-day-detail"
+                          hx-swap="innerHTML"
+                          hx-indicator="#heatmap-day-detail-indicator"
+                          aria-label="Show consumption for {{ day.date }}"
+                          class="w-4 h-4 rounded-sm transition-colors duration-200 hover:ring-2 hover:ring-white cursor-pointer {% if day.level == 1 %}bg-indigo-600{% elif day.level == 2 %}bg-indigo-500{% elif day.level == 3 %}bg-indigo-400{% elif day.level == 4 %}bg-indigo-300{% endif %}"
+                          title="{{ day.date }}: {{ day.count }} consum{{ day.count|pluralize:"ption,ptions" }} (click for detail)"></button>
+                {% else %}
+                  <div class="w-4 h-4 rounded-sm bg-[#3a414c]" title="{{ day.date }}: no consumption"></div>
+                {% endif %}
               {% endfor %}
             </div>
           {% endfor %}
@@ -70,6 +80,12 @@ GitHub-style media consumption heatmap. Expects:
       <div class="w-4 h-4 rounded-sm bg-indigo-300"></div>
       <span>More</span>
       <span class="ml-4">{{ heatmap.total }} consumed in {{ heatmap.year }}</span>
+      <div id="heatmap-day-detail-indicator" class="htmx-indicator ml-2">
+        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-500"></div>
+      </div>
     </div>
   </div>
+
+  <!-- Day detail panel, filled by clicking a day above -->
+  <div id="heatmap-day-detail" class="mt-2"></div>
 </div>
