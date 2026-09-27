@@ -167,13 +167,13 @@ class MediaListViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("media_list", response.context)
 
-    def test_profile_private_defaults_to_true(self):
-        """Test new users have private profiles by default."""
+    def test_profile_private_defaults_to_false(self):
+        """New users have public profiles by default (open by default, CONTEXT.md 20/22)."""
         user = get_user_model().objects.create_user(
             username="private-default",
         )
 
-        self.assertTrue(user.profile_private)
+        self.assertFalse(user.profile_private)
 
     def test_private_media_list(self):
         """Test the private media list view."""

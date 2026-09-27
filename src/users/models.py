@@ -159,7 +159,19 @@ class User(AbstractUser):
     is_demo = models.BooleanField(default=False)
 
     profile_private = models.BooleanField(
-        default=True, help_text="Toggle profile visibility to anonymous users"
+        default=False, help_text="Toggle profile visibility to anonymous users"
+    )
+    profile_show_heatmap = models.BooleanField(
+        default=True,
+        help_text="Show your consumption heatmap on your public profile",
+    )
+    profile_show_shelves = models.BooleanField(
+        default=True,
+        help_text="Show your featured shelves on your public profile",
+    )
+    profile_show_reviews = models.BooleanField(
+        default=True,
+        help_text="Show your public reviews on your public profile",
     )
 
     avatar = models.ImageField(
@@ -692,6 +704,19 @@ class User(AbstractUser):
 
         # CURRENT_DATE is the default
         return now
+
+    def profile_section_visible(self, viewer, field_name):
+        """Return whether ``viewer`` can see a profile section gated by ``field_name``.
+
+        The owner always sees their own sections (so they can review/manage
+        them). Anyone else only sees a section when the profile itself is
+        public and that specific section hasn't been individually hidden.
+        """
+        if viewer == self:
+            return True
+        if self.profile_private:
+            return False
+        return getattr(self, field_name)
 
     def get_enabled_media_types(self):
         """Return a list of enabled media type values based on user preferences."""

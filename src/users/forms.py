@@ -60,6 +60,9 @@ class UserUpdateForm(forms.ModelForm):
         fields = [
             "username",
             "profile_private",
+            "profile_show_heatmap",
+            "profile_show_shelves",
+            "profile_show_reviews",
             "suggestions_enabled",
             "avatar",
             "bio",
