@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load app_tags %}
 
 {% block title %}
   Roulette - Yamtrack
@@ -34,58 +35,136 @@
       </div>
     {% endif %}
 
-    <form method="get" class="flex flex-wrap items-end gap-4 rounded-lg border border-gray-700 bg-[#2a2f35] p-4">
+    <form method="get" class="space-y-3 rounded-lg border border-gray-700 bg-[#2a2f35] p-4">
       {% if group %}<input type="hidden" name="group" value="{{ group.id }}">{% endif %}
+      <input type="hidden" name="session_exclude" value="{{ session_exclude }}">
 
-      <div>
-        <label for="media-type" class="block text-xs font-medium text-gray-400 uppercase">Media type</label>
-        <select id="media-type" name="media_type" class="mt-1 rounded-md border border-gray-700 bg-[#1f2328] px-3 py-2 text-sm text-white">
-          <option value="">Any</option>
+      <div class="flex flex-wrap items-center gap-2">
+        <select name="media_type"
+                onchange="this.form.submit()"
+                class="rounded-md border-none bg-[#39404b] px-4 py-2 text-sm text-white transition-colors hover:bg-[#454d5a] focus:outline-none focus:ring-2 focus:ring-[#4a9eff]">
+          <option value="">Any type</option>
           {% for value in media_types %}
-            <option value="{{ value }}" {% if media_type == value %}selected{% endif %}>{{ value }}</option>
+            <option value="{{ value }}" {% if media_type == value %}selected{% endif %}>{{ value|media_type_readable }}</option>
           {% endfor %}
         </select>
+
+        <label class="flex cursor-pointer items-center gap-2 rounded-md bg-[#39404b] px-4 py-2 text-sm text-gray-200 transition-colors hover:bg-[#454d5a]">
+          <input type="checkbox" name="strict" value="1" onchange="this.form.submit()" {% if strict %}checked{% endif %}>
+          Strict (hide unknown genres)
+        </label>
+
+        <button type="submit" name="draw" value="1"
+                class="cursor-pointer rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
+          {% if has_drawn %}Draw again{% else %}Draw{% endif %}
+        </button>
+
+        {% if empty_reason %}
+          <a href="{{ request.path }}{% if group %}?group={{ group.id }}{% endif %}"
+             class="rounded-md border border-gray-700 px-4 py-2 text-sm font-medium text-gray-300 hover:bg-[#39404b] hover:text-white">
+            Reset filters
+          </a>
+        {% endif %}
+
+        <span class="text-sm text-gray-400">{{ pool_count }} candidate{{ pool_count|pluralize }} match{{ pool_count|pluralize:",es" }} these filters</span>
       </div>
 
-      {% if available_genres %}
-        <fieldset>
-          <legend class="block text-xs font-medium text-gray-400 uppercase">Genres (any match)</legend>
-          <div class="mt-1 flex flex-wrap gap-2">
-            {% for genre in available_genres %}
-              <label class="flex cursor-pointer items-center gap-1 rounded-full border border-gray-700 px-3 py-1 text-xs text-gray-300 has-[:checked]:border-indigo-500 has-[:checked]:text-white">
-                <input type="checkbox" name="genres" value="{{ genre }}" class="sr-only" {% if genre in selected_genres %}checked{% endif %}>
-                {{ genre }}
-              </label>
-            {% endfor %}
-          </div>
+      {% if genre_rows %}
+        <fieldset class="flex flex-wrap items-center gap-2">
+          <legend class="mb-1 block w-full text-xs font-medium text-gray-400 uppercase">Genres (any match)</legend>
+          {% for genre in genre_rows %}
+            <label class="flex cursor-pointer items-center gap-1 rounded-full border border-gray-700 px-3 py-1 text-xs text-gray-300 has-[:checked]:border-indigo-500 has-[:checked]:text-white">
+              <input type="checkbox" name="genres" value="{{ genre.name }}" onchange="this.form.submit()" class="sr-only" {% if genre.name in selected_genres %}checked{% endif %}>
+              {{ genre.name }} ({{ genre.count }})
+            </label>
+          {% endfor %}
+          {% if unknown_genre_count %}
+            <span class="text-xs text-gray-500">{{ unknown_genre_count }} excluded: unknown genres</span>
+          {% endif %}
         </fieldset>
       {% endif %}
 
-      <input type="hidden" name="session_exclude" value="{{ session_exclude }}">
-      <button type="submit" name="draw" value="1"
-              class="cursor-pointer rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
-        {% if has_drawn %}Draw again{% else %}Draw{% endif %}
-      </button>
-      {% if empty_reason %}
-        <a href="{{ request.path }}{% if group %}?group={{ group.id }}{% endif %}"
-           class="rounded-md border border-gray-700 px-4 py-2.5 text-sm font-medium text-gray-300 hover:bg-[#39404b] hover:text-white">
-          Reset filters
-        </a>
+      {% if duration_rows %}
+        <fieldset class="flex flex-wrap items-center gap-2">
+          <legend class="mb-1 block w-full text-xs font-medium text-gray-400 uppercase">Duration</legend>
+          <label class="flex cursor-pointer items-center gap-1 rounded-full border border-gray-700 px-3 py-1 text-xs text-gray-300 has-[:checked]:border-indigo-500 has-[:checked]:text-white">
+            <input type="radio" name="duration" value="" onchange="this.form.submit()" class="sr-only" {% if not selected_duration %}checked{% endif %}>
+            Any
+          </label>
+          {% for bucket in duration_rows %}
+            <label class="flex cursor-pointer items-center gap-1 rounded-full border border-gray-700 px-3 py-1 text-xs text-gray-300 has-[:checked]:border-indigo-500 has-[:checked]:text-white">
+              <input type="radio" name="duration" value="{{ bucket.key }}" onchange="this.form.submit()" class="sr-only" {% if bucket.key == selected_duration %}checked{% endif %}>
+              {{ bucket.label }} ({{ bucket.count }})
+            </label>
+          {% endfor %}
+          {% if unknown_duration_count %}
+            <span class="text-xs text-gray-500">{{ unknown_duration_count }} excluded: unknown duration</span>
+          {% endif %}
+        </fieldset>
+      {% endif %}
+
+      {% if mode_rows %}
+        <fieldset class="flex flex-wrap items-center gap-2">
+          <legend class="mb-1 block w-full text-xs font-medium text-gray-400 uppercase">Game mode (any match)</legend>
+          {% for bucket in mode_rows %}
+            <label class="flex cursor-pointer items-center gap-1 rounded-full border border-gray-700 px-3 py-1 text-xs text-gray-300 has-[:checked]:border-indigo-500 has-[:checked]:text-white">
+              <input type="checkbox" name="game_mode" value="{{ bucket.key }}" onchange="this.form.submit()" class="sr-only" {% if bucket.key in selected_modes %}checked{% endif %}>
+              {{ bucket.label }} ({{ bucket.count }})
+            </label>
+          {% endfor %}
+          {% if unknown_mode_count %}
+            <span class="text-xs text-gray-500">{{ unknown_mode_count }} excluded: unknown game modes</span>
+          {% endif %}
+        </fieldset>
       {% endif %}
     </form>
 
     <div class="mx-auto max-w-md">
       {% if result %}
-        <article class="overflow-hidden rounded-lg border border-gray-700 bg-[#2a2f35] shadow-xl">
-          {% if result.image %}
-            <img src="{{ result.image }}" alt="{{ result.title }}" class="h-80 w-full object-cover">
-          {% endif %}
-          <div class="space-y-2 p-5 text-center">
-            <h2 class="text-xl font-bold text-white">{{ result.title }}</h2>
-            <p class="text-xs tracking-wide text-gray-400 uppercase">
-              {{ result.media_type }}
-              {% for genre in result.genres.all %}· {{ genre }}{% endfor %}
-            </p>
+        {{ decoys|json_script:"roulette-decoys" }}
+        <article class="overflow-hidden rounded-lg border border-gray-700 bg-[#2a2f35] shadow-xl"
+                 x-data="{
+                   frames: JSON.parse(document.getElementById('roulette-decoys').textContent),
+                   image: '{{ result.image|escapejs }}',
+                   idx: 0,
+                   revealed: false,
+                   init() {
+                     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                     if (reduceMotion || this.frames.length === 0) { this.revealed = true; return; }
+                     this.image = this.frames[0].image;
+                     let step = 0;
+                     const totalSteps = this.frames.length * 2;
+                     const timer = setInterval(() => {
+                       this.idx = (this.idx + 1) % this.frames.length;
+                       this.image = this.frames[this.idx].image;
+                       step++;
+                       if (step >= totalSteps) {
+                         clearInterval(timer);
+                         this.image = '{{ result.image|escapejs }}';
+                         this.revealed = true;
+                       }
+                     }, 120);
+                   }
+                 }">
+          <img :src="image" alt="{{ result.title }}" class="h-80 w-full bg-[#3e454d] object-cover transition-opacity duration-150">
+          <div class="space-y-2 p-5 text-center"
+               x-show="revealed"
+               x-transition:enter="transition ease-out duration-300"
+               x-transition:enter-start="opacity-0 translate-y-2"
+               x-transition:enter-end="opacity-100 translate-y-0">
+            <div class="flex items-center justify-center gap-2">
+              <span class="rounded-md bg-gray-900/90 px-2 py-1 text-xs font-medium text-white shadow-md">{{ result.media_type|media_type_readable }}</span>
+              {% if result_year %}<span class="text-xs text-gray-400">{{ result_year }}</span>{% endif %}
+            </div>
+            <a href="{{ result|media_url }}" class="block text-xl font-bold text-white transition-colors hover:text-indigo-400">
+              {{ result.title }}
+            </a>
+            {% if result_genres %}
+              <p class="text-sm text-gray-400">{{ result_genres|join:", " }}</p>
+            {% endif %}
+            {% if group_seen %}
+              <p class="text-xs text-amber-300">{{ group_seen.seen }}/{{ group_seen.total }} members have seen this</p>
+            {% endif %}
             <div class="flex flex-wrap justify-center gap-3 pt-3">
               <form method="post" action="{% url 'roulette_start' %}">
                 {% csrf_token %}

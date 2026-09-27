@@ -277,6 +277,7 @@ def game(media_id):
             "fields name,cover.image_id,artworks.image_id,"
             "url,summary,game_type,first_release_date,total_rating,total_rating_count,"
             "genres.name,themes.name,platforms.name,involved_companies.company.name,"
+            "game_modes.name,"
             "parent_game.name,parent_game.cover.image_id,"
             "remasters.name,remasters.cover.image_id,"
             "remakes.name,remakes.cover.image_id,"
@@ -355,6 +356,11 @@ def game(media_id):
                 "themes": get_list(game_response, "themes"),
                 "platforms": get_list(game_response, "platforms"),
                 "companies": get_companies(game_response),
+                # Coarse single/co-op/competitive axis for the roulette's game
+                # mode filter (E7.3, acuerdo 30). IGDB's separate
+                # "multiplayer_modes" entity (local vs. online split) is not
+                # queried here to keep this addition minimal.
+                "game_modes": get_list(game_response, "game_modes"),
             },
             "related": {
                 "parent_game": get_parent(game_response.get("parent_game")),
