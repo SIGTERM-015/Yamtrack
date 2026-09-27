@@ -47,13 +47,17 @@ class CustomListManager(models.Manager):
         )
 
     def get_featured_shelves(self, user):
-        """Return the user's featured shelves in manual order."""
+        """Return the user's featured shelves in manual order.
+
+        Items within each shelf follow their manual ``list_item_id`` order (the
+        order the owner arranged them in, e.g. a TOP5), not when they were added.
+        """
         return (
             self.filter(owner=user, is_featured=True)
             .prefetch_related(
                 Prefetch(
                     "items",
-                    queryset=Item.objects.order_by("-customlistitem__date_added"),
+                    queryset=Item.objects.order_by("customlistitem__list_item_id"),
                 ),
             )
             .order_by("sort_order", "name")

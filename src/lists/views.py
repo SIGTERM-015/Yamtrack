@@ -2,6 +2,7 @@ import logging
 
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Count, F, OuterRef, Q, Subquery
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -148,6 +149,7 @@ def list_detail(request, list_id):
             F("episode_number").asc(nulls_first=True),
         ],
         "media_type": ["media_type"],
+        "manual": ["customlistitem__list_item_id"],
     }
     items = items.order_by(
         *sort_mapping.get(params["sort_by"], ["-customlistitem__date_added"]),
@@ -156,6 +158,17 @@ def list_detail(request, list_id):
     # Paginate
     paginator = Paginator(items, 16)
     items_page = paginator.get_page(params["page"])
+
+    # Attach each item's list-scoped position, used by the manual reorder
+    # controls (only rendered when sorting manually).
+    list_item_ids = dict(
+        CustomListItem.objects.filter(
+            custom_list=custom_list,
+            item_id__in=[item.id for item in items_page],
+        ).values_list("item_id", "list_item_id"),
+    )
+    for item in items_page:
+        item.list_item_id = list_item_ids.get(item.id)
 
     # If no status filter was applied, fetch media objects for paginated items only
     if params["status_filter"] == MediaStatusChoices.ALL:
@@ -183,6 +196,7 @@ def list_detail(request, list_id):
         "current_status": params["status_filter"] or MediaStatusChoices.ALL,
         "sort_choices": ListDetailSortChoices.choices,
         "status_choices": MediaStatusChoices.choices,
+        "can_edit": custom_list.user_can_edit(request.user),
     }
 
     # Additional context for full page render. Soft-navigation body swaps (e.g.
@@ -344,3 +358,69 @@ def list_item_toggle(request):
         "lists/components/list_item_button.html",
         {"custom_list": custom_list, "item": item, "has_item": has_item},
     )
+
+
+@require_POST
+def list_item_reorder(request):
+    """Move an item one position up or down in its list's manual order.
+
+    Manual order is what powers featured shelves (e.g. a TOP5): items keep the
+    position their owner arranged them in instead of insertion order.
+    """
+    custom_list_id = request.POST["custom_list_id"]
+    list_item_id = int(request.POST["list_item_id"])
+    direction = request.POST.get("direction")
+
+    custom_list = get_object_or_404(CustomList, id=custom_list_id)
+    if not custom_list.user_can_edit(request.user):
+        messages.error(request, "You do not have permission to edit this list.")
+        return helpers.redirect_back(request)
+
+    current = get_object_or_404(
+        CustomListItem,
+        custom_list=custom_list,
+        list_item_id=list_item_id,
+    )
+
+    if direction == "up":
+        neighbor = (
+            CustomListItem.objects.filter(
+                custom_list=custom_list,
+                list_item_id__lt=list_item_id,
+            )
+            .order_by("-list_item_id")
+            .first()
+        )
+    else:
+        neighbor = (
+            CustomListItem.objects.filter(
+                custom_list=custom_list,
+                list_item_id__gt=list_item_id,
+            )
+            .order_by("list_item_id")
+            .first()
+        )
+
+    if neighbor is not None:
+        neighbor_id = neighbor.list_item_id
+        with transaction.atomic():
+            # Three-step swap: list_item_id is unique per list, so the two
+            # rows can't hold each other's value at the same time.
+            temp_id = CustomListItem.objects.get_next_list_item_id(custom_list_id)
+            CustomListItem.objects.filter(pk=current.pk).update(
+                list_item_id=temp_id,
+            )
+            CustomListItem.objects.filter(pk=neighbor.pk).update(
+                list_item_id=list_item_id,
+            )
+            CustomListItem.objects.filter(pk=current.pk).update(
+                list_item_id=neighbor_id,
+            )
+        logger.info(
+            "%s moved %s in %s.",
+            current.item,
+            direction,
+            custom_list,
+        )
+
+    return helpers.redirect_back(request)

@@ -1,7 +1,34 @@
 {% load app_tags %}
 
 {% for item in items %}
-  <div {% if forloop.last and has_next %} hx-get="{% url 'list_detail' custom_list.id %}?page={{ next_page_number }}" hx-trigger="revealed threshold:200px" hx-swap="afterend" hx-include="#filter-form" hx-indicator="#loading-indicator" {% endif %}>
+  <div class="relative"
+       {% if forloop.last and has_next %} hx-get="{% url 'list_detail' custom_list.id %}?page={{ next_page_number }}" hx-trigger="revealed threshold:200px" hx-swap="afterend" hx-include="#filter-form" hx-indicator="#loading-indicator" {% endif %}>
     {% include "app/components/media_card.html" with media=item.media item=item title=item from_grid=True %}
+    {% if current_sort == "manual" and can_edit %}
+      <div class="absolute top-2 left-2 z-10 flex flex-col gap-1">
+        <form method="post" action="{% url 'list_item_reorder' %}?next={{ request.path }}">
+          {% csrf_token %}
+          <input type="hidden" name="custom_list_id" value="{{ custom_list.id }}">
+          <input type="hidden" name="list_item_id" value="{{ item.list_item_id }}">
+          <button type="submit"
+                  name="direction"
+                  value="up"
+                  {% if forloop.first %}disabled{% endif %}
+                  aria-label="Move up"
+                  class="w-6 h-6 flex items-center justify-center rounded bg-black/70 text-white hover:bg-black/90 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">&uarr;</button>
+        </form>
+        <form method="post" action="{% url 'list_item_reorder' %}?next={{ request.path }}">
+          {% csrf_token %}
+          <input type="hidden" name="custom_list_id" value="{{ custom_list.id }}">
+          <input type="hidden" name="list_item_id" value="{{ item.list_item_id }}">
+          <button type="submit"
+                  name="direction"
+                  value="down"
+                  {% if forloop.last %}disabled{% endif %}
+                  aria-label="Move down"
+                  class="w-6 h-6 flex items-center justify-center rounded bg-black/70 text-white hover:bg-black/90 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">&darr;</button>
+        </form>
+      </div>
+    {% endif %}
   </div>
 {% endfor %}

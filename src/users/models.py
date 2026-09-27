@@ -118,6 +118,7 @@ class ListDetailSortChoices(models.TextChoices):
     DATE_ADDED = "date_added", "Date Added"
     TITLE = "title", "Title"
     MEDIA_TYPE = "media_type", "Media Type"
+    MANUAL = "manual", "Manual Order"
 
 
 class QuickWatchDateChoices(models.TextChoices):

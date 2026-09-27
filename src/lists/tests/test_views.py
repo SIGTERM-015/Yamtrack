@@ -460,6 +460,16 @@ class ListDetailViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["current_sort"], "media_type")
 
+        # Test manual sorting: each item carries its list-scoped position.
+        mock_update_preference.side_effect = ["manual", None]
+        response = self.client.get(
+            reverse("list_detail", args=[self.custom_list.id]) + "?sort=manual",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["current_sort"], "manual")
+        for item in response.context["items"]:
+            self.assertIsNotNone(item.list_item_id)
+
     @patch.object(get_user_model(), "update_preference")
     @patch.object(CustomList, "user_can_view")
     def test_list_detail_view_htmx_request(
@@ -907,3 +917,115 @@ class ListItemToggleTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.context["has_item"])  # Item was removed
+
+
+class ListItemReorderTests(TestCase):
+    """Tests for manually reordering items within a list (e.g. a TOP5 shelf)."""
+
+    def setUp(self):
+        """Create an owner, a collaborator and a list with three ordered items."""
+        self.credentials = {"username": "reorder_owner", "password": "12345"}
+        self.user = get_user_model().objects.create_user(**self.credentials)
+        self.other_credentials = {"username": "reorder_other", "password": "12345"}
+        self.other_user = get_user_model().objects.create_user(
+            **self.other_credentials,
+        )
+
+        self.custom_list = CustomList.objects.create(
+            name="Top Shelf",
+            owner=self.user,
+            is_featured=True,
+        )
+
+        self.items = []
+        self.list_items = []
+        for index in range(3):
+            item = Item.objects.create(
+                media_id=f"r{index}",
+                source=Sources.MANUAL.value,
+                media_type=MediaTypes.MOVIE.value,
+                title=f"Ranked {index}",
+            )
+            self.items.append(item)
+            self.list_items.append(
+                CustomListItem.objects.create(custom_list=self.custom_list, item=item),
+            )
+
+    def _positions(self):
+        return list(
+            CustomListItem.objects.filter(custom_list=self.custom_list)
+            .order_by("list_item_id")
+            .values_list("item__title", flat=True),
+        )
+
+    def test_move_item_down_swaps_with_next(self):
+        """Moving the first item down swaps it with its neighbor."""
+        self.client.login(**self.credentials)
+        response = self.client.post(
+            reverse("list_item_reorder"),
+            {
+                "custom_list_id": self.custom_list.id,
+                "list_item_id": self.list_items[0].list_item_id,
+                "direction": "down",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self._positions(), ["Ranked 1", "Ranked 0", "Ranked 2"])
+
+    def test_move_item_up_swaps_with_previous(self):
+        """Moving the last item up swaps it with its neighbor."""
+        self.client.login(**self.credentials)
+        response = self.client.post(
+            reverse("list_item_reorder"),
+            {
+                "custom_list_id": self.custom_list.id,
+                "list_item_id": self.list_items[2].list_item_id,
+                "direction": "up",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self._positions(), ["Ranked 0", "Ranked 2", "Ranked 1"])
+
+    def test_move_first_item_up_is_a_no_op(self):
+        """Moving the topmost item further up leaves the order unchanged."""
+        self.client.login(**self.credentials)
+        self.client.post(
+            reverse("list_item_reorder"),
+            {
+                "custom_list_id": self.custom_list.id,
+                "list_item_id": self.list_items[0].list_item_id,
+                "direction": "up",
+            },
+        )
+        self.assertEqual(self._positions(), ["Ranked 0", "Ranked 1", "Ranked 2"])
+
+    def test_unauthorized_user_cannot_reorder(self):
+        """A user who is neither owner nor collaborator cannot reorder items."""
+        self.client.login(**self.other_credentials)
+        self.client.post(
+            reverse("list_item_reorder"),
+            {
+                "custom_list_id": self.custom_list.id,
+                "list_item_id": self.list_items[0].list_item_id,
+                "direction": "down",
+            },
+        )
+        self.assertEqual(self._positions(), ["Ranked 0", "Ranked 1", "Ranked 2"])
+
+    def test_reorder_updates_featured_shelf_display_order(self):
+        """The public shelf listing reflects the new manual order."""
+        self.client.login(**self.credentials)
+        self.user.profile_private = False
+        self.user.save()
+        self.client.post(
+            reverse("list_item_reorder"),
+            {
+                "custom_list_id": self.custom_list.id,
+                "list_item_id": self.list_items[0].list_item_id,
+                "direction": "down",
+            },
+        )
+
+        shelves = list(CustomList.objects.get_featured_shelves(self.user))
+        shelf_items = list(shelves[0].items.all())
+        self.assertEqual([item.title for item in shelf_items], self._positions())

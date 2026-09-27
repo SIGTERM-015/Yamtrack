@@ -24,4 +24,5 @@ urlpatterns = [
     path("list/edit", views.edit, name="list_edit"),
     path("list/delete", views.delete, name="list_delete"),
     path("list_item_toggle", views.list_item_toggle, name="list_item_toggle"),
+    path("list_item_reorder", views.list_item_reorder, name="list_item_reorder"),
 ]
