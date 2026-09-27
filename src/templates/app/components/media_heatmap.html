@@ -52,7 +52,7 @@ GitHub-style media consumption heatmap. Expects:
               {% for day in week %}
                 {% if day.count > 0 %}
                   <button type="button"
-                          hx-get="{% url 'heatmap_day_detail' %}?date={{ day.date }}"
+                          hx-get="{% url 'heatmap_day_detail' %}?date={{ day.date }}&username={{ heatmap_username }}"
                           hx-target="#heatmap-day-detail"
                           hx-swap="innerHTML"
                           hx-indicator="#heatmap-day-detail-indicator"

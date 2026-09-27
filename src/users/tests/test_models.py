@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
 from django.test import TestCase
 from django.utils import timezone
 from django_celery_beat.models import CrontabSchedule, PeriodicTask
@@ -448,3 +449,69 @@ class UserWeekStartDayTests(TestCase):
         self.assertEqual(result, WeekStartDayChoices.SUNDAY)
         user.refresh_from_db()
         self.assertEqual(user.week_start_day, WeekStartDayChoices.SUNDAY)
+
+
+class ProfileSectionVisibleTests(TestCase):
+    """Tests for User.profile_section_visible: per-section profile privacy."""
+
+    def setUp(self):
+        """Create an owner and another user."""
+        self.owner = get_user_model().objects.create_user(
+            username="section_owner",
+            password="12345",  # noqa: S106
+        )
+        self.visitor = get_user_model().objects.create_user(
+            username="section_visitor",
+            password="12345",  # noqa: S106
+        )
+
+    def test_owner_always_sees_their_own_section(self):
+        """The owner sees a section even if they hid it and even if private."""
+        self.owner.profile_private = True
+        self.owner.profile_show_heatmap = False
+
+        self.assertTrue(
+            self.owner.profile_section_visible(self.owner, "profile_show_heatmap"),
+        )
+
+    def test_private_profile_hides_section_from_others(self):
+        """A private profile hides every section from anyone else."""
+        self.owner.profile_private = True
+        self.owner.profile_show_heatmap = True
+
+        self.assertFalse(
+            self.owner.profile_section_visible(self.visitor, "profile_show_heatmap"),
+        )
+
+    def test_public_profile_respects_the_individual_toggle(self):
+        """A public profile still hides a section the owner turned off."""
+        self.owner.profile_private = False
+        self.owner.profile_show_shelves = False
+
+        self.assertFalse(
+            self.owner.profile_section_visible(self.visitor, "profile_show_shelves"),
+        )
+
+    def test_public_profile_shows_enabled_section_to_others(self):
+        """A public profile shows an enabled section to any other viewer."""
+        self.owner.profile_private = False
+        self.owner.profile_show_reviews = True
+
+        self.assertTrue(
+            self.owner.profile_section_visible(self.visitor, "profile_show_reviews"),
+        )
+
+    def test_anonymous_viewer_follows_the_same_rules(self):
+        """An anonymous visitor is treated the same as any other non-owner."""
+        self.owner.profile_private = False
+        self.owner.profile_show_heatmap = True
+        anon = AnonymousUser()
+
+        self.assertTrue(
+            self.owner.profile_section_visible(anon, "profile_show_heatmap"),
+        )
+
+        self.owner.profile_show_heatmap = False
+        self.assertFalse(
+            self.owner.profile_section_visible(anon, "profile_show_heatmap"),
+        )

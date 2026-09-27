@@ -22,6 +22,10 @@
     {% endif %}
   </div>
 
+  {% if heatmap %}
+    {% include "app/components/media_heatmap.html" with heatmap=heatmap now_year=now_year heatmap_username=heatmap_username %}
+  {% endif %}
+
   {% if featured_shelves %}
     <section class="mb-8">
       <h2 class="text-xl font-bold mb-3">Shelves</h2>

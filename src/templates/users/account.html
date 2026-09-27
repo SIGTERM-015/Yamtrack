@@ -61,6 +61,74 @@
         </div>
 
         <div>
+          <h3 class="block text-sm font-medium mb-2 text-gray-300">Profile sections</h3>
+          <p class="text-xs text-gray-400 mb-2">
+            Choose what visitors see on your public profile. You always see your own sections.
+          </p>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between p-3 bg-[#39404b] rounded-md">
+              <div class="flex-1">
+                <div class="flex items-center text-gray-200 mb-1">
+                  {% include "app/icons/calendar.svg" with classes="w-5 h-5 mr-2" %}
+                  <span class="text-sm font-medium">Consumption heatmap</span>
+                </div>
+                <p class="text-xs text-gray-400 ml-7">Show your consumption heatmap on your public profile.</p>
+              </div>
+              <label for="{{ user_form.profile_show_heatmap.id_for_label }}"
+                     class="relative inline-flex items-center cursor-pointer ml-4">
+                <input type="checkbox"
+                       id="{{ user_form.profile_show_heatmap.id_for_label }}"
+                       name="{{ user_form.profile_show_heatmap.html_name }}"
+                       class="sr-only peer"
+                       {% if user_form.profile_show_heatmap.value %}checked{% endif %}>
+                <div class="w-9 h-5 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-400 peer-focus:ring-offset-2 peer-focus:ring-offset-[#39404b] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-px after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-indigo-600">
+                </div>
+              </label>
+            </div>
+
+            <div class="flex items-center justify-between p-3 bg-[#39404b] rounded-md">
+              <div class="flex-1">
+                <div class="flex items-center text-gray-200 mb-1">
+                  {% include "app/icons/star.svg" with classes="w-5 h-5 mr-2" %}
+                  <span class="text-sm font-medium">Featured shelves</span>
+                </div>
+                <p class="text-xs text-gray-400 ml-7">Show your featured shelves on your public profile.</p>
+              </div>
+              <label for="{{ user_form.profile_show_shelves.id_for_label }}"
+                     class="relative inline-flex items-center cursor-pointer ml-4">
+                <input type="checkbox"
+                       id="{{ user_form.profile_show_shelves.id_for_label }}"
+                       name="{{ user_form.profile_show_shelves.html_name }}"
+                       class="sr-only peer"
+                       {% if user_form.profile_show_shelves.value %}checked{% endif %}>
+                <div class="w-9 h-5 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-400 peer-focus:ring-offset-2 peer-focus:ring-offset-[#39404b] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-px after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-indigo-600">
+                </div>
+              </label>
+            </div>
+
+            <div class="flex items-center justify-between p-3 bg-[#39404b] rounded-md">
+              <div class="flex-1">
+                <div class="flex items-center text-gray-200 mb-1">
+                  {% include "app/icons/list.svg" with classes="w-5 h-5 mr-2" %}
+                  <span class="text-sm font-medium">Public reviews</span>
+                </div>
+                <p class="text-xs text-gray-400 ml-7">Show your public reviews on your public profile.</p>
+              </div>
+              <label for="{{ user_form.profile_show_reviews.id_for_label }}"
+                     class="relative inline-flex items-center cursor-pointer ml-4">
+                <input type="checkbox"
+                       id="{{ user_form.profile_show_reviews.id_for_label }}"
+                       name="{{ user_form.profile_show_reviews.html_name }}"
+                       class="sr-only peer"
+                       {% if user_form.profile_show_reviews.value %}checked{% endif %}>
+                <div class="w-9 h-5 bg-gray-600 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-400 peer-focus:ring-offset-2 peer-focus:ring-offset-[#39404b] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-px after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-indigo-600">
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div>
           <label for="{{ user_form.avatar.id_for_label }}"
                  class="block text-sm font-medium mb-2 text-gray-300">Avatar</label>
           {% if user.avatar %}

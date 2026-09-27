@@ -12,6 +12,7 @@ from app.models import (
     Status,
 )
 from app.templatetags import app_tags
+from lists.models import CustomList, CustomListItem
 from users.forms import UserUpdateForm
 
 
@@ -168,7 +169,7 @@ class MediaListViewTests(TestCase):
         self.assertIn("media_list", response.context)
 
     def test_profile_private_defaults_to_false(self):
-        """New users have public profiles by default (open by default, CONTEXT.md 20/22)."""
+        """New users have public profiles by default (CONTEXT.md 20/22)."""
         user = get_user_model().objects.create_user(
             username="private-default",
         )
@@ -294,3 +295,215 @@ class MediaListViewTests(TestCase):
         review.refresh_from_db()
 
         self.assertFalse(review.notes_public)
+
+
+class ProfileSectionVisibilityViewTests(TestCase):
+    """Tests for per-section profile visibility on the media list ("profile") page."""
+
+    def setUp(self):
+        """Create a public owner with a heatmap completion, a shelf and a review."""
+        self.credentials = {"username": "owner_sections", "password": "12345"}
+        self.owner = get_user_model().objects.create_user(
+            **self.credentials,
+            profile_private=False,
+        )
+        self.visitor_credentials = {"username": "visitor_sections", "password": "12345"}
+        self.visitor = get_user_model().objects.create_user(**self.visitor_credentials)
+
+        item = Item.objects.create(
+            media_id="9001",
+            source=Sources.MANUAL.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Section Movie",
+            image="http://example.com/image.jpg",
+        )
+        # bulk_create bypasses the custom save so no provider lookups fire.
+        Movie.objects.bulk_create(
+            [
+                Movie(
+                    item=item,
+                    user=self.owner,
+                    status=Status.COMPLETED.value,
+                    notes="A public review",
+                    notes_public=True,
+                ),
+            ],
+        )
+        self.review = Movie.objects.get(item=item, user=self.owner)
+        Movie.objects.filter(pk=self.review.pk).update(
+            end_date="2026-01-01T00:00:00Z",
+        )
+
+        self.shelf = CustomList.objects.create(
+            name="Owner Shelf",
+            owner=self.owner,
+            is_featured=True,
+        )
+        CustomListItem.objects.create(custom_list=self.shelf, item=item)
+
+    def _get_profile(self):
+        return self.client.get(
+            reverse("medialist", args=[self.owner.username, MediaTypes.MOVIE.value]),
+        )
+
+    def test_owner_sees_all_sections_even_if_hidden(self):
+        """The owner always sees their own sections, regardless of the toggles."""
+        self.owner.profile_show_heatmap = False
+        self.owner.profile_show_shelves = False
+        self.owner.profile_show_reviews = False
+        self.owner.save()
+        self.client.login(**self.credentials)
+
+        response = self._get_profile()
+
+        self.assertContains(response, "Consumption Heatmap")
+        self.assertContains(response, "Owner Shelf")
+        self.assertContains(response, "A public review")
+
+    def test_visitor_sees_enabled_sections_by_default(self):
+        """A logged-in visitor sees all sections by default (default to visible)."""
+        self.client.login(**self.visitor_credentials)
+
+        response = self._get_profile()
+
+        self.assertContains(response, "Consumption Heatmap")
+        self.assertContains(response, "Owner Shelf")
+        self.assertContains(response, "A public review")
+
+    def test_visitor_does_not_see_disabled_heatmap(self):
+        """Hiding the heatmap section removes it for a visitor but not the owner."""
+        self.owner.profile_show_heatmap = False
+        self.owner.save()
+        self.client.login(**self.visitor_credentials)
+
+        response = self._get_profile()
+
+        self.assertNotContains(response, "Consumption Heatmap")
+
+    def test_visitor_does_not_see_disabled_shelves(self):
+        """Hiding shelves removes the section for a visitor."""
+        self.owner.profile_show_shelves = False
+        self.owner.save()
+        self.client.login(**self.visitor_credentials)
+
+        response = self._get_profile()
+
+        self.assertNotContains(response, "Owner Shelf")
+
+    def test_visitor_does_not_see_disabled_reviews(self):
+        """Hiding reviews removes the section for a visitor."""
+        self.owner.profile_show_reviews = False
+        self.owner.save()
+        self.client.login(**self.visitor_credentials)
+
+        response = self._get_profile()
+
+        self.assertNotContains(response, "A public review")
+
+    def test_anonymous_visitor_follows_the_same_section_rules(self):
+        """Anonymous visitors are gated by the same per-section toggles."""
+        self.owner.profile_show_reviews = False
+        self.owner.save()
+
+        response = self._get_profile()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Consumption Heatmap")
+        self.assertNotContains(response, "A public review")
+
+
+class HeatmapDayDetailCrossUserTests(TestCase):
+    """Tests for the heatmap day-detail endpoint across owner/visitor/anonymous."""
+
+    def setUp(self):
+        """Create a public owner with a completion, and a separate visitor."""
+        self.credentials = {"username": "heatmap_owner", "password": "12345"}
+        self.owner = get_user_model().objects.create_user(
+            **self.credentials,
+            profile_private=False,
+        )
+        self.visitor_credentials = {"username": "heatmap_visitor", "password": "12345"}
+        self.visitor = get_user_model().objects.create_user(**self.visitor_credentials)
+
+        item = Item.objects.create(
+            media_id="9101",
+            source=Sources.MANUAL.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Heatmap Detail Movie",
+            image="none.jpg",
+        )
+        self.movie = Movie.objects.create(
+            item=item,
+            user=self.owner,
+            status=Status.COMPLETED.value,
+        )
+        Movie.objects.filter(pk=self.movie.pk).update(
+            end_date="2026-01-05T12:00:00Z",
+        )
+
+    def _detail(self, username=None):
+        params = {"date": "2026-01-05"}
+        if username:
+            params["username"] = username
+        return self.client.get(reverse("heatmap_day_detail"), params)
+
+    def test_visitor_sees_public_owners_detail(self):
+        """A logged-in visitor can see another user's day detail when public."""
+        self.client.login(**self.visitor_credentials)
+
+        response = self._detail(username=self.owner.username)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Heatmap Detail Movie")
+
+    def test_anonymous_sees_public_owners_detail(self):
+        """An anonymous visitor can see a public profile's day detail."""
+        response = self._detail(username=self.owner.username)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Heatmap Detail Movie")
+
+    def test_hidden_heatmap_section_blocks_visitors(self):
+        """Turning off the heatmap section 404s the endpoint for other viewers."""
+        self.owner.profile_show_heatmap = False
+        self.owner.save()
+
+        response = self._detail(username=self.owner.username)
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_private_profile_blocks_visitors(self):
+        """A private profile blocks the day-detail endpoint for other viewers."""
+        self.owner.profile_private = True
+        self.owner.save()
+
+        response = self._detail(username=self.owner.username)
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_owner_sees_their_own_detail_even_if_hidden(self):
+        """The owner can always see their own detail, toggle or privacy aside."""
+        self.owner.profile_private = True
+        self.owner.profile_show_heatmap = False
+        self.owner.save()
+        self.client.login(**self.credentials)
+
+        response = self._detail(username=self.owner.username)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Heatmap Detail Movie")
+
+    def test_missing_username_uses_the_logged_in_users_own_data(self):
+        """Without a username, the endpoint falls back to the caller's own data."""
+        self.client.login(**self.credentials)
+
+        response = self._detail()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Heatmap Detail Movie")
+
+    def test_missing_username_and_anonymous_is_a_bad_request(self):
+        """An anonymous caller with no username has no data to scope to."""
+        response = self._detail()
+
+        self.assertEqual(response.status_code, 400)
