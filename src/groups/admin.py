@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import (
     Group,
+    GroupDiscard,
     GroupEpisodeWatch,
     GroupInvitation,
     GroupItem,
@@ -77,3 +78,12 @@ class GroupOriginAdmin(admin.ModelAdmin):
     list_display = ("user", "item", "group", "detached", "created_at")
     search_fields = ("user__username", "item__title", "group__name")
     list_filter = ("detached", "created_at")
+
+
+@admin.register(GroupDiscard)
+class GroupDiscardAdmin(admin.ModelAdmin):
+    """Admin configuration for GroupDiscard."""
+
+    list_display = ("group", "item", "discarded_by", "created_at")
+    search_fields = ("group__name", "item__title", "discarded_by__username")
+    list_filter = ("created_at",)

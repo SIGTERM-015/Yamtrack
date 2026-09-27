@@ -2069,3 +2069,31 @@ class BoardGame(Media):
     """Model for board games."""
 
     tracker = FieldTracker()
+
+
+class Discard(models.Model):
+    """A user's personal "not interested" mark for an item.
+
+    Reversible and distinct from a score or the Dropped status (E9/roulette
+    and recommendations design). Excludes the item from that user's future
+    roulette draws and recommendations only; independent from any group
+    discard on the same item.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="discards"
+    )
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name="discards")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        """Meta options for the model."""
+
+        constraints = [
+            UniqueConstraint(fields=["user", "item"], name="unique_user_discard"),
+        ]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        """Return string representation."""
+        return f"{self.item} discarded by {self.user}"

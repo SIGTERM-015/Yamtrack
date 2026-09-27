@@ -211,3 +211,39 @@ class GroupInvitation(models.Model):
     def __str__(self):
         """Return string representation."""
         return f"Invitation of {self.invited_user} to {self.group}"
+
+
+class GroupDiscard(models.Model):
+    """
+    A group's "not interested" mark for an item.
+
+    Reversible and distinct from a score or the Dropped status. One member
+    discarding is enough to hide the item for the whole group; any member can
+    restore it. Independent from any individual discard on the same item
+    (CONTEXT.md, ADR 0002 point 9).
+    """
+
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="discards")
+    item = models.ForeignKey(
+        Item, on_delete=models.CASCADE, related_name="group_discards"
+    )
+    discarded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="group_discards_made",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        """Meta class."""
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["group", "item"], name="unique_group_discard"
+            ),
+        ]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        """Return string representation."""
+        return f"{self.item} discarded by {self.group}"

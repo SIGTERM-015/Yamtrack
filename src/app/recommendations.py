@@ -176,12 +176,22 @@ def item_key(entry: dict) -> tuple[str, ...]:
     return key
 
 
-def seen_keys(history: list[dict]) -> set[tuple[str, ...]]:
-    """Return the identities of every title the user has engaged with."""
+def seen_keys(
+    history: list[dict], *, include_completed: bool = True
+) -> set[tuple[str, ...]]:
+    """Return the identities of every title the user has engaged with.
+
+    ``include_completed=False`` drops ``Completed`` from the blocked
+    statuses, which is how the group engine's "allow known works" toggle
+    (acuerdo 19) lets already-finished titles back into the pool while
+    in-progress/dropped/planning titles -- the group's own pending
+    library -- stay excluded.
+    """
+    statuses = _SEEN_STATUSES if include_completed else (_SEEN_STATUSES - {"completed"})
     return {
         item_key(entry)
         for entry in history
-        if _status_key(entry.get("status")) in _SEEN_STATUSES
+        if _status_key(entry.get("status")) in statuses
     }
 
 
@@ -343,6 +353,7 @@ def rank_group_candidates(  # noqa: C901, PLR0912, PLR0913
     limit: int | None = None,
     weights: Weights | None = None,
     excluded: object = (),
+    allow_known: bool = False,
 ) -> list[dict]:
     """Rank candidates for a group of members.
 
@@ -354,7 +365,10 @@ def rank_group_candidates(  # noqa: C901, PLR0912, PLR0913
         anything one member would hate never rises to the top.  A candidate is
         dropped outright when its genre affinity falls below
         :data:`MIN_MEMBER_AFFINITY` for *any* member, and when *any* member has
-        already seen it.
+        already seen it. By default "seen" includes ``Completed``; passing
+        ``allow_known=True`` (acuerdo 19, "permitir obras conocidas") keeps
+        completed titles in the pool while still excluding anything In
+        progress, Dropped or Planning for any member.
     ``GROUP_MODE_MINE`` ("para mí", dentro del grupo)
         The individual ranking for ``viewer`` with every title another member
         has already seen filtered out.
@@ -401,7 +415,9 @@ def rank_group_candidates(  # noqa: C901, PLR0912, PLR0913
     group_affinity = build_group_affinity(members, media_type=media_type, k=weights.k)
     blocked = set(excluded)
     for member in members:
-        blocked |= seen_keys(member.get("history") or [])
+        blocked |= seen_keys(
+            member.get("history") or [], include_completed=not allow_known
+        )
 
     ranked = []
     for candidate in candidates:

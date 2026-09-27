@@ -263,6 +263,59 @@ class SeenFilterTests(SimpleTestCase):
             rank_group_candidates([], [_member("a", [])], mode=GROUP_MODE_MINE)
 
 
+class AllowKnownTests(SimpleTestCase):
+    """The "allow known works" toggle (acuerdo 19)."""
+
+    def test_completed_is_excluded_by_default(self):
+        """By default a title completed by any member is dropped."""
+        members = [
+            _member("a", [_movie("known", score=8, status="Completed")]),
+            _member("b", _history("b", 5, 8)),
+        ]
+        ranked = rank_group_candidates(
+            [_candidate("known"), _candidate("fresh")], members
+        )
+        self.assertEqual([item["media_id"] for item in ranked], ["fresh"])
+
+    def test_allow_known_keeps_completed_titles(self):
+        """``allow_known=True`` lets a completed title back into the pool."""
+        members = [
+            _member("a", [_movie("known", score=8, status="Completed")]),
+            _member("b", _history("b", 5, 8)),
+        ]
+        ranked = rank_group_candidates(
+            [_candidate("known"), _candidate("fresh")],
+            members,
+            allow_known=True,
+        )
+        self.assertEqual(
+            {item["media_id"] for item in ranked}, {"known", "fresh"}
+        )
+
+    def test_allow_known_still_excludes_in_progress_and_planning(self):
+        """Allowing known works never lets back in the group's own pending pile."""
+        members = [
+            _member(
+                "a",
+                [
+                    _movie("in_progress", status="In progress"),
+                    _movie("planning", status="Planning"),
+                ],
+            ),
+            _member("b", _history("b", 5, 8)),
+        ]
+        ranked = rank_group_candidates(
+            [
+                _candidate("in_progress"),
+                _candidate("planning"),
+                _candidate("fresh"),
+            ],
+            members,
+            allow_known=True,
+        )
+        self.assertEqual([item["media_id"] for item in ranked], ["fresh"])
+
+
 class FallbackTests(SimpleTestCase):
     """Cold start: no member has ratings."""
 

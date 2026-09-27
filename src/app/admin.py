@@ -5,6 +5,7 @@ from django.contrib import admin
 from django.contrib.admin.sites import AlreadyRegistered
 
 from app.models import (
+    Discard,
     Episode,
     Item,
     UserMessage,
@@ -53,12 +54,21 @@ class MediaAdmin(admin.ModelAdmin):
     list_filter = ["status"]
 
 
+@admin.register(Discard)
+class DiscardAdmin(admin.ModelAdmin):
+    """Custom admin for personal "not interested" discards."""
+
+    search_fields = ["item__title", "user__username"]
+    list_display = ["item", "user", "created_at"]
+    list_filter = ["created_at"]
+
+
 # Register models with custom admin classes
 
 
 # Auto-register remaining models
 app_models = apps.get_app_config("app").get_models()
-SpecialModels = ["Item", "Episode", "BasicMedia", "UserMessage", "Genre"]
+SpecialModels = ["Item", "Episode", "BasicMedia", "UserMessage", "Genre", "Discard"]
 for model in app_models:
     if (
         not model.__name__.startswith("Historical")
