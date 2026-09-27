@@ -8,10 +8,19 @@
 {% endblock title %}
 
 {% block content %}
-  <h1 class="text-3xl font-bold mb-6">
-    {% if request.user != target_user %}{{ target_user.username }}'s{% endif %}
-    {{ media_type|media_type_readable_plural }}
-  </h1>
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <h1 class="text-3xl font-bold">
+      {% if request.user != target_user %}{{ target_user.username }}'s{% endif %}
+      {{ media_type|media_type_readable_plural }}
+    </h1>
+    {% if request.user == target_user %}
+      <a href="{% url 'roulette' %}?media_type={{ media_type }}"
+         class="flex items-center gap-2 rounded-md border border-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white">
+        {% include "app/icons/cube.svg" with classes="w-4 h-4" %}
+        Roulette
+      </a>
+    {% endif %}
+  </div>
 
   {% if featured_shelves %}
     <section class="mb-8">

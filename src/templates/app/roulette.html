@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Roulette - Yamtrack
+{% endblock title %}
+
+{% block content %}
+  <div class="space-y-6">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-3xl font-bold">
+        {% include "app/icons/cube.svg" with classes="inline w-7 h-7 text-indigo-400 -mt-1 mr-1" %}
+        What should we watch?
+      </h1>
+      {% if group %}
+        <a href="{% url 'group_detail' group.id %}" class="text-sm text-indigo-300 hover:text-white">
+          &larr; Back to {{ group.name }}
+        </a>
+      {% endif %}
+    </div>
+
+    {% if request.GET.discarded_title %}
+      <div class="flex items-center justify-between gap-3 rounded-md border border-gray-700 bg-[#2a2f35] px-4 py-3 text-sm text-gray-200">
+        <span>"{{ request.GET.discarded_title }}" won't be drawn again.</span>
+        <form method="post"
+              action="{% if group %}{% url 'group_restore_item' group.id %}{% else %}{% url 'restore_item' request.GET.discarded_item %}{% endif %}">
+          {% csrf_token %}
+          <input type="hidden" name="item_id" value="{{ request.GET.discarded_item }}">
+          <input type="hidden" name="next" value="{{ request.path }}{% if group %}?group={{ group.id }}{% endif %}">
+          <button type="submit"
+                  class="cursor-pointer rounded-md border border-indigo-500 px-3 py-1 font-medium text-indigo-300 transition-colors hover:bg-indigo-500 hover:text-white">
+            Undo
+          </button>
+        </form>
+      </div>
+    {% endif %}
+
+    <form method="get" class="flex flex-wrap items-end gap-4 rounded-lg border border-gray-700 bg-[#2a2f35] p-4">
+      {% if group %}<input type="hidden" name="group" value="{{ group.id }}">{% endif %}
+
+      <div>
+        <label for="media-type" class="block text-xs font-medium text-gray-400 uppercase">Media type</label>
+        <select id="media-type" name="media_type" class="mt-1 rounded-md border border-gray-700 bg-[#1f2328] px-3 py-2 text-sm text-white">
+          <option value="">Any</option>
+          {% for value in media_types %}
+            <option value="{{ value }}" {% if media_type == value %}selected{% endif %}>{{ value }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {% if available_genres %}
+        <fieldset>
+          <legend class="block text-xs font-medium text-gray-400 uppercase">Genres (any match)</legend>
+          <div class="mt-1 flex flex-wrap gap-2">
+            {% for genre in available_genres %}
+              <label class="flex cursor-pointer items-center gap-1 rounded-full border border-gray-700 px-3 py-1 text-xs text-gray-300 has-[:checked]:border-indigo-500 has-[:checked]:text-white">
+                <input type="checkbox" name="genres" value="{{ genre }}" class="sr-only" {% if genre in selected_genres %}checked{% endif %}>
+                {{ genre }}
+              </label>
+            {% endfor %}
+          </div>
+        </fieldset>
+      {% endif %}
+
+      <input type="hidden" name="session_exclude" value="{{ session_exclude }}">
+      <button type="submit" name="draw" value="1"
+              class="cursor-pointer rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
+        {% if has_drawn %}Draw again{% else %}Draw{% endif %}
+      </button>
+      {% if empty_reason %}
+        <a href="{{ request.path }}{% if group %}?group={{ group.id }}{% endif %}"
+           class="rounded-md border border-gray-700 px-4 py-2.5 text-sm font-medium text-gray-300 hover:bg-[#39404b] hover:text-white">
+          Reset filters
+        </a>
+      {% endif %}
+    </form>
+
+    <div class="mx-auto max-w-md">
+      {% if result %}
+        <article class="overflow-hidden rounded-lg border border-gray-700 bg-[#2a2f35] shadow-xl">
+          {% if result.image %}
+            <img src="{{ result.image }}" alt="{{ result.title }}" class="h-80 w-full object-cover">
+          {% endif %}
+          <div class="space-y-2 p-5 text-center">
+            <h2 class="text-xl font-bold text-white">{{ result.title }}</h2>
+            <p class="text-xs tracking-wide text-gray-400 uppercase">
+              {{ result.media_type }}
+              {% for genre in result.genres.all %}· {{ genre }}{% endfor %}
+            </p>
+            <div class="flex flex-wrap justify-center gap-3 pt-3">
+              <form method="post" action="{% url 'roulette_start' %}">
+                {% csrf_token %}
+                <input type="hidden" name="item_id" value="{{ result.id }}">
+                {% if group %}<input type="hidden" name="group_id" value="{{ group.id }}">{% endif %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit"
+                        class="cursor-pointer rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700">
+                  Start watching
+                </button>
+              </form>
+              <form method="post"
+                    action="{% if group %}{% url 'group_discard_item' group.id %}{% else %}{% url 'discard_item' %}{% endif %}">
+                {% csrf_token %}
+                <input type="hidden" name="item_id" value="{{ result.id }}">
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit"
+                        class="cursor-pointer rounded-md border border-gray-700 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white">
+                  Not interested
+                </button>
+              </form>
+            </div>
+          </div>
+        </article>
+      {% elif empty_reason %}
+        <div class="rounded-lg border border-gray-700 bg-[#2a2f35] p-8 text-center text-gray-300">
+          <p class="font-medium text-white">Nothing matches these filters</p>
+          <p class="mt-2 text-sm">{{ empty_reason }}</p>
+        </div>
+      {% else %}
+        <div class="rounded-lg border border-dashed border-gray-700 bg-[#2a2f35] p-10 text-center text-gray-500">
+          <p>{{ pool_count }} pending title{{ pool_count|pluralize }} available. Draw to get a suggestion.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock content %}
