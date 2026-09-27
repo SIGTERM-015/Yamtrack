@@ -1,5 +1,7 @@
-{# Reusable "Discarded" section for a group. Include with `group` and
-   `discards` (groups.discards.group_discarded_items queryset) in context. #}
+{% comment %}
+Reusable "Discarded" section for a group. Include with `group` and
+`discards` (groups.discards.group_discarded_items queryset) in context.
+{% endcomment %}
 <div class="space-y-4">
   {% if discards %}
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
