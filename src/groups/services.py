@@ -1,12 +1,14 @@
 from collections import defaultdict
 
 from django.apps import apps
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models, transaction
 from django.utils import timezone
 
-from app.models import MediaTypes, Status
-from groups.models import Group, GroupItem
+from app import providers
+from app.models import Item, MediaTypes, Status
+from groups.models import Group, GroupEpisodeWatch, GroupItem
 
 # Minimum number of submitted scores needed to report a comparison difference.
 _MIN_SCORES_FOR_DIFFERENCE = 2
@@ -633,3 +635,294 @@ def get_group_tab_items(group: Group) -> dict:
             group_item,
         )
     return tabs
+
+
+# --- S4: TV propagation (episode-based) -------------------------------------
+
+# Statuses for which a member's TV/season record is terminal for propagation:
+# never reopened, never given new episodes as "advancing" (design §2.3).
+_TV_TERMINAL_STATUSES = {Status.COMPLETED.value, Status.DROPPED.value}
+
+
+def episodes_up_to(season_number: int, episode_number: int) -> list[tuple[int, int]]:
+    """
+    Build the "up to episode N" shortcut: episodes 1..N of a season.
+
+    Args:
+        season_number: The season number (0 allowed, though season 0 never
+            counts towards progress).
+        episode_number: The last episode number to include (inclusive).
+
+    Returns:
+        A list of ``(season_number, episode_number)`` tuples, in order.
+    """
+    return [(season_number, number) for number in range(1, episode_number + 1)]
+
+
+def _get_or_create_season_item(tv_item: Item, season_number: int) -> Item:
+    """Get or create the Item for a season of ``tv_item``."""
+    item, _ = Item.objects.get_or_create(
+        media_id=tv_item.media_id,
+        source=tv_item.source,
+        media_type=MediaTypes.SEASON.value,
+        season_number=season_number,
+        defaults={"title": tv_item.title, "image": settings.IMG_NONE},
+    )
+    return item
+
+
+def _get_or_create_episode_item(
+    tv_item: Item,
+    season_number: int,
+    episode_number: int,
+) -> Item:
+    """Get or create the Item for an episode of ``tv_item``, no metadata call."""
+    item, _ = Item.objects.get_or_create(
+        media_id=tv_item.media_id,
+        source=tv_item.source,
+        media_type=MediaTypes.EPISODE.value,
+        season_number=season_number,
+        episode_number=episode_number,
+        defaults={"title": tv_item.title, "image": settings.IMG_NONE},
+    )
+    return item
+
+
+def _get_tv_max_progress(tv_item: Item) -> int | None:
+    """Best-effort total episode count for ``tv_item``, or None if unknown."""
+    try:
+        metadata = providers.services.get_media_metadata(
+            MediaTypes.TV.value,
+            tv_item.media_id,
+            tv_item.source,
+        )
+    except Exception:  # noqa: BLE001 - metadata may be unavailable; best-effort
+        return None
+    return metadata.get("max_progress")
+
+
+def mark_group_episodes_watched(
+    group_item: GroupItem,
+    episodes,
+    participants=None,
+) -> GroupItem:
+    """
+    Record episodes watched by the group and propagate them to members.
+
+    ``episodes`` is an iterable of ``(season_number, episode_number)`` tuples.
+    Each is written once to the group's episode ledger (idempotent: a repeated
+    episode is a no-op). The group's denormalized progress excludes season 0
+    (design §1.2/§2.3); the group's status advances Planning -> In progress,
+    and reaches Completed only when the total watched matches the show's known
+    episode count (best-effort: skipped when metadata is unavailable).
+
+    Then each participant receives a monotone merge of the group's watched
+    episodes (:func:`_propagate_group_episodes`): TV/Season/Episode records
+    are created as needed, never reduced, Completed/Dropped members are
+    skipped entirely, and Paused members get the episodes without leaving
+    Paused.
+
+    Args:
+        group_item: The GroupItem for the TV show.
+        episodes: Iterable of ``(season_number, episode_number)`` tuples.
+        participants: Iterable of user ids (or users); None = all members.
+
+    Returns:
+        The saved GroupItem.
+    """
+    tv_item = group_item.item
+    now = timezone.now()
+
+    with transaction.atomic():
+        for season_number, episode_number in episodes:
+            episode_item = _get_or_create_episode_item(
+                tv_item,
+                season_number,
+                episode_number,
+            )
+            GroupEpisodeWatch.objects.get_or_create(
+                group_item=group_item,
+                item=episode_item,
+            )
+
+        progress = group_item.watched_episodes.filter(
+            item__season_number__gt=0,
+        ).count()
+        group_item.progress = progress
+        group_item.progressed_at = now
+
+        if progress > 0 and group_item.status == Status.PLANNING.value:
+            group_item.status = Status.IN_PROGRESS.value
+            if group_item.started_at is None:
+                group_item.started_at = now
+
+        if group_item.status in (Status.PLANNING.value, Status.IN_PROGRESS.value):
+            max_progress = _get_tv_max_progress(tv_item)
+            if max_progress and progress >= max_progress:
+                group_item.status = Status.COMPLETED.value
+                if group_item.completed_at is None:
+                    group_item.completed_at = now
+
+        group_item.save(
+            update_fields=[
+                "status",
+                "progress",
+                "started_at",
+                "completed_at",
+                "progressed_at",
+            ],
+        )
+
+    _propagate_group_episodes(group_item, participants)
+    return group_item
+
+
+def _propagate_episodes_for_season(
+    tv_item: Item,
+    tv,
+    season_number: int,
+    items: list,
+    watched_at_by_item: dict,
+    user_id: int,
+) -> bool:
+    """Merge one season's worth of watched episodes into a member's records."""
+    season_model = apps.get_model("app", MediaTypes.SEASON.value)
+    episode_model = apps.get_model("app", MediaTypes.EPISODE.value)
+
+    season_item = _get_or_create_season_item(tv_item, season_number)
+    season = season_model.objects.filter(related_tv=tv, item=season_item).first()
+    touched = False
+
+    if season is None:
+        season = season_model(
+            item=season_item,
+            user_id=user_id,
+            related_tv=tv,
+            status=Status.PLANNING.value,
+            notes="",
+        )
+        season_model.save_base(season)
+        touched = True
+    elif season.status in _TV_TERMINAL_STATUSES:
+        return False
+
+    existing_item_ids = set(
+        episode_model.objects.filter(related_season=season).values_list(
+            "item_id",
+            flat=True,
+        ),
+    )
+    to_create = [
+        episode_model(
+            related_season=season,
+            item=item,
+            end_date=watched_at_by_item.get(item.id),
+        )
+        for item in items
+        if item.id not in existing_item_ids
+    ]
+    if to_create:
+        episode_model.objects.bulk_create(to_create)
+        touched = True
+
+    if season.status == Status.PLANNING.value and to_create:
+        season_model.objects.filter(pk=season.pk).update(
+            status=Status.IN_PROGRESS.value,
+        )
+        touched = True
+
+    return touched
+
+
+def _propagate_episode_to_member(
+    tv_item: Item,
+    watched_items: list,
+    watched_at_by_item: dict,
+    user_id: int,
+    group_status: str,
+) -> bool:
+    """
+    Merge the group's watched episodes into one member's personal records.
+
+    Uses ``save_base``/``bulk_create``/``queryset.update`` throughout instead
+    of the model's normal ``save()`` so this never triggers the personal
+    model's own metadata-fetching status cascades; the monotone rules of
+    design §2.3 are applied explicitly here instead.
+
+    Returns:
+        True if the member's records were touched, False if skipped
+        (terminal status) or nothing was new.
+    """
+    tv_model = apps.get_model("app", MediaTypes.TV.value)
+
+    tv = tv_model.objects.filter(item=tv_item, user_id=user_id).first()
+    if tv is not None and tv.status in _TV_TERMINAL_STATUSES:
+        return False
+
+    if tv is None:
+        tv = tv_model(item=tv_item, user_id=user_id, status=Status.PLANNING.value)
+        tv_model.save_base(tv)
+
+    by_season = defaultdict(list)
+    for item in watched_items:
+        by_season[item.season_number].append(item)
+
+    touched = False
+    for season_number, items in by_season.items():
+        if _propagate_episodes_for_season(
+            tv_item,
+            tv,
+            season_number,
+            items,
+            watched_at_by_item,
+            user_id,
+        ):
+            touched = True
+
+    if tv.status not in _TV_TERMINAL_STATUSES:
+        new_status = tv.status
+        if group_status == Status.COMPLETED.value:
+            new_status = Status.COMPLETED.value
+        elif tv.status == Status.PLANNING.value and touched:
+            new_status = Status.IN_PROGRESS.value
+
+        if new_status != tv.status:
+            tv_model.objects.filter(pk=tv.pk).update(status=new_status)
+            touched = True
+
+    return touched
+
+
+def _propagate_group_episodes(group_item: GroupItem, participants=None) -> dict:
+    """
+    Propagate all of the group's watched episodes to selected participants.
+
+    Recomputes from the full ledger every call (not just newly added
+    episodes), so a member who was behind on older episodes also catches up;
+    idempotent by construction.
+
+    Args:
+        group_item: The GroupItem holding the episode ledger.
+        participants: Iterable of user ids (or users); None = all members.
+
+    Returns:
+        A summary dict with ``updated`` and ``skipped`` counts.
+    """
+    tv_item = group_item.item
+    participant_ids = _resolve_participant_ids(group_item.group, participants)
+    watches = list(group_item.watched_episodes.select_related("item").all())
+    watched_items = [watch.item for watch in watches]
+    watched_at_by_item = {watch.item_id: watch.watched_at for watch in watches}
+
+    summary = {"updated": 0, "skipped": 0}
+    for user_id in participant_ids:
+        touched = _propagate_episode_to_member(
+            tv_item,
+            watched_items,
+            watched_at_by_item,
+            user_id,
+            group_item.status,
+        )
+        summary["updated" if touched else "skipped"] += 1
+
+    return summary
