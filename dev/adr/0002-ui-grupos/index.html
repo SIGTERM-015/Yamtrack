@@ -591,9 +591,9 @@
 <ol>
 <li>La pantalla del grupo se ordena por prioridad de uso: (1) añadir medios, (2) decidir qué ver, (3) actualizar el estado, (4) gestionar el grupo.</li>
 <li>El diseño es genérico para N personas, no específico de pareja: contadores tipo «X/Y».</li>
-<li>El grupo tiene cinco pestañas: <strong>Pendientes</strong> (con buscador para añadir arriba y botón de ruleta) · <strong>Viendo</strong> · <strong>Vistos</strong> · <strong>Estadísticas</strong> (comparativa de valoraciones y géneros) · <strong>Ajustes</strong> (miembros, invitaciones, salir). Pendientes es la pestaña por defecto. Las tres primeras se basan en el estado propio del grupo, no en la suma de registros personales.</li>
+<li>El grupo tiene cinco pestañas: <strong>Pendientes</strong> (con botón de ruleta) · <strong>Viendo</strong> · <strong>Vistos</strong> · <strong>Estadísticas</strong> (comparativa de valoraciones y géneros) · <strong>Ajustes</strong> (miembros, invitaciones, salir). Pendientes es la pestaña por defecto. Las tres primeras se basan en el estado propio del grupo, no en la suma de registros personales.</li>
 <li>El estilo es la rejilla de pósters del resto de la app, con indicador de qué miembros lo han visto.</li>
-<li>Añadir usa el buscador dentro del grupo (reutiliza la búsqueda existente) más un botón «añadir a grupo» en la ficha del medio y en la búsqueda general.</li>
+<li>Añadir usa el botón «añadir a grupo» de la ficha del medio y de los resultados de la búsqueda general. <em>(Enmendado el 2026-10-01: se retira el buscador dentro del grupo; duplicaba la búsqueda general sin aportar nada en el uso real.)</em></li>
 <li>Ruleta y recomendador no son exclusivos de grupo: existen en ámbito individual y de grupo.</li>
 <li>El estado y el progreso son propios del grupo, según la spec de CONTEXT.md: el grupo tiene estado y progreso contextuales; al avanzar actualiza los registros personales sin reducir progreso ni reabrir completados.</li>
 <li>Quitar un medio del grupo lo puede hacer cualquier miembro; solo lo quita del grupo, los registros personales se conservan.</li>
@@ -603,7 +603,7 @@
 <li>Recuperación: sección «Descartados» (en recomendaciones para lo individual, en el grupo para lo grupal) con botón «recuperar», más «deshacer» inmediato tras descartar.</li>
 </ol>
 <h2 id="consecuencias">Consecuencias<a class="headerlink" href="#consecuencias" title="Permanent link">&para;</a></h2>
-<p>Hay que construir las cinco pestañas con el estado propio del grupo como fuente, el buscador dentro del grupo y el botón «añadir a grupo» en ficha y búsqueda, la ruleta de grupo sobre pendientes, la comparativa y los géneros integrados en la pestaña de estadísticas, y el flujo de descarte con «deshacer» y sección «Descartados» en ambos ámbitos. La gestión de miembros e invitaciones se repliega a la pestaña de Ajustes.</p>
+<p>Hay que construir las cinco pestañas con el estado propio del grupo como fuente, el botón «añadir a grupo» en ficha y búsqueda, la ruleta de grupo sobre pendientes, la comparativa y los géneros integrados en la pestaña de estadísticas, y el flujo de descarte con «deshacer» y sección «Descartados» en ambos ámbitos. La gestión de miembros e invitaciones se repliega a la pestaña de Ajustes.</p>
 <h2 id="progreso-del-grupo">Progreso del grupo<a class="headerlink" href="#progreso-del-grupo" title="Permanent link">&para;</a></h2>
 <p>Decisiones tomadas durante la implementación de S4 (propagación de episodios de TV)
 y S5 (rediseño de la pantalla de grupo), complementarias a la §7 de la Decisión:</p>
@@ -629,6 +629,12 @@ y S5 (rediseño de la pantalla de grupo), complementarias a la §7 de la Decisi�
    fila por <code>(group_item, item)</code> con restricción de unicidad; volver a marcar el
    mismo episodio no lo duplica ni lo cuenta dos veces en el progreso agregado
    del grupo.</li>
+</ol>
+<h2 id="seleccion-y-acciones-en-la-rejilla">Selección y acciones en la rejilla<a class="headerlink" href="#seleccion-y-acciones-en-la-rejilla" title="Permanent link">&para;</a></h2>
+<p>Enmienda del 2026-10-01, tras uso real:</p>
+<ol>
+<li>Las casillas de selección no están siempre visibles: aparecen al pasar el ratón (o con el foco) sobre un póster. Al seleccionar uno, todos muestran su casilla y tocar un póster lo marca o desmarca.</li>
+<li>La barra de acciones masivas solo aparece con dos o más seleccionados. Con uno o ninguno, cada póster ofrece un selector de acción rápida (cambiar el estado del grupo, marcar episodios en series o abrir el resto de opciones).</li>
 </ol>
 <h2 id="alternativas-descartadas">Alternativas descartadas<a class="headerlink" href="#alternativas-descartadas" title="Permanent link">&para;</a></h2>
 <ul>
