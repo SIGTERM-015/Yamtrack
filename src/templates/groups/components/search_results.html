@@ -11,16 +11,15 @@
               {{ row.item.title }}
             </p>
             {% if row.already_added %}
-              <span class="block text-center text-xs rounded-md bg-emerald-600/20 text-emerald-400 py-1">
-                Added
-              </span>
+              {% include "groups/components/added_badge.html" with item=row.item %}
             {% else %}
               <button type="button"
+                      id="group-add-{{ row.item.id }}"
                       class="w-full text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-md py-1 cursor-pointer transition-colors"
                       hx-post="{% url 'group_item_add' group.id %}"
                       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
                       hx-vals='{"item_id": "{{ row.item.id }}"}'
-                      hx-target="#item-grid-panel"
+                      hx-target="#group-item-grid"
                       hx-swap="outerHTML">
                 Add
               </button>

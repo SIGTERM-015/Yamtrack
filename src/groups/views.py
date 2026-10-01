@@ -512,8 +512,9 @@ def group_item_add(request, group_id):
 
     A plain POST (the generic "Add to group" modal used from search/details
     pages) redirects back to the group. An HTMX request (the in-group
-    Planning-tab search) instead re-renders the item grid panel in place, so
-    the new poster appears without leaving the page.
+    Planning-tab search) instead re-renders the item grid in place and swaps
+    the clicked "Add" button for an "Added" badge out of band, so the new
+    poster appears while the search results stay on screen.
     """
     group = get_object_or_404(Group, id=group_id)
 
@@ -525,10 +526,12 @@ def group_item_add(request, group_id):
     add_item_to_group(group, item, request.user)
 
     if request.headers.get("HX-Request"):
+        context = _grid_panel_context(group, "pending")
+        context["added_item"] = item
         return render(
             request,
-            "groups/components/item_grid_panel.html",
-            _grid_panel_context(group, "pending"),
+            "groups/components/group_item_add_response.html",
+            context,
         )
 
     messages.success(request, f"{item.title} was added to '{group.name}'.")

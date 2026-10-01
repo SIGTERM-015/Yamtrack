@@ -185,12 +185,18 @@ def _build_profile_sections(request, target_user, media_type):
 
     public_reviews = None
     if show_reviews:
+        review_model = apps.get_model(app_label="app", model_name=media_type)
+        # TV and Season derive their dates from episodes; they have no end_date.
+        review_ordering = (
+            ("-end_date", "-created_at")
+            if any(field.name == "end_date" for field in review_model._meta.fields)
+            else ("-created_at",)
+        )
         public_reviews = (
-            apps.get_model(app_label="app", model_name=media_type)
-            .objects.filter(user=target_user, notes_public=True)
+            review_model.objects.filter(user=target_user, notes_public=True)
             .exclude(notes="")
             .select_related("item")
-            .order_by("-end_date", "-created_at")
+            .order_by(*review_ordering)
         )
 
     featured_shelves = (

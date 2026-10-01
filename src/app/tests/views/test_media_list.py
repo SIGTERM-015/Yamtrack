@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from app.models import (
+    TV,
     Item,
     MediaTypes,
     Movie,
@@ -235,6 +236,35 @@ class MediaListViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(review, response.context["public_reviews"])
         self.assertContains(response, "Great movie")
+
+    def test_public_review_on_tv_list_without_end_date(self):
+        """TV has no end_date field; its public reviews still render."""
+        item = Item.objects.create(
+            media_id="1668",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.TV.value,
+            title="Review Show",
+            image="http://example.com/image.jpg",
+        )
+        TV.objects.create(
+            item=item,
+            user=self.external_user,
+            status=Status.IN_PROGRESS.value,
+            notes="Great show",
+            notes_public=True,
+        )
+        self.external_user.profile_private = False
+        self.external_user.save(update_fields=["profile_private"])
+        self.client.logout()
+
+        response = self.client.get(
+            reverse(
+                "medialist", args=[self.external_user.username, MediaTypes.TV.value]
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Great show")
 
     def test_private_review_hidden(self):
         """Notes not marked public never appear as reviews."""

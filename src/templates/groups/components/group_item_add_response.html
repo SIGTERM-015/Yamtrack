@@ -1,0 +1,8 @@
+{% comment %}
+HTMX response for the in-group search "Add" button: the refreshed Planning
+grid, plus out-of-band swaps that turn the clicked button into "Added" and
+bump the Planning tab counter, so the search results stay on screen.
+{% endcomment %}
+{% include "groups/components/item_grid.html" %}
+{% include "groups/components/added_badge.html" with item=added_item oob=True %}
+<span id="tab-count-pending" hx-swap-oob="true" class="ml-1 text-xs text-gray-500">({{ items_data|length }})</span>

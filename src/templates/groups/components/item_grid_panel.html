@@ -24,33 +24,5 @@
     </div>
   {% endif %}
 
-  {% if is_member and items_data %}
-    <form method="post"
-          action="{% url 'group_bulk_set_status' group.id %}"
-          class="mb-4 rounded-md bg-[#39404b] px-4 py-3 flex flex-wrap items-center gap-3"
-          id="bulk-form">
-      {% csrf_token %}
-      <span class="text-sm text-gray-300">Bulk action on selected items:</span>
-      <select name="status"
-              class="rounded-md bg-[#2a2f35] border border-gray-600 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#4a9eff]">
-        {% for value, label in status_choices %}
-          <option value="{{ value }}">{{ label }}</option>
-        {% endfor %}
-      </select>
-      <button type="submit"
-              class="rounded-md bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 text-sm font-medium text-white cursor-pointer">
-        Apply to selected
-      </button>
-    </form>
-  {% endif %}
-
-  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-6">
-    {% for data in items_data %}
-      {% include "groups/components/group_item_card.html" with data=data %}
-    {% empty %}
-      <div class="col-span-full py-12 text-center text-gray-400">
-        Nothing here yet.
-      </div>
-    {% endfor %}
-  </div>
+  {% include "groups/components/item_grid.html" %}
 </div>

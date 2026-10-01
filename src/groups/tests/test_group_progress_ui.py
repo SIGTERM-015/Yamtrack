@@ -91,6 +91,12 @@ class GroupInlineSearchTest(TestCase):
         self.assertTrue(
             GroupItem.objects.filter(group=self.group, item=item).exists(),
         )
+        # Only the grid is swapped; the search box and its results stay, and
+        # the clicked button becomes an "Added" badge plus a fresh tab count.
+        self.assertContains(response, 'id="group-item-grid"')
+        self.assertNotContains(response, 'id="group-search-results"')
+        self.assertContains(response, f'id="group-add-{item.id}"')
+        self.assertContains(response, 'id="tab-count-pending" hx-swap-oob="true"')
         # Non-HTMX callers (e.g. the generic "Add to group" modal) still redirect.
         item2 = Item.objects.create(
             media_id="239", title="Other Movie", media_type="movie", source="tmdb"

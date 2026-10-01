@@ -61,7 +61,7 @@
         <a href="?tab={{ nav_tab.key }}"
            class="pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-200 {% if tab == nav_tab.key %}text-white border-indigo-500{% else %}text-gray-400 border-transparent hover:text-white{% endif %}">
           {{ nav_tab.label }}
-          <span class="ml-1 text-xs text-gray-500">({{ nav_tab.count }})</span>
+          <span id="tab-count-{{ nav_tab.key }}" class="ml-1 text-xs text-gray-500">({{ nav_tab.count }})</span>
         </a>
       {% endfor %}
       <a href="?tab=stats"
