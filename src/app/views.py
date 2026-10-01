@@ -6,6 +6,7 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_not_required, login_required
+from django.contrib.auth.models import AnonymousUser
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import IntegrityError
@@ -203,23 +204,17 @@ def profile(request, username):
             return redirect(f"{request.path}/")
         msg = "User not found"
         raise Http404(msg)
-    is_owner = request.user == target_user
-    if not is_owner and target_user.profile_private:
+    # ?as=visitor lets the owner preview exactly what the public sees.
+    preview = request.user == target_user and request.GET.get("as") == "visitor"
+    viewer = AnonymousUser() if preview else request.user
+    is_owner = viewer == target_user
+    if not is_owner and target_user.profile_private and not preview:
         msg = "User not found"
         raise Http404(msg)
 
-    show_reviews = target_user.profile_section_visible(
-        request.user,
-        "profile_show_reviews",
-    )
-    show_shelves = target_user.profile_section_visible(
-        request.user,
-        "profile_show_shelves",
-    )
-    show_heatmap = target_user.profile_section_visible(
-        request.user,
-        "profile_show_heatmap",
-    )
+    show_reviews = target_user.profile_section_visible(viewer, "profile_show_reviews")
+    show_shelves = target_user.profile_section_visible(viewer, "profile_show_shelves")
+    show_heatmap = target_user.profile_section_visible(viewer, "profile_show_heatmap")
 
     heatmap = None
     if show_heatmap:
@@ -232,6 +227,8 @@ def profile(request, username):
     context = {
         "target_user": target_user,
         "is_owner": is_owner,
+        "public_view": not request.user.is_authenticated or preview,
+        "preview": preview,
         "recent_activity": stats.get_recent_activity(target_user, limit=12),
         "show_comments": show_reviews,
         "library_counts": stats.get_library_counts(target_user),
@@ -336,6 +333,7 @@ def media_list(request, username, media_type):
         "status_choices": MediaStatusChoices.choices,
         "target_user": target_user,
         "public_reviews": _public_reviews(request, target_user, media_type),
+        "public_view": not request.user.is_authenticated,
     }
 
     # Handle HTMX requests for partial updates. Soft-navigation requests (e.g.

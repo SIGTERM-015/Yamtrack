@@ -639,6 +639,9 @@
   .h-10 {
     height: calc(var(--spacing) * 10);
   }
+  .h-14 {
+    height: calc(var(--spacing) * 14);
+  }
   .h-16 {
     height: calc(var(--spacing) * 16);
   }
@@ -1562,6 +1565,12 @@
   .bg-indigo-600 {
     background-color: var(--color-indigo-600);
   }
+  .bg-indigo-600\/15 {
+    background-color: color-mix(in srgb, oklch(51.1% 0.262 276.966) 15%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-indigo-600) 15%, transparent);
+    }
+  }
   .bg-indigo-600\/20 {
     background-color: color-mix(in srgb, oklch(51.1% 0.262 276.966) 20%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
@@ -1835,6 +1844,9 @@
   .py-3 {
     padding-block: calc(var(--spacing) * 3);
   }
+  .py-10 {
+    padding-block: calc(var(--spacing) * 10);
+  }
   .py-12 {
     padding-block: calc(var(--spacing) * 12);
   }
@@ -2060,6 +2072,9 @@
   .text-green-400 {
     color: var(--color-green-400);
   }
+  .text-indigo-200 {
+    color: var(--color-indigo-200);
+  }
   .text-indigo-300 {
     color: var(--color-indigo-300);
   }
@@ -2122,6 +2137,9 @@
   }
   .underline {
     text-decoration-line: underline;
+  }
+  .underline-offset-2 {
+    text-underline-offset: 2px;
   }
   .placeholder-gray-500 {
     &::placeholder {
@@ -2498,6 +2516,13 @@
       opacity: 100%;
     }
   }
+  .hover\:z-10 {
+    &:hover {
+      @media (hover: hover) {
+        z-index: 10;
+      }
+    }
+  }
   .hover\:scale-110 {
     &:hover {
       @media (hover: hover) {
@@ -2865,6 +2890,13 @@
       }
     }
   }
+  .hover\:ring-indigo-400 {
+    &:hover {
+      @media (hover: hover) {
+        --tw-ring-color: var(--color-indigo-400);
+      }
+    }
+  }
   .hover\:ring-indigo-500\/40 {
     &:hover {
       @media (hover: hover) {
@@ -2997,6 +3029,12 @@
       color: var(--color-white);
     }
   }
+  .max-lg\:-translate-y-full {
+    @media (width < 64rem) {
+      --tw-translate-y: -100%;
+      translate: var(--tw-translate-x) var(--tw-translate-y);
+    }
+  }
   .max-md\:hidden {
     @media (width < 48rem) {
       display: none;
@@ -3110,6 +3148,11 @@
   .sm\:px-4 {
     @media (width >= 40rem) {
       padding-inline: calc(var(--spacing) * 4);
+    }
+  }
+  .sm\:px-8 {
+    @media (width >= 40rem) {
+      padding-inline: calc(var(--spacing) * 8);
     }
   }
   .sm\:whitespace-normal {

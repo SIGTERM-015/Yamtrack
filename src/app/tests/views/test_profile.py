@@ -122,3 +122,79 @@ class ProfileViewTests(TestCase):
     def test_recent_activity_respects_the_limit(self):
         """get_recent_activity returns at most ``limit`` entries."""
         self.assertEqual(len(get_recent_activity(self.owner, limit=2)), 2)
+
+
+class ProfileChromeTests(TestCase):
+    """Visitors get a page, not the app; the owner can preview it."""
+
+    def setUp(self):
+        """Create a public owner with a private note on a finished movie."""
+        self.owner = get_user_model().objects.create_user(
+            username="leo",
+            password="pw",  # noqa: S106
+        )
+        item = Item.objects.create(
+            media_id="900",
+            source=Sources.MANUAL.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Preview Movie",
+        )
+        Movie.objects.bulk_create(
+            [
+                Movie(
+                    item=item,
+                    user=self.owner,
+                    status=Status.COMPLETED.value,
+                    notes="Solo para mí",
+                    notes_public=False,
+                ),
+            ],
+        )
+        Movie.objects.filter(item=item).update(end_date=timezone.now())
+
+    def test_anonymous_visitor_gets_minimal_chrome(self):
+        """No sidebar or global search for visitors without an account."""
+        response = self.client.get("/leo")
+        self.assertTrue(response.context["public_view"])
+        self.assertNotContains(response, 'id="global-search"')
+        self.assertNotContains(response, "<aside")
+        self.assertContains(response, "Sign in")
+
+    def test_logged_in_viewer_keeps_app_chrome(self):
+        """Members browsing the app keep their navigation on profiles."""
+        self.client.login(username="leo", password="pw")  # noqa: S106
+        response = self.client.get("/leo")
+        self.assertFalse(response.context["public_view"])
+        self.assertContains(response, 'id="global-search"')
+        self.assertContains(response, "View as visitor")
+        self.assertContains(response, "Copy link")
+
+    def test_owner_preview_matches_what_visitors_see(self):
+        """?as=visitor hides private notes and owner-only controls."""
+        self.client.login(username="leo", password="pw")  # noqa: S106
+        response = self.client.get("/leo", {"as": "visitor"})
+        self.assertTrue(response.context["public_view"])
+        self.assertNotContains(response, "Solo para mí")
+        self.assertNotContains(response, "Edit profile")
+        self.assertContains(response, "Exit visitor view")
+
+    def test_preview_only_for_the_owner(self):
+        """Another member asking for ?as=visitor just gets the normal view."""
+        get_user_model().objects.create_user(username="ana", password="pw")  # noqa: S106
+        self.client.login(username="ana", password="pw")  # noqa: S106
+        response = self.client.get("/leo", {"as": "visitor"})
+        self.assertFalse(response.context["preview"])
+
+    def test_owner_can_preview_a_private_profile(self):
+        """A private profile still previews for its owner, with a warning."""
+        self.owner.profile_private = True
+        self.owner.save()
+        self.client.login(username="leo", password="pw")  # noqa: S106
+        response = self.client.get("/leo", {"as": "visitor"})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Your profile is private")
+
+    def test_anonymous_per_type_list_is_also_minimal(self):
+        """The per-type lists use the same visitor chrome."""
+        response = self.client.get(reverse("medialist", args=["leo", "movie"]))
+        self.assertNotContains(response, 'id="global-search"')

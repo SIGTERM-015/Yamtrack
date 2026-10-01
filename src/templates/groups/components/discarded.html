@@ -13,7 +13,7 @@ Reusable "Discarded" section for a group. Include with `group` and
           <div class="flex flex-1 flex-col gap-2 p-4">
             <h3 class="font-semibold text-white">{{ discard.item.title }}</h3>
             <p class="text-xs tracking-wide text-gray-400 uppercase">{{ discard.item.media_type }}</p>
-            <p class="text-xs text-gray-500">Discarded by {{ discard.discarded_by.username }}</p>
+            <p class="text-xs text-gray-500">Discarded by {% include "app/components/user_link.html" with person=discard.discarded_by %}</p>
             <form method="post" action="{% url 'group_restore_item' group.id %}" class="mt-auto pt-2">
               {% csrf_token %}
               <input type="hidden" name="item_id" value="{{ discard.item.id }}">

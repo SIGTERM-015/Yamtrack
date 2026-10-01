@@ -13,8 +13,9 @@
         <div class="flex items-center">
           <div class="flex -space-x-2 mr-2">
             {% for member in members %}
-              <div class="w-6 h-6 rounded-full {% if member == group.owner %}bg-[#4f46e5]{% else %}bg-[#4b5563]{% endif %} flex items-center justify-center border-2 border-[#2a2f35] text-xs font-medium"
-                   title="{{ member.username }}">{{ member.username.0|upper }}</div>
+              <a href="{% url 'profile' member.username %}"
+                 class="w-6 h-6 rounded-full {% if member == group.owner %}bg-[#4f46e5]{% else %}bg-[#4b5563]{% endif %} flex items-center justify-center border-2 border-[#2a2f35] text-xs font-medium hover:z-10 hover:ring-2 hover:ring-indigo-400"
+                 title="{{ member.username }}">{{ member.username.0|upper }}</a>
             {% endfor %}
           </div>
           <span class="text-sm text-gray-400">
@@ -34,7 +35,7 @@
   {% if invitation and not is_member %}
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg bg-[#2a2f35] border border-[#4f46e5] px-4 py-3">
       <span>
-        You have been invited to this group by {{ invitation.invited_by.username }}.
+        You have been invited to this group by {% include "app/components/user_link.html" with person=invitation.invited_by %}.
       </span>
       <div class="flex gap-2">
         <form method="post" action="{% url 'group_invitation_accept' invitation.id %}">
@@ -107,7 +108,7 @@
         {% for member in members %}
           <li class="flex items-center justify-between gap-3">
             <span class="flex items-center gap-2">
-              <span class="text-sm text-white">{{ member.username }}</span>
+              <span class="text-sm text-white">{% include "app/components/user_link.html" with person=member %}</span>
               {% if member == group.owner %}
                 <span class="rounded-full bg-[#4f46e5] px-2 py-0.5 text-xs text-white">Owner</span>
               {% endif %}

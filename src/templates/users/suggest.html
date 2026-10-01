@@ -9,7 +9,7 @@
     <div class="mb-8">
       <h1 class="text-3xl font-bold">Suggest a title</h1>
       <p class="text-gray-400 mt-2 text-sm">
-        Send a recommendation to {{ target_user.username }}
+        Send a recommendation to {% include "app/components/user_link.html" with person=target_user %}
       </p>
     </div>
 

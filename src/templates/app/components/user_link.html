@@ -1,0 +1,3 @@
+{# A username that opens that person's public profile. Pass ``person`` and optional ``classes``. #}
+<a href="{% url 'profile' person.username %}"
+   class="hover:text-[#4a9eff] hover:underline underline-offset-2 {{ classes }}">{{ person.username }}</a>

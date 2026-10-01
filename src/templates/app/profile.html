@@ -22,6 +22,18 @@
         <div class="flex flex-wrap items-center gap-3">
           <h1 class="text-3xl font-bold break-all">{{ target_user.username }}</h1>
           {% if is_owner %}
+            <button type="button"
+                    x-data="{ copied: false }"
+                    @click="navigator.clipboard.writeText('{{ request.scheme }}://{{ request.get_host }}{% url 'profile' target_user.username %}'); copied = true; setTimeout(() => copied = false, 2000)"
+                    class="flex items-center gap-1.5 rounded-md border border-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white cursor-pointer">
+              {% include "app/icons/link.svg" with classes="w-4 h-4" %}
+              <span x-text="copied ? 'Link copied' : 'Copy link'">Copy link</span>
+            </button>
+            <a href="?as=visitor"
+               class="flex items-center gap-1.5 rounded-md border border-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white">
+              {% include "app/icons/external-link.svg" with classes="w-4 h-4" %}
+              View as visitor
+            </a>
             <a href="{% url 'account' %}"
                class="flex items-center gap-1.5 rounded-md border border-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white">
               {% include "app/icons/edit.svg" with classes="w-4 h-4" %}

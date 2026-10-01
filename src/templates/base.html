@@ -292,7 +292,8 @@
         {# Main content #}
         <div class="flex-1 min-w-0 flex flex-col min-h-screen">
           {# Top bar #}
-          <div class="sticky top-0 z-10 bg-[#1a1d20] border-b border-[#2c3136] shadow-md">
+          <div class="sticky top-0 z-10 bg-[#1a1d20] border-b border-[#2c3136] shadow-md transition-transform duration-200"
+               {% block topbar_attrs %}{% endblock topbar_attrs %}>
             <div class="container mx-auto px-4">
               <div class="flex items-center justify-between lg:justify-center h-16">
                 {# Mobile: sidebar toggle button #}

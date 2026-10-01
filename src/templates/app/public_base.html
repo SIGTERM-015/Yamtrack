@@ -1,10 +1,62 @@
 {% extends "base.html" %}
 {% load app_tags %}
 {% comment %}
-Base for pages anyone can see (public profile, per-type lists): the sidebar
-hides the viewer's own sections when anonymous and shows the profile owner's
-navigation when visiting someone else. Expects ``target_user``.
+Base for pages anyone can see (public profile, per-type lists). Expects
+``target_user``; ``public_view`` is true for anonymous visitors and for the
+owner's "view as visitor" preview.
+
+- Public view: a page, not the app. No sidebar or search, just a thin bar
+  with the app name and a way to sign in (or, in preview, to go back).
+- Logged-in viewers keep the normal app chrome, with the profile owner's
+  navigation added when visiting someone else.
 {% endcomment %}
+
+{% block body %}
+  {% if public_view %}
+    <div class="min-h-screen bg-[#212529] text-gray-100 flex flex-col">
+      <header class="border-b border-[#2c3136] bg-[#1a1d20]">
+        <div class="container mx-auto px-4 sm:px-8 h-14 flex items-center justify-between gap-4">
+          <a href="{% url 'profile' target_user.username %}"
+             class="text-lg font-semibold text-gray-100">Yamtrack</a>
+          {% if request.user.is_authenticated %}
+            <a href="{{ request.path }}"
+               class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">
+              Exit visitor view
+            </a>
+          {% else %}
+            <a href="{% url 'account_login' %}?next={{ request.get_full_path|urlencode }}"
+               class="text-sm text-gray-300 hover:text-white">Sign in</a>
+          {% endif %}
+        </div>
+      </header>
+      {% if request.user.is_authenticated %}
+        <p class="bg-indigo-600/15 text-indigo-200 text-sm text-center px-4 py-2">
+          {% if target_user.profile_private %}
+            Your profile is private, so visitors can't open it. This is what they would see if you made it public.
+          {% else %}
+            This is how visitors see your profile. Private notes and hidden sections don't appear.
+          {% endif %}
+        </p>
+      {% endif %}
+      <main class="flex-1">
+        <div class="container mx-auto px-4 sm:px-8 py-10">
+          {% block content %}{% endblock content %}
+        </div>
+      </main>
+    </div>
+  {% else %}
+    {{ block.super }}
+  {% endif %}
+{% endblock body %}
+
+{# On small screens the top bar slides away while scrolling down and comes back on scroll up. #}
+{% block topbar_attrs %}
+  x-data="{ hidden: false, lastY: 0 }"
+  @scroll.window.throttle.100ms="hidden = window.scrollY > lastY && window.scrollY > 64; lastY = window.scrollY"
+  :class="hidden ? 'max-lg:-translate-y-full' : ''"
+{% endblock topbar_attrs %}
+
+{% block messages_sidebar_offset %}{% if not public_view %}lg:left-64{% endif %}{% endblock messages_sidebar_offset %}
 
 {% block sidebar_own_media %}
   {% if request.user.is_authenticated %}{{ block.super }}{% endif %}

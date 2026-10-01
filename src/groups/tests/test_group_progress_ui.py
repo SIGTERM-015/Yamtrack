@@ -175,3 +175,24 @@ class GroupCardPolishTest(TestCase):
             )
         self.assertRedirects(response, reverse("group_detail", args=[self.group.id]))
         self.assertTrue(GroupItem.objects.filter(group=self.group, item=item2).exists())
+
+
+class GroupMemberLinksTest(TestCase):
+    """Member names and avatars open their public profiles."""
+
+    def test_members_link_to_profiles(self):
+        """Header avatars and the settings member list link to /<username>."""
+        alice = User.objects.create_user(username="alice", password="pw")  # noqa: S106
+        bob = User.objects.create_user(username="bob", password="pw")  # noqa: S106
+        group = Group.objects.create(name="G", owner=alice)
+        GroupMembership.objects.create(group=group, user=alice)
+        GroupMembership.objects.create(group=group, user=bob)
+        self.client.login(username="alice", password="pw")  # noqa: S106
+
+        overview = self.client.get(reverse("group_detail", args=[group.id]))
+        settings_tab = self.client.get(
+            reverse("group_detail", args=[group.id]), {"tab": "settings"}
+        )
+
+        self.assertContains(overview, f'href="{reverse("profile", args=["bob"])}"')
+        self.assertContains(settings_tab, f'href="{reverse("profile", args=["bob"])}"')
