@@ -13,6 +13,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth.decorators import login_not_required
 from django.urls import include, path
+from django.views.generic import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from health_check.views import HealthCheckView
 from redis.asyncio import Redis as RedisClient
@@ -113,3 +114,13 @@ if settings.DEBUG:
 # Public profile at /<username>. Appended last so every named single-segment
 # route above (search, roulette, settings, admin, ...) takes precedence.
 urlpatterns.append(path("<str:username>", app_views.profile, name="profile"))
+# /<username>/ (a pasted link, or a browser adding the slash) goes to the profile.
+urlpatterns.append(
+    path(
+        "<str:username>/",
+        login_not_required(
+            RedirectView.as_view(pattern_name="profile", permanent=True),
+        ),
+        name="profile_slash",
+    ),
+)

@@ -106,6 +106,11 @@ class ProfileViewTests(TestCase):
         response = self.client.get("/health")
         self.assertRedirects(response, "/health/", fetch_redirect_response=False)
 
+    def test_trailing_slash_redirects_to_profile(self):
+        """/<username>/ redirects to /<username>, also for anonymous visitors."""
+        response = self.client.get("/ana/")
+        self.assertRedirects(response, "/ana", status_code=301)
+
     def test_unknown_user_is_404(self):
         """Unknown usernames 404."""
         self.assertEqual(self.client.get("/nobody-here").status_code, 404)

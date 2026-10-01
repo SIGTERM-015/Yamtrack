@@ -13,7 +13,7 @@ from django.db import IntegrityError
 from django.db.models import Prefetch, prefetch_related_objects
 from django.http import Http404, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import is_valid_path, reverse
+from django.urls import Resolver404, resolve, reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
@@ -187,6 +187,15 @@ def _public_reviews(request, target_user, media_type):
     )
 
 
+def _is_app_route(path):
+    """Return whether ``path`` resolves to a real route, not the profile alias."""
+    try:
+        match = resolve(path)
+    except Resolver404:
+        return False
+    return match.url_name != "profile_slash"
+
+
 @login_not_required
 @require_GET
 def profile(request, username):
@@ -200,7 +209,7 @@ def profile(request, username):
     target_user = User.objects.filter(username=username).first()
     if target_user is None:
         # Let APPEND_SLASH still redirect e.g. /health to /health/.
-        if settings.APPEND_SLASH and is_valid_path(f"{request.path}/"):
+        if settings.APPEND_SLASH and _is_app_route(f"{request.path}/"):
             return redirect(f"{request.path}/")
         msg = "User not found"
         raise Http404(msg)
