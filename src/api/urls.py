@@ -1,6 +1,6 @@
 from django.urls import re_path
 
-from . import views
+from . import group_views, views
 
 urlpatterns = [
     re_path(r"^calendar/?$", views.CalendarView.as_view(), name="api_calendar"),
@@ -13,6 +13,37 @@ urlpatterns = [
         r"^changes_history/(?P<media_type>[^/]+)/(?P<history_id>[^/]+)/?$",
         views.MediaTypeChangesHistoryDetailView.as_view(),
         name="api_media_changes_history_detail",
+    ),
+    re_path(r"^groups/?$", group_views.GroupsView.as_view(), name="api_groups"),
+    re_path(
+        r"^groups/(?P<group_id>\d+)/?$",
+        group_views.GroupDetailView.as_view(),
+        name="api_group_detail",
+    ),
+    re_path(
+        r"^groups/(?P<group_id>\d+)/items/?$",
+        group_views.GroupItemsView.as_view(),
+        name="api_group_items",
+    ),
+    re_path(
+        r"^groups/(?P<group_id>\d+)/items/(?P<media_type>[^/]+)/(?P<source>[^/]+)/(?P<media_id>[^/]+)/?$",
+        group_views.GroupItemDetailView.as_view(),
+        name="api_group_item_detail",
+    ),
+    re_path(
+        r"^groups/(?P<group_id>\d+)/items/(?P<media_type>[^/]+)/(?P<source>[^/]+)/(?P<media_id>[^/]+)/episodes/?$",
+        group_views.GroupItemEpisodesView.as_view(),
+        name="api_group_item_episodes",
+    ),
+    re_path(
+        r"^groups/(?P<group_id>\d+)/discards/?$",
+        group_views.GroupDiscardsView.as_view(),
+        name="api_group_discards",
+    ),
+    re_path(
+        r"^groups/(?P<group_id>\d+)/discards/(?P<media_type>[^/]+)/(?P<source>[^/]+)/(?P<media_id>[^/]+)/?$",
+        group_views.GroupDiscardDetailView.as_view(),
+        name="api_group_discard_detail",
     ),
     re_path(r"^health/?$", views.HealthView.as_view(), name="api_health"),
     re_path(r"^info/?$", views.InfoView.as_view(), name="api_info"),

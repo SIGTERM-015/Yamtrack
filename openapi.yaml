@@ -12,6 +12,13 @@ security:
 tags:
   - name: calendar
   - name: changes_history
+  - name: groups
+    description: >-
+      Groups the user belongs to. Non-members get 404. Writes need a
+      read-write token and follow the web UI rules: group progress never
+      reduces personal progress nor reopens completed records, and removing
+      an item keeps personal records. Creating groups and managing members
+      are not part of the API.
   - name: health
   - name: history
   - name: info
@@ -206,6 +213,361 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/groups/:
+    get:
+      tags: [groups]
+      summary: List the groups the user belongs to
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: OK
+  /api/v1/groups/{group_id}/:
+    get:
+      tags: [groups]
+      summary: Group detail with members
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "403":
+          description: Not authenticated, or read-only token on a write
+        "404":
+          description: Group or item not found (or not a member)
+  /api/v1/groups/{group_id}/items/:
+    get:
+      tags: [groups]
+      summary: Group media with the group's own status and each member's record
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+        - in: query
+          name: tab
+          schema:
+            type: string
+            enum: [pending, watching, watched, others]
+          description: Bucket by the group's own status (Planning, In progress, Completed, Paused/Dropped)
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "403":
+          description: Not authenticated, or read-only token on a write
+        "404":
+          description: Group or item not found (or not a member)
+    post:
+      tags: [groups]
+      summary: Add a media to the group (Planning for members without a record)
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupMediaIdentifier"
+      responses:
+        "201":
+          description: Added
+        "200":
+          description: Already in the group
+        "400":
+          description: Bad Request
+        "403":
+          description: Not authenticated, or read-only token on a write
+        "404":
+          description: Group or item not found (or not a member)
+  /api/v1/groups/{group_id}/items/{media_type}/{source}/{media_id}/:
+    get:
+      tags: [groups]
+      summary: One media in the group
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+        - in: path
+          name: media_type
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: source
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: media_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "403":
+          description: Not authenticated, or read-only token on a write
+        "404":
+          description: Group or item not found (or not a member)
+    patch:
+      tags: [groups]
+      summary: Set the group's status/progress and propagate it monotonically
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+        - in: path
+          name: media_type
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: source
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: media_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [Completed, In progress, Planning, Paused, Dropped]
+                progress:
+                  type: integer
+                  minimum: 0
+                  description: Non-TV only; TV progress comes from episodes
+                participants:
+                  type: array
+                  items:
+                    type: integer
+                  description: Member user ids to propagate to (default all members)
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "403":
+          description: Not authenticated, or read-only token on a write
+        "404":
+          description: Group or item not found (or not a member)
+    delete:
+      tags: [groups]
+      summary: Remove the media from the group (personal records are kept)
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+        - in: path
+          name: media_type
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: source
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: media_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Removed
+        "400":
+          description: Bad Request
+        "403":
+          description: Not authenticated, or read-only token on a write
+        "404":
+          description: Group or item not found (or not a member)
+  /api/v1/groups/{group_id}/items/{media_type}/{source}/{media_id}/episodes/:
+    get:
+      tags: [groups]
+      summary: Episodes watched by the group (TV)
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+        - in: path
+          name: media_type
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: source
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: media_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "403":
+          description: Not authenticated, or read-only token on a write
+        "404":
+          description: Group or item not found (or not a member)
+    post:
+      tags: [groups]
+      summary: Mark episodes watched by the group and propagate them
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+        - in: path
+          name: media_type
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: source
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: media_id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                episodes:
+                  type: array
+                  description: "[[season_number, episode_number], ...] in any order"
+                  items:
+                    type: array
+                    items:
+                      type: integer
+                season_number:
+                  type: integer
+                up_to_episode:
+                  type: integer
+                  description: With season_number, marks episodes 1..N
+                participants:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "403":
+          description: Not authenticated, or read-only token on a write
+        "404":
+          description: Group or item not found (or not a member)
+  /api/v1/groups/{group_id}/discards/:
+    get:
+      tags: [groups]
+      summary: The group's "not interested" list
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "403":
+          description: Not authenticated, or read-only token on a write
+        "404":
+          description: Group or item not found (or not a member)
+    post:
+      tags: [groups]
+      summary: Discard a media for the whole group (idempotent)
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupMediaIdentifier"
+      responses:
+        "201":
+          description: Discarded
+        "400":
+          description: Bad Request
+        "403":
+          description: Not authenticated, or read-only token on a write
+        "404":
+          description: Group or item not found (or not a member)
+  /api/v1/groups/{group_id}/discards/{media_type}/{source}/{media_id}/:
+    delete:
+      tags: [groups]
+      summary: Restore a discarded media for the group
+      parameters:
+        - $ref: "#/components/parameters/GroupId"
+        - in: path
+          name: media_type
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: source
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: media_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Restored
+        "400":
+          description: Bad Request
+        "403":
+          description: Not authenticated, or read-only token on a write
+        "404":
+          description: Group or item not found (or not a member)
   /api/v1/health/:
     get:
       tags:
@@ -3426,6 +3788,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 components:
+  parameters:
+    GroupId:
+      in: path
+      name: group_id
+      required: true
+      schema:
+        type: integer
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
@@ -3440,6 +3809,19 @@ components:
         (read-only tokens get 403 on POST/PUT/PATCH/DELETE). The legacy
         integration token is also accepted with full access.
   schemas:
+    GroupMediaIdentifier:
+      type: object
+      required: [media_type, source, media_id]
+      properties:
+        media_type:
+          type: string
+          example: movie
+        source:
+          type: string
+          example: tmdb
+        media_id:
+          type: string
+          example: "27205"
     AnimeDetails:
       # TODO: missing fields
       type: object
