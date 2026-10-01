@@ -28,18 +28,21 @@ from groups.services import (
 )
 from lists.views import get_or_create_item
 
-# TODO(roulette): another agent is wiring up the roulette feature behind a
-# real `roulette` URL; flip this once that lands so the placeholder link in
-# the Planning tab renders.
-ROULETTE_ENABLED = False
-
 _TAB_LABELS = {
     "pending": "Planning",
     "watching": "Watching",
     "watched": "Watched",
     "others": "Other",
 }
-_VALID_TABS = {"pending", "watching", "watched", "others", "stats", "settings"}
+_VALID_TABS = {
+    "pending",
+    "watching",
+    "watched",
+    "others",
+    "stats",
+    "discarded",
+    "settings",
+}
 
 
 def _resolve_participants_or_404(request, group):
@@ -172,7 +175,7 @@ def group_detail(request, group_id):
         "tab": tab,
         "nav_tabs": nav_tabs,
         "members": members,
-        "roulette_enabled": ROULETTE_ENABLED,
+        "discarded_count": discard_service.group_discarded_items(group).count(),
         "MediaTypes": MediaTypes,
     }
 
@@ -182,6 +185,8 @@ def group_detail(request, group_id):
             for group_item in tab_items[tab]
         ]
         context["items_data"] = items_data
+    elif tab == "discarded":
+        context["discards"] = discard_service.group_discarded_items(group)
     elif tab == "stats":
         comparison_data = get_group_comparison(group)
         comparison_items = {
@@ -899,7 +904,8 @@ def group_restore_item(request, group_id):
     item = get_object_or_404(Item, id=request.POST.get("item_id"))
     discard_service.restore_group_item(group, item)
     messages.success(request, f'"{item.title}" is back for the group.')
-    return redirect(_safe_next(request, reverse("group_discarded", args=[group.id])))
+    default_next = f"{reverse('group_detail', args=[group.id])}?tab=discarded"
+    return redirect(_safe_next(request, default_next))
 
 
 @login_required

@@ -22,8 +22,8 @@
           </span>
         </div>
       </div>
-      {% if roulette_enabled %}
-        <a href="/roulette?group={{ group.id }}"
+      {% if is_member %}
+        <a href="{% url 'roulette' %}?group={{ group.id }}"
            class="rounded-lg bg-[#4f46e5] px-4 py-2 font-medium text-white hover:bg-[#4338ca]">
           Roulette
         </a>
@@ -67,6 +67,11 @@
       <a href="?tab=stats"
          class="pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-200 {% if tab == 'stats' %}text-white border-indigo-500{% else %}text-gray-400 border-transparent hover:text-white{% endif %}">
         Stats
+      </a>
+      <a href="?tab=discarded"
+         class="pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-200 {% if tab == 'discarded' %}text-white border-indigo-500{% else %}text-gray-400 border-transparent hover:text-white{% endif %}">
+        Discarded
+        <span class="ml-1 text-xs text-gray-500">({{ discarded_count }})</span>
       </a>
       <a href="?tab=settings"
          class="pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-200 {% if tab == 'settings' %}text-white border-indigo-500{% else %}text-gray-400 border-transparent hover:text-white{% endif %}">
@@ -141,6 +146,9 @@
         </form>
       {% endif %}
     </div>
+
+  {% elif tab == 'discarded' %}
+    {% include "groups/components/discarded.html" with group=group discards=discards %}
 
   {% elif tab == 'stats' %}
     <div class="space-y-8">

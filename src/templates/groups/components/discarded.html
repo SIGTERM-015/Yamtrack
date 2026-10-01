@@ -17,6 +17,7 @@ Reusable "Discarded" section for a group. Include with `group` and
             <form method="post" action="{% url 'group_restore_item' group.id %}" class="mt-auto pt-2">
               {% csrf_token %}
               <input type="hidden" name="item_id" value="{{ discard.item.id }}">
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
               <button type="submit"
                       class="w-full cursor-pointer rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
                 Restore

@@ -156,3 +156,39 @@ class GroupDiscardViewTests(TestCase):
         self.client.login(username="outsider", password="testpassword123")  # noqa: S106
         response = self.client.get(reverse("group_discarded", args=[self.group.id]))
         self.assertEqual(response.status_code, 404)
+
+    def test_discarded_tab_lists_discards_inside_group_detail(self):
+        """The group detail has a Discarded tab with restore forms (ADR 0002 §9)."""
+        discard_group_item(self.group, self.item, self.owner)
+
+        self.client.login(username="member", password="testpassword123")  # noqa: S106
+        response = self.client.get(
+            reverse("group_detail", args=[self.group.id]),
+            {"tab": "discarded"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Discarded")
+        self.assertContains(response, "Movie")
+        self.assertContains(
+            response, reverse("group_restore_item", args=[self.group.id])
+        )
+
+    def test_restore_defaults_back_to_discarded_tab(self):
+        """Restoring without ?next= lands on the group's Discarded tab."""
+        discard_group_item(self.group, self.item, self.owner)
+
+        self.client.login(username="member", password="testpassword123")  # noqa: S106
+        response = self.client.post(
+            reverse("group_restore_item", args=[self.group.id]),
+            {"item_id": self.item.id},
+        )
+        self.assertRedirects(
+            response,
+            reverse("group_detail", args=[self.group.id]) + "?tab=discarded",
+        )
+
+    def test_group_detail_links_to_group_roulette(self):
+        """Members get a Roulette button scoped to the group."""
+        self.client.login(username="member", password="testpassword123")  # noqa: S106
+        response = self.client.get(reverse("group_detail", args=[self.group.id]))
+        self.assertContains(response, f"{reverse('roulette')}?group={self.group.id}")
