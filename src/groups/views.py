@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
@@ -9,6 +11,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from app import config
 from app.models import Item, MediaTypes, Status
+from app.providers import services as provider_services
 from groups.models import Group, GroupInvitation, GroupItem, GroupOrigin
 from groups.services import (
     add_item_to_group,
@@ -86,6 +89,7 @@ def _build_item_view(group_item, progress_data, members):
             }
         )
 
+    group_status_config = config.get_status_config(group_item.status)
     return {
         "group_item": group_item,
         "item": item,
@@ -93,6 +97,31 @@ def _build_item_view(group_item, progress_data, members):
         "completed_count": p_data["completed_count"],
         "total_members": len(members),
         "member_progress": member_rows,
+        "group_status_color": (
+            group_status_config["text_color"]
+            if group_status_config
+            else "text-gray-300"
+        ),
+    }
+
+
+def _grid_panel_context(group, tab):
+    """Build the context for one item-grid panel (pending/watching/watched/others)."""
+    members = list(group.members.all())
+    progress_data = get_group_progress(group)
+    tab_items = get_group_tab_items(group)
+    items_data = [
+        _build_item_view(group_item, progress_data, members)
+        for group_item in tab_items[tab]
+    ]
+    return {
+        "group": group,
+        "tab": tab,
+        "is_member": True,
+        "members": members,
+        "items_data": items_data,
+        "status_choices": Status.choices,
+        "MediaTypes": MediaTypes,
     }
 
 
@@ -381,19 +410,34 @@ def group_mark_episodes(request, group_id):
 
     participants = _resolve_participants_or_404(request, group)
 
-    try:
-        season_number = int(request.POST.get("season_number"))
-        episode_number = int(request.POST.get("episode_number"))
-    except (TypeError, ValueError):
-        messages.error(request, "Invalid season or episode number.")
-        return redirect("group_detail", group_id=group.id)
+    episodes = []
+    raw_pairs = request.POST.getlist("episodes")
+    if raw_pairs:
+        try:
+            for raw_pair in raw_pairs:
+                season_str, episode_str = raw_pair.split("-", 1)
+                episodes.append((int(season_str), int(episode_str)))
+        except (TypeError, ValueError):
+            messages.error(request, "Invalid episode selection.")
+            return redirect("group_detail", group_id=group.id)
+    else:
+        try:
+            season_number = int(request.POST.get("season_number"))
+            episode_number = int(request.POST.get("episode_number"))
+        except (TypeError, ValueError):
+            messages.error(request, "Invalid season or episode number.")
+            return redirect("group_detail", group_id=group.id)
 
-    mode = request.POST.get("mode", "single")
-    episodes = (
-        episodes_up_to(season_number, episode_number)
-        if mode == "up_to"
-        else [(season_number, episode_number)]
-    )
+        mode = request.POST.get("mode", "single")
+        episodes = (
+            episodes_up_to(season_number, episode_number)
+            if mode == "up_to"
+            else [(season_number, episode_number)]
+        )
+
+    if not episodes:
+        messages.error(request, "Select at least one episode.")
+        return redirect("group_detail", group_id=group.id)
 
     mark_group_episodes_watched(group_item, episodes, participants)
     messages.success(request, f"Marked episodes watched for '{group_item.item.title}'.")
@@ -456,7 +500,14 @@ def group_item_remove(request, group_id, item_id):
 @login_required
 @require_POST
 def group_item_add(request, group_id):
-    """Add an item to a group, creating Planning for members without it."""
+    """
+    Add an item to a group, creating Planning for members without it.
+
+    A plain POST (the generic "Add to group" modal used from search/details
+    pages) redirects back to the group. An HTMX request (the in-group
+    Planning-tab search) instead re-renders the item grid panel in place, so
+    the new poster appears without leaving the page.
+    """
     group = get_object_or_404(Group, id=group_id)
 
     if not group.members.filter(id=request.user.id).exists():
@@ -465,8 +516,140 @@ def group_item_add(request, group_id):
 
     item = get_object_or_404(Item, id=request.POST.get("item_id"))
     add_item_to_group(group, item, request.user)
+
+    if request.headers.get("HX-Request"):
+        return render(
+            request,
+            "groups/components/item_grid_panel.html",
+            _grid_panel_context(group, "pending"),
+        )
+
     messages.success(request, f"{item.title} was added to '{group.name}'.")
     return redirect("group_detail", group_id=group.id)
+
+
+@login_required
+@require_GET
+def group_search_results(request, group_id):
+    """
+    Inline search-to-add for the Planning tab (HTMX partial).
+
+    Reuses the same provider search as the main search page, pre-creating
+    the Item for each shown result so the "Add" button can post directly to
+    :func:`group_item_add`. Results already in the group show "Added"
+    instead of a button.
+    """
+    group = get_object_or_404(Group, id=group_id)
+
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    query = request.GET.get("q", "").strip()
+    media_type = request.GET.get("media_type", MediaTypes.MOVIE.value)
+    if media_type not in {choice.value for choice in MediaTypes}:
+        media_type = MediaTypes.MOVIE.value
+
+    results = []
+    if query:
+        source = config.get_default_source_name(media_type).value
+        data = provider_services.search(media_type, query, 1, source)
+        existing_item_ids = set(group.group_items.values_list("item_id", flat=True))
+
+        for row in data.get("results", [])[:12]:
+            item = get_or_create_item(row["media_type"], row["media_id"], row["source"])
+            results.append(
+                {"item": item, "already_added": item.id in existing_item_ids}
+            )
+
+    return render(
+        request,
+        "groups/components/search_results.html",
+        {"group": group, "query": query, "results": results},
+    )
+
+
+@login_required
+@require_GET
+def group_episodes_modal(request, group_id, item_id):
+    """
+    Render the episode checklist modal for a TV group item (HTMX partial).
+
+    Lists the show's regular seasons and episodes (best-effort, from the
+    same provider metadata the personal season page uses); episodes already
+    in the group's ledger show pre-checked and disabled. Submits to
+    :func:`group_mark_episodes` with the checked episodes plus the existing
+    "up to episode N" shortcut and the same participants[] selection used
+    elsewhere.
+    """
+    group = get_object_or_404(Group, id=group_id)
+
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+
+    group_item = get_object_or_404(
+        GroupItem,
+        group=group,
+        item_id=item_id,
+        item__media_type=MediaTypes.TV.value,
+    )
+    tv_item = group_item.item
+    members = list(group.members.all())
+
+    watched_by_season = defaultdict(set)
+    for season_number, episode_number in group_item.watched_episodes.values_list(
+        "item__season_number",
+        "item__episode_number",
+    ):
+        watched_by_season[season_number].add(episode_number)
+
+    seasons = []
+    try:
+        tv_metadata = provider_services.get_media_metadata(
+            MediaTypes.TV.value,
+            tv_item.media_id,
+            tv_item.source,
+        )
+        season_numbers = sorted(
+            season["season_number"]
+            for season in tv_metadata.get("related", {}).get("seasons", [])
+            if season["season_number"] and season["season_number"] > 0
+        )
+        if season_numbers:
+            tv_with_seasons = provider_services.get_media_metadata(
+                "tv_with_seasons",
+                tv_item.media_id,
+                tv_item.source,
+                season_numbers,
+            )
+            for season_number in season_numbers:
+                season_metadata = tv_with_seasons.get(f"season/{season_number}", {})
+                watched = watched_by_season.get(season_number, set())
+                episodes = [
+                    {
+                        "number": episode["episode_number"],
+                        "title": episode.get("name") or episode.get("title") or "",
+                        "watched": episode["episode_number"] in watched,
+                    }
+                    for episode in season_metadata.get("episodes", [])
+                ]
+                if episodes:
+                    seasons.append({"number": season_number, "episodes": episodes})
+    except Exception:  # noqa: BLE001 - metadata may be unavailable; best-effort
+        seasons = []
+
+    return render(
+        request,
+        "groups/components/episodes_modal.html",
+        {
+            "group": group,
+            "group_item": group_item,
+            "item": tv_item,
+            "seasons": seasons,
+            "members": members,
+        },
+    )
 
 
 @login_required

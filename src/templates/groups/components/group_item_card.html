@@ -1,0 +1,164 @@
+{% load app_tags %}
+<div class="bg-[#2a2f35] rounded-lg overflow-hidden shadow-lg flex flex-col h-full"
+     x-data="{ manageOpen: false, episodesOpen: false }">
+  <div class="relative w-full aspect-[2/3] flex-shrink-0">
+    <a href="{{ data.item|media_url }}" class="block w-full h-full">
+      <img alt="{{ data.item.title }}"
+           class="w-full h-full object-cover bg-[#3e454d]"
+           src="{% if data.item.image and data.item.image != 'None' %}{{ data.item.image }}{% else %}{{ IMG_NONE }}{% endif %}">
+    </a>
+
+    <div class="absolute top-2 right-2 bg-gray-900/90 text-white text-xs px-2 py-1 rounded-md flex items-center shadow-md">
+      <span class="font-bold">{{ data.completed_count }}/{{ data.total_members }}</span>
+    </div>
+
+    {% if is_member %}
+      <label class="absolute top-2 left-2 bg-gray-900/90 rounded-md p-1 shadow-md">
+        <input type="checkbox" form="bulk-form" name="item_ids" value="{{ data.item.id }}" class="accent-indigo-500">
+      </label>
+    {% endif %}
+  </div>
+
+  <div class="p-3 flex-grow flex flex-col justify-between gap-2">
+    <div>
+      <a href="{{ data.item|media_url }}"
+         class="text-sm font-semibold hover:text-[#4a9eff] transition-colors line-clamp-2"
+         title="{{ data.item.title }}">
+        {{ data.item.title }}
+      </a>
+      <p class="text-xs text-gray-400 mt-1">
+        <span class="font-semibold {{ data.group_status_color }}">{{ data.group_item.get_status_display }}</span>
+        {% if data.group_item.progress %}
+          <span class="text-gray-500">&middot; {{ data.group_item.progress }}{% if data.is_tv %} ep{% endif %}</span>
+        {% endif %}
+      </p>
+    </div>
+
+    {% if is_member %}
+      <button type="button"
+              @click="manageOpen = true"
+              class="w-full px-3 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer text-xs font-medium transition-colors">
+        Manage
+      </button>
+    {% endif %}
+  </div>
+
+  {% if is_member %}
+    {# Manage modal: status/progress, participants, quick actions, remove. #}
+    <div x-show="manageOpen"
+         x-cloak
+         @keydown.escape.window="manageOpen = false"
+         class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="w-full max-w-md max-h-[85vh] overflow-y-auto bg-[#2a2f35] p-6 rounded-lg mx-4"
+           @click.outside="manageOpen = false">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-white line-clamp-1">{{ data.item.title }}</h2>
+          <button type="button"
+                  class="text-gray-400 hover:text-white cursor-pointer"
+                  @click="manageOpen = false">
+            {% include "app/icons/x.svg" with classes="w-5 h-5" %}
+          </button>
+        </div>
+
+        <p class="text-sm text-gray-400 mb-4">
+          Group status:
+          <span class="font-semibold {{ data.group_status_color }}">{{ data.group_item.get_status_display }}</span>
+          {% if data.group_item.progress %}
+            &middot; {{ data.group_item.progress }}{% if data.is_tv %} ep{% endif %}
+          {% endif %}
+        </p>
+
+        {% if data.is_tv %}
+          <button type="button"
+                  class="w-full mb-3 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer text-sm font-medium"
+                  hx-get="{% url 'group_episodes_modal' group.id data.item.id %}"
+                  hx-target="#episodes-panel-{{ data.item.id }}"
+                  hx-trigger="click once"
+                  @click="manageOpen = false; episodesOpen = true">
+            Episodes
+          </button>
+        {% else %}
+          <form method="post" action="{% url 'group_set_item_status' group.id %}" class="mb-4">
+            {% csrf_token %}
+            <input type="hidden" name="item_id" value="{{ data.item.id }}">
+            <input type="hidden" name="scope" value="group">
+
+            <label class="block text-xs font-medium text-gray-300 mb-1">Status</label>
+            <select name="status"
+                    class="w-full mb-3 p-2 bg-[#39404b] rounded-md text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4a9eff] text-sm">
+              {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if value == data.group_item.status %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+
+            <label class="block text-xs font-medium text-gray-300 mb-1">Progress</label>
+            <input type="number" min="0" name="progress" value="{{ data.group_item.progress }}"
+                   class="w-full mb-3 p-2 bg-[#39404b] rounded-md text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4a9eff] text-sm">
+
+            <label class="block text-xs font-medium text-gray-300 mb-1">Participants</label>
+            <div class="flex flex-wrap gap-2 mb-4">
+              {% for mp in data.member_progress %}
+                <label class="flex items-center gap-1.5 text-xs text-gray-200 bg-[#39404b] rounded-full px-2.5 py-1 cursor-pointer">
+                  <input type="checkbox"
+                         name="participants"
+                         value="{{ mp.user.id }}"
+                         {% if mp.default_checked %}checked{% endif %}
+                         class="accent-indigo-500">
+                  {{ mp.user.username }}
+                </label>
+              {% endfor %}
+            </div>
+
+            <button type="submit"
+                    class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer text-sm font-medium">
+              Apply to group
+            </button>
+          </form>
+        {% endif %}
+
+        <form method="post" action="{% url 'group_set_item_status' group.id %}" class="mb-3">
+          {% csrf_token %}
+          <input type="hidden" name="item_id" value="{{ data.item.id }}">
+          <input type="hidden" name="scope" value="mine">
+          <input type="hidden" name="status" value="{{ data.group_item.status }}">
+          <button type="submit"
+                  class="w-full px-4 py-2 bg-[#39404b] text-gray-200 rounded-md hover:bg-[#454d5a] cursor-pointer text-sm font-medium">
+            Just me: match group status
+          </button>
+        </form>
+
+        <form method="post"
+              action="{% url 'group_item_remove' group.id data.item.id %}"
+              onsubmit="return confirm('Remove {{ data.item.title|escapejs }} from the group? Personal records are kept.');">
+          {% csrf_token %}
+          <button type="submit"
+                  class="w-full px-4 py-2 bg-red-700 text-white rounded-md hover:bg-red-800 cursor-pointer text-sm font-medium">
+            Remove from group
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {% if data.is_tv %}
+      {# Episode checklist modal: loaded once via HTMX into #episodes-panel-<id>. #}
+      <div x-show="episodesOpen"
+           x-cloak
+           @keydown.escape.window="episodesOpen = false"
+           class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-[#2a2f35] p-6 rounded-lg mx-4"
+             @click.outside="episodesOpen = false">
+          <div id="episodes-panel-{{ data.item.id }}">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-lg font-bold text-white">Loading episodes…</h2>
+              <button type="button"
+                      class="text-gray-400 hover:text-white cursor-pointer"
+                      @click="episodesOpen = false; manageOpen = true">
+                {% include "app/icons/x.svg" with classes="w-5 h-5" %}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+</div>

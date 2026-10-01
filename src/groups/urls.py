@@ -64,6 +64,16 @@ urlpatterns = [
         name="group_item_add",
     ),
     path(
+        "<int:group_id>/search/",
+        views.group_search_results,
+        name="group_search_results",
+    ),
+    path(
+        "<int:group_id>/items/<int:item_id>/episodes/",
+        views.group_episodes_modal,
+        name="group_episodes_modal",
+    ),
+    path(
         "groups_modal/<source:source>/<media_type:media_type>/<str:media_id>",
         views.groups_modal,
         name="groups_modal",
