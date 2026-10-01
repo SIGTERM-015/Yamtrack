@@ -1,4 +1,4 @@
-"""Inline in-group search, per-episode checklist modal, and card polish."""
+"""Per-episode checklist modal, quick actions and on-demand selection."""
 
 from unittest.mock import patch
 
@@ -6,144 +6,11 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from app.models import Item, MediaTypes, Sources
+from app.models import Item
 from groups.models import Group, GroupItem, GroupMembership
 from groups.services import mark_group_episodes_watched
 
 User = get_user_model()
-
-
-class GroupInlineSearchTest(TestCase):
-    """The Planning tab's search box adds results to the group inline (HTMX)."""
-
-    def setUp(self):
-        """Create a group and log in as a member."""
-        patcher = patch("app.models.providers.services.get_media_metadata")
-        self.mock_metadata = patcher.start()
-        self.mock_metadata.return_value = {
-            "title": "Test Movie",
-            "image": "http://example.com/image.jpg",
-            "max_progress": 1000,
-        }
-        self.addCleanup(patcher.stop)
-
-        self.alice = User.objects.create_user(username="alice", password="pw")  # noqa: S106
-        self.bob = User.objects.create_user(username="bob", password="pw")  # noqa: S106
-        self.group = Group.objects.create(name="G", owner=self.alice)
-        GroupMembership.objects.create(group=self.group, user=self.alice)
-        GroupMembership.objects.create(group=self.group, user=self.bob)
-        self.client.login(username="alice", password="pw")  # noqa: S106
-
-    @patch("app.providers.services.search")
-    def test_search_results_show_add_button(self, mock_search):
-        """A query returns a poster result with an Add button."""
-        mock_search.return_value = {
-            "results": [
-                {
-                    "media_id": "238",
-                    "title": "Test Movie",
-                    "media_type": MediaTypes.MOVIE.value,
-                    "source": Sources.TMDB.value,
-                    "image": "http://example.com/image.jpg",
-                },
-            ],
-        }
-
-        response = self.client.get(
-            reverse("group_search_results", args=[self.group.id]),
-            {"q": "test", "media_type": "movie"},
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Test Movie")
-        self.assertContains(response, "hx-post")
-        # The Item is pre-created so the Add button can post item_id directly.
-        self.assertTrue(Item.objects.filter(media_id="238", source="tmdb").exists())
-
-    @patch("app.providers.services.search")
-    def test_add_button_posts_item_id_of_precreated_item(self, mock_search):
-        """Clicking Add (HTMX POST) adds the item and refreshes the grid inline."""
-        mock_search.return_value = {
-            "results": [
-                {
-                    "media_id": "238",
-                    "title": "Test Movie",
-                    "media_type": MediaTypes.MOVIE.value,
-                    "source": Sources.TMDB.value,
-                    "image": "http://example.com/image.jpg",
-                },
-            ],
-        }
-        self.client.get(
-            reverse("group_search_results", args=[self.group.id]),
-            {"q": "test", "media_type": "movie"},
-        )
-        item = Item.objects.get(media_id="238", source="tmdb")
-
-        response = self.client.post(
-            reverse("group_item_add", args=[self.group.id]),
-            {"item_id": item.id},
-            HTTP_HX_REQUEST="true",
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Test Movie")
-        self.assertTrue(
-            GroupItem.objects.filter(group=self.group, item=item).exists(),
-        )
-        # Only the grid is swapped; the search box and its results stay, and
-        # the clicked button becomes an "Added" badge plus a fresh tab count.
-        self.assertContains(response, 'id="group-item-grid"')
-        self.assertNotContains(response, 'id="group-search-results"')
-        self.assertContains(response, f'id="group-add-{item.id}"')
-        self.assertContains(response, 'id="tab-count-pending" hx-swap-oob="true"')
-        # Non-HTMX callers (e.g. the generic "Add to group" modal) still redirect.
-        item2 = Item.objects.create(
-            media_id="239", title="Other Movie", media_type="movie", source="tmdb"
-        )
-        redirect_response = self.client.post(
-            reverse("group_item_add", args=[self.group.id]),
-            {"item_id": item2.id},
-        )
-        self.assertRedirects(
-            redirect_response, reverse("group_detail", args=[self.group.id])
-        )
-
-    @patch("app.providers.services.search")
-    def test_already_added_result_shows_added_badge(self, mock_search):
-        """A result already in the group shows 'Added' instead of a button."""
-        mock_search.return_value = {
-            "results": [
-                {
-                    "media_id": "238",
-                    "title": "Test Movie",
-                    "media_type": MediaTypes.MOVIE.value,
-                    "source": Sources.TMDB.value,
-                    "image": "http://example.com/image.jpg",
-                },
-            ],
-        }
-        item = Item.objects.create(
-            media_id="238", title="Test Movie", media_type="movie", source="tmdb"
-        )
-        GroupItem.objects.create(group=self.group, item=item, added_by=self.alice)
-
-        response = self.client.get(
-            reverse("group_search_results", args=[self.group.id]),
-            {"q": "test", "media_type": "movie"},
-        )
-
-        self.assertContains(response, "Added")
-
-    def test_non_member_cannot_search(self):
-        """A non-member gets 404 from the inline search endpoint."""
-        User.objects.create_user(username="out", password="pw")  # noqa: S106
-        self.client.login(username="out", password="pw")  # noqa: S106
-        response = self.client.get(
-            reverse("group_search_results", args=[self.group.id]),
-            {"q": "test", "media_type": "movie"},
-        )
-        self.assertEqual(response.status_code, 404)
 
 
 class GroupEpisodesModalTest(TestCase):
@@ -228,7 +95,7 @@ class GroupEpisodesModalTest(TestCase):
 
 
 class GroupCardPolishTest(TestCase):
-    """The item card shows a single Manage button; actions live in a modal."""
+    """Cards show a quick action select; selection and bulk are on demand."""
 
     def setUp(self):
         """Create a group with one movie GroupItem."""
@@ -241,24 +108,38 @@ class GroupCardPolishTest(TestCase):
         GroupItem.objects.create(group=self.group, item=self.item, added_by=self.alice)
         self.client.login(username="alice", password="pw")  # noqa: S106
 
-    def test_card_shows_manage_button_and_no_raw_action_links(self):
-        """The card exposes one Manage button; old inline text-links are gone."""
+    def test_no_in_group_search_box(self):
+        """Adding happens from the global search / media page, not the group."""
         response = self.client.get(reverse("group_detail", args=[self.group.id]))
+        self.assertNotContains(response, "Add media to the group")
+        self.assertNotContains(response, "group-search-results")
 
-        self.assertContains(response, "Manage")
-        self.assertContains(response, "Remove from group")
-        self.assertContains(response, "Just me: match group status")
-        # The old cramped underlined text-link markup is gone.
-        self.assertNotContains(response, "text-red-400 hover:text-red-300 underline")
+    def test_card_has_quick_action_select(self):
+        """Non-TV cards offer the other statuses plus More options."""
+        response = self.client.get(reverse("group_detail", args=[self.group.id]))
+        self.assertContains(response, "Quick action for Movie 1")
+        self.assertContains(response, "Mark as completed")
+        self.assertNotContains(response, "Mark as planning")
+        self.assertContains(response, "More options…")
 
-    def test_manage_modal_has_participants_and_status_form(self):
-        """The Manage modal contains the status form with participants."""
+    def test_bulk_bar_and_checkboxes_are_on_demand(self):
+        """The bulk bar only shows with 2+ selected; checkboxes start hidden."""
+        response = self.client.get(reverse("group_detail", args=[self.group.id]))
+        self.assertContains(response, 'x-show="selected.length > 1"')
+        self.assertContains(
+            response, ":class=\"selecting ? 'opacity-100' : 'opacity-0'\""
+        )
+
+    def test_manage_modal_keeps_full_controls(self):
+        """More options opens the modal with participants and removal."""
         response = self.client.get(reverse("group_detail", args=[self.group.id]))
         self.assertContains(response, "Participants")
         self.assertContains(response, "Apply to group")
+        self.assertContains(response, "Just me: match group status")
+        self.assertContains(response, "Remove from group")
 
-    def test_tv_card_has_episodes_button(self):
-        """A TV item's Manage modal exposes an Episodes button."""
+    def test_tv_card_quick_action_marks_episodes(self):
+        """A TV item's quick action opens the episode checklist."""
         tv_item = Item.objects.create(
             media_id="t1", title="Show 1", media_type="tv", source="tmdb"
         )
@@ -266,4 +147,31 @@ class GroupCardPolishTest(TestCase):
 
         response = self.client.get(reverse("group_detail", args=[self.group.id]))
 
-        self.assertContains(response, "Episodes")
+        self.assertContains(response, "Mark episodes…")
+        self.assertContains(response, 'hx-trigger="load-episodes once"')
+
+    def test_quick_status_keeps_the_current_tab(self):
+        """Actions posted from a tab come back to that tab."""
+        with patch("app.models.providers.services.get_media_metadata") as meta:
+            meta.return_value = {"max_progress": 1}
+            response = self.client.post(
+                reverse("group_set_item_status", args=[self.group.id]),
+                {"item_id": self.item.id, "status": "In progress", "tab": "pending"},
+            )
+        self.assertRedirects(
+            response, reverse("group_detail", args=[self.group.id]) + "?tab=pending"
+        )
+
+    def test_add_item_redirects_back_to_group(self):
+        """The generic Add to group modal posts and returns to the group."""
+        item2 = Item.objects.create(
+            media_id="m2", title="Movie 2", media_type="movie", source="tmdb"
+        )
+        with patch("app.models.providers.services.get_media_metadata") as meta:
+            meta.return_value = {"max_progress": 1}
+            response = self.client.post(
+                reverse("group_item_add", args=[self.group.id]),
+                {"item_id": item2.id},
+            )
+        self.assertRedirects(response, reverse("group_detail", args=[self.group.id]))
+        self.assertTrue(GroupItem.objects.filter(group=self.group, item=item2).exists())

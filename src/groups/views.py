@@ -45,6 +45,15 @@ _VALID_TABS = {
 }
 
 
+def _redirect_to_group(request, group):
+    """Redirect back to the group, keeping the tab the action came from."""
+    url = reverse("group_detail", args=[group.id])
+    tab = request.POST.get("tab")
+    if tab in _VALID_TABS:
+        url = f"{url}?tab={tab}"
+    return redirect(url)
+
+
 def _resolve_participants_or_404(request, group):
     """
     Resolve the ``participants[]`` POST field into a list of user ids.
@@ -107,26 +116,6 @@ def _build_item_view(group_item, progress_data, members):
             if group_status_config
             else "text-gray-300"
         ),
-    }
-
-
-def _grid_panel_context(group, tab):
-    """Build the context for one item-grid panel (pending/watching/watched/others)."""
-    members = list(group.members.all())
-    progress_data = get_group_progress(group)
-    tab_items = get_group_tab_items(group)
-    items_data = [
-        _build_item_view(group_item, progress_data, members)
-        for group_item in tab_items[tab]
-    ]
-    return {
-        "group": group,
-        "tab": tab,
-        "is_member": True,
-        "members": members,
-        "items_data": items_data,
-        "status_choices": Status.choices,
-        "MediaTypes": MediaTypes,
     }
 
 
@@ -379,16 +368,21 @@ def group_set_item_status(request, group_id):
                 progress_value = max(int(progress_raw), 0)
             except ValueError:
                 messages.error(request, "Invalid progress value.")
-                return redirect("group_detail", group_id=group.id)
+                return _redirect_to_group(request, group)
             group_item.progress = progress_value
             group_item.save(update_fields=["progress"])
 
         mark_group_item_status(group_item, status, participants)
+        status_label = group_item.get_status_display().lower()
+        messages.success(
+            request,
+            f"'{group_item.item.title}' is now {status_label} for the group.",
+        )
     else:
         msg = "Invalid scope"
         raise Http404(msg)
 
-    return redirect("group_detail", group_id=group.id)
+    return _redirect_to_group(request, group)
 
 
 @login_required
@@ -484,7 +478,7 @@ def group_bulk_set_status(request, group_id):
         mark_group_item_status(group_item, status, participants)
 
     messages.success(request, f"Updated {len(group_items)} item(s).")
-    return redirect("group_detail", group_id=group.id)
+    return _redirect_to_group(request, group)
 
 
 @login_required
@@ -501,21 +495,13 @@ def group_item_remove(request, group_id, item_id):
     title = group_item.item.title
     group_item.delete()
     messages.success(request, f"'{title}' was removed from the group.")
-    return redirect("group_detail", group_id=group.id)
+    return _redirect_to_group(request, group)
 
 
 @login_required
 @require_POST
 def group_item_add(request, group_id):
-    """
-    Add an item to a group, creating Planning for members without it.
-
-    A plain POST (the generic "Add to group" modal used from search/details
-    pages) redirects back to the group. An HTMX request (the in-group
-    Planning-tab search) instead re-renders the item grid in place and swaps
-    the clicked "Add" button for an "Added" badge out of band, so the new
-    poster appears while the search results stay on screen.
-    """
+    """Add an item to a group, creating Planning for members without it."""
     group = get_object_or_404(Group, id=group_id)
 
     if not group.members.filter(id=request.user.id).exists():
@@ -525,58 +511,8 @@ def group_item_add(request, group_id):
     item = get_object_or_404(Item, id=request.POST.get("item_id"))
     add_item_to_group(group, item, request.user)
 
-    if request.headers.get("HX-Request"):
-        context = _grid_panel_context(group, "pending")
-        context["added_item"] = item
-        return render(
-            request,
-            "groups/components/group_item_add_response.html",
-            context,
-        )
-
     messages.success(request, f"{item.title} was added to '{group.name}'.")
     return redirect("group_detail", group_id=group.id)
-
-
-@login_required
-@require_GET
-def group_search_results(request, group_id):
-    """
-    Inline search-to-add for the Planning tab (HTMX partial).
-
-    Reuses the same provider search as the main search page, pre-creating
-    the Item for each shown result so the "Add" button can post directly to
-    :func:`group_item_add`. Results already in the group show "Added"
-    instead of a button.
-    """
-    group = get_object_or_404(Group, id=group_id)
-
-    if not group.members.filter(id=request.user.id).exists():
-        msg = "Group not found"
-        raise Http404(msg)
-
-    query = request.GET.get("q", "").strip()
-    media_type = request.GET.get("media_type", MediaTypes.MOVIE.value)
-    if media_type not in {choice.value for choice in MediaTypes}:
-        media_type = MediaTypes.MOVIE.value
-
-    results = []
-    if query:
-        source = config.get_default_source_name(media_type).value
-        data = provider_services.search(media_type, query, 1, source)
-        existing_item_ids = set(group.group_items.values_list("item_id", flat=True))
-
-        for row in data.get("results", [])[:12]:
-            item = get_or_create_item(row["media_type"], row["media_id"], row["source"])
-            results.append(
-                {"item": item, "already_added": item.id in existing_item_ids}
-            )
-
-    return render(
-        request,
-        "groups/components/search_results.html",
-        {"group": group, "query": query, "results": results},
-    )
 
 
 @login_required

@@ -12,9 +12,9 @@ La UI actual de grupos pone la gestión antes que el uso: el detalle (`group_det
 
 1. La pantalla del grupo se ordena por prioridad de uso: (1) añadir medios, (2) decidir qué ver, (3) actualizar el estado, (4) gestionar el grupo.
 2. El diseño es genérico para N personas, no específico de pareja: contadores tipo «X/Y».
-3. El grupo tiene cinco pestañas: **Pendientes** (con buscador para añadir arriba y botón de ruleta) · **Viendo** · **Vistos** · **Estadísticas** (comparativa de valoraciones y géneros) · **Ajustes** (miembros, invitaciones, salir). Pendientes es la pestaña por defecto. Las tres primeras se basan en el estado propio del grupo, no en la suma de registros personales.
+3. El grupo tiene cinco pestañas: **Pendientes** (con botón de ruleta) · **Viendo** · **Vistos** · **Estadísticas** (comparativa de valoraciones y géneros) · **Ajustes** (miembros, invitaciones, salir). Pendientes es la pestaña por defecto. Las tres primeras se basan en el estado propio del grupo, no en la suma de registros personales.
 4. El estilo es la rejilla de pósters del resto de la app, con indicador de qué miembros lo han visto.
-5. Añadir usa el buscador dentro del grupo (reutiliza la búsqueda existente) más un botón «añadir a grupo» en la ficha del medio y en la búsqueda general.
+5. Añadir usa el botón «añadir a grupo» de la ficha del medio y de los resultados de la búsqueda general. *(Enmendado el 2026-10-01: se retira el buscador dentro del grupo; duplicaba la búsqueda general sin aportar nada en el uso real.)*
 6. Ruleta y recomendador no son exclusivos de grupo: existen en ámbito individual y de grupo.
 7. El estado y el progreso son propios del grupo, según la spec de CONTEXT.md: el grupo tiene estado y progreso contextuales; al avanzar actualiza los registros personales sin reducir progreso ni reabrir completados.
 8. Quitar un medio del grupo lo puede hacer cualquier miembro; solo lo quita del grupo, los registros personales se conservan.
@@ -25,7 +25,7 @@ La UI actual de grupos pone la gestión antes que el uso: el detalle (`group_det
 
 ## Consecuencias
 
-Hay que construir las cinco pestañas con el estado propio del grupo como fuente, el buscador dentro del grupo y el botón «añadir a grupo» en ficha y búsqueda, la ruleta de grupo sobre pendientes, la comparativa y los géneros integrados en la pestaña de estadísticas, y el flujo de descarte con «deshacer» y sección «Descartados» en ambos ámbitos. La gestión de miembros e invitaciones se repliega a la pestaña de Ajustes.
+Hay que construir las cinco pestañas con el estado propio del grupo como fuente, el botón «añadir a grupo» en ficha y búsqueda, la ruleta de grupo sobre pendientes, la comparativa y los géneros integrados en la pestaña de estadísticas, y el flujo de descarte con «deshacer» y sección «Descartados» en ambos ámbitos. La gestión de miembros e invitaciones se repliega a la pestaña de Ajustes.
 
 ## Progreso del grupo
 
@@ -53,6 +53,13 @@ y S5 (rediseño de la pantalla de grupo), complementarias a la §7 de la Decisi�
    fila por `(group_item, item)` con restricción de unicidad; volver a marcar el
    mismo episodio no lo duplica ni lo cuenta dos veces en el progreso agregado
    del grupo.
+
+## Selección y acciones en la rejilla
+
+Enmienda del 2026-10-01, tras uso real:
+
+1. Las casillas de selección no están siempre visibles: aparecen al pasar el ratón (o con el foco) sobre un póster. Al seleccionar uno, todos muestran su casilla y tocar un póster lo marca o desmarca.
+2. La barra de acciones masivas solo aparece con dos o más seleccionados. Con uno o ninguno, cada póster ofrece un selector de acción rápida (cambiar el estado del grupo, marcar episodios en series o abrir el resto de opciones).
 
 ## Alternativas descartadas
 

@@ -1,12 +1,26 @@
-<div id="group-item-grid">
+{% comment %}
+Poster grid for one group tab. Selection is on demand: a checkbox shows on a
+poster's hover (or keyboard focus); once one poster is selected every poster
+shows its checkbox and clicking a poster toggles it. With two or more selected
+the bulk bar appears; otherwise each card's quick action select is enough.
+{% endcomment %}
+<div id="group-item-grid"
+     x-data="{ selected: [], get selecting() { return this.selected.length > 0 }, toggle(id) { this.selected = this.selected.includes(id) ? this.selected.filter((value) => value !== id) : [...this.selected, id] }, }"
+     @keydown.escape.window="selected = []">
   {% if is_member and items_data %}
     <form method="post"
           action="{% url 'group_bulk_set_status' group.id %}"
-          class="mb-4 rounded-md bg-[#39404b] px-4 py-3 flex flex-wrap items-center gap-3"
-          id="bulk-form">
+          id="bulk-form"
+          x-cloak
+          x-show="selected.length > 1"
+          x-transition.opacity
+          class="fixed bottom-4 inset-x-0 z-40 mx-auto w-[calc(100%-2rem)] max-w-xl rounded-lg bg-[#39404b] px-4 py-3 shadow-2xl ring-1 ring-white/10 flex flex-wrap items-center gap-3">
       {% csrf_token %}
-      <span class="text-sm text-gray-300">Bulk action on selected items:</span>
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <span class="text-sm font-medium text-white"
+            x-text="`${selected.length} selected`"></span>
       <select name="status"
+              aria-label="Status for the selected items"
               class="rounded-md bg-[#2a2f35] border border-gray-600 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#4a9eff]">
         {% for value, label in status_choices %}
           <option value="{{ value }}">{{ label }}</option>
@@ -14,8 +28,12 @@
       </select>
       <button type="submit"
               class="rounded-md bg-indigo-600 hover:bg-indigo-700 px-4 py-1.5 text-sm font-medium text-white cursor-pointer">
-        Apply to selected
+        Apply
       </button>
+      <button type="button"
+              @click="selected = []"
+              class="ml-auto text-sm text-gray-300 hover:text-white cursor-pointer">Clear selection</button>
+      <p class="basis-full text-xs text-gray-400">TV shows are skipped here; update them with Mark episodes.</p>
     </form>
   {% endif %}
 
@@ -24,7 +42,11 @@
       {% include "groups/components/group_item_card.html" with data=data %}
     {% empty %}
       <div class="col-span-full py-12 text-center text-gray-400">
-        Nothing here yet.
+        {% if tab == "pending" %}
+          Nothing planned yet. Search for a title and use Add to group on its page.
+        {% else %}
+          Nothing here yet.
+        {% endif %}
       </div>
     {% endfor %}
   </div>
