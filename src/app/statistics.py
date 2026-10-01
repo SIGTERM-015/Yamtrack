@@ -908,3 +908,71 @@ def calculate_streaks(date_counts, end_date):
     longest_streak = max(longest_streak, streak_count)
 
     return current_streak, longest_streak
+
+
+def get_recent_activity(user, limit=8):
+    """Return the latest things ``user`` finished or watched, newest first.
+
+    Uses the same real ``end_date`` as the heatmap. Movies, books, games, etc.
+    appear once per finished record; TV appears once per show, at its latest
+    watched episode, carrying the show's own score and notes.
+    """
+    entries = []
+    for model_name in user.get_active_media_types():
+        model = apps.get_model(app_label="app", model_name=model_name)
+        if model in (TV, Season):
+            continue
+        queryset = (
+            model.objects.filter(user=user, end_date__isnull=False)
+            .select_related("item")
+            .order_by("-end_date")[:limit]
+        )
+        entries.extend(
+            {
+                "kind": "media",
+                "item": media.item,
+                "media": media,
+                "date": media.end_date,
+            }
+            for media in queryset
+        )
+
+    seen_shows = set()
+    episodes = (
+        Episode.objects.filter(related_season__user=user, end_date__isnull=False)
+        .select_related("item", "related_season__related_tv__item")
+        .order_by("-end_date")[: limit * 25]
+    )
+    for episode in episodes:
+        tv = episode.related_season.related_tv
+        if tv.id in seen_shows:
+            continue
+        seen_shows.add(tv.id)
+        entries.append(
+            {
+                "kind": "episode",
+                "item": tv.item,
+                "media": tv,
+                "date": episode.end_date,
+                "season_number": episode.item.season_number,
+                "episode_number": episode.item.episode_number,
+            },
+        )
+        if len(seen_shows) >= limit:
+            break
+
+    entries.sort(key=lambda entry: entry["date"], reverse=True)
+    return entries[:limit]
+
+
+def get_library_counts(user):
+    """Return ``(media_type, count)`` for each enabled media type, in order."""
+    return [
+        (
+            media_type,
+            apps.get_model(app_label="app", model_name=media_type)
+            .objects.filter(user=user)
+            .count(),
+        )
+        for media_type in user.get_enabled_media_types()
+    ]

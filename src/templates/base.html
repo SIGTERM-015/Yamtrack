@@ -87,6 +87,19 @@
                   </a>
                 </li>
 
+                <li>
+                  {% url 'profile' user.username as profile_url %}
+                  <a href="{{ profile_url }}"
+                     class="flex items-center space-x-3 px-4 py-2 rounded-md transition-colors duration-200 text-sm {% if request.path == profile_url %}text-white bg-[#2c3136]{% else %}text-gray-400 hover:text-white hover:bg-[#23272b]{% endif %}">
+                    {% if request.path == profile_url %}
+                      {% include "app/icons/person.svg" with classes="w-5 h-5 text-indigo-400 " %}
+                    {% else %}
+                      {% include "app/icons/person.svg" with classes="w-5 h-5" %}
+                    {% endif %}
+                    <span>Profile</span>
+                  </a>
+                </li>
+
                 {% get_sidebar_media_types user as sidebar_media_types %}
                 {% for item in sidebar_media_types %}
                   <li>

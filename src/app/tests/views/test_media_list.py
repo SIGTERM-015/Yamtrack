@@ -328,7 +328,7 @@ class MediaListViewTests(TestCase):
 
 
 class ProfileSectionVisibilityViewTests(TestCase):
-    """Tests for per-section profile visibility on the media list ("profile") page."""
+    """Tests for per-section visibility on the public profile page."""
 
     def setUp(self):
         """Create a public owner with a heatmap completion, a shelf and a review."""
@@ -372,9 +372,7 @@ class ProfileSectionVisibilityViewTests(TestCase):
         CustomListItem.objects.create(custom_list=self.shelf, item=item)
 
     def _get_profile(self):
-        return self.client.get(
-            reverse("medialist", args=[self.owner.username, MediaTypes.MOVIE.value]),
-        )
+        return self.client.get(reverse("profile", args=[self.owner.username]))
 
     def test_owner_sees_all_sections_even_if_hidden(self):
         """The owner always sees their own sections, regardless of the toggles."""

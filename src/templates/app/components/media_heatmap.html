@@ -21,7 +21,7 @@ GitHub-style media consumption heatmap. Expects:
   </div>
   <div class="overflow-x-auto flex flex-col justify-center"
        x-data="{ graphTooWide: false }"
-       x-init="$nextTick(() => { const graphWidth = $refs.graphContainer.scrollWidth; const parentWidth = $el.clientWidth; graphTooWide = graphWidth > parentWidth; })"
+       x-init="$nextTick(() => { const graphWidth = $refs.graphContainer.scrollWidth; const parentWidth = $el.clientWidth; graphTooWide = graphWidth > parentWidth; if (graphTooWide && {{ heatmap.year }} === {{ now_year }}) { $el.scrollLeft = graphWidth; } })"
        :class="graphTooWide ? 'items-start' : 'items-center'">
     <div class="p-4" x-ref="graphContainer">
       <!-- Months row -->

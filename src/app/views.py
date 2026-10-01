@@ -12,7 +12,7 @@ from django.db import IntegrityError
 from django.db.models import Prefetch, prefetch_related_objects
 from django.http import Http404, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
+from django.urls import is_valid_path, reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
@@ -163,13 +163,51 @@ def progress_edit(request, media_type, instance_id):
     )
 
 
-def _build_profile_sections(request, target_user, media_type):
-    """Build the per-section profile context: reviews, shelves and heatmap.
+def _public_reviews(request, target_user, media_type):
+    """Return the public reviews of ``media_type`` for this viewer, or None.
 
-    The owner always sees their own sections; anyone else only sees a
-    section when it hasn't been individually hidden (the profile-level
-    privacy check happens separately, before this is called).
+    The owner always sees them; anyone else only when the reviews section
+    hasn't been hidden (the profile-level privacy check happens before).
     """
+    if not target_user.profile_section_visible(request.user, "profile_show_reviews"):
+        return None
+    review_model = apps.get_model(app_label="app", model_name=media_type)
+    # TV and Season derive their dates from episodes; they have no end_date.
+    review_ordering = (
+        ("-end_date", "-created_at")
+        if any(field.name == "end_date" for field in review_model._meta.fields)
+        else ("-created_at",)
+    )
+    return (
+        review_model.objects.filter(user=target_user, notes_public=True)
+        .exclude(notes="")
+        .select_related("item")
+        .order_by(*review_ordering)
+    )
+
+
+@login_not_required
+@require_GET
+def profile(request, username):
+    """Public profile: who someone is and what they have been consuming lately.
+
+    One page for every media type: avatar, bio and social links, the latest
+    finished items with their score and comment, the consumption heatmap, the
+    featured shelves, and links into each media type's full list. Sections
+    follow the same visibility rules as the per-type lists.
+    """
+    target_user = User.objects.filter(username=username).first()
+    if target_user is None:
+        # Let APPEND_SLASH still redirect e.g. /health to /health/.
+        if settings.APPEND_SLASH and is_valid_path(f"{request.path}/"):
+            return redirect(f"{request.path}/")
+        msg = "User not found"
+        raise Http404(msg)
+    is_owner = request.user == target_user
+    if not is_owner and target_user.profile_private:
+        msg = "User not found"
+        raise Http404(msg)
+
     show_reviews = target_user.profile_section_visible(
         request.user,
         "profile_show_reviews",
@@ -183,28 +221,6 @@ def _build_profile_sections(request, target_user, media_type):
         "profile_show_heatmap",
     )
 
-    public_reviews = None
-    if show_reviews:
-        review_model = apps.get_model(app_label="app", model_name=media_type)
-        # TV and Season derive their dates from episodes; they have no end_date.
-        review_ordering = (
-            ("-end_date", "-created_at")
-            if any(field.name == "end_date" for field in review_model._meta.fields)
-            else ("-created_at",)
-        )
-        public_reviews = (
-            review_model.objects.filter(user=target_user, notes_public=True)
-            .exclude(notes="")
-            .select_related("item")
-            .order_by(*review_ordering)
-        )
-
-    featured_shelves = (
-        CustomList.objects.get_featured_shelves(target_user)
-        if show_shelves
-        else CustomList.objects.none()
-    )
-
     heatmap = None
     if show_heatmap:
         try:
@@ -213,13 +229,22 @@ def _build_profile_sections(request, target_user, media_type):
             heatmap_year = None
         heatmap = stats.get_media_heatmap(target_user, heatmap_year)
 
-    return {
-        "public_reviews": public_reviews,
-        "featured_shelves": featured_shelves,
+    context = {
+        "target_user": target_user,
+        "is_owner": is_owner,
+        "recent_activity": stats.get_recent_activity(target_user, limit=12),
+        "show_comments": show_reviews,
+        "library_counts": stats.get_library_counts(target_user),
+        "featured_shelves": (
+            CustomList.objects.get_featured_shelves(target_user)
+            if show_shelves
+            else CustomList.objects.none()
+        ),
         "heatmap": heatmap,
         "heatmap_username": target_user.username,
         "now_year": timezone.localdate().year,
     }
+    return render(request, "app/profile.html", context)
 
 
 @login_not_required
@@ -310,7 +335,7 @@ def media_list(request, username, media_type):
         "sort_choices": MediaSortChoices.choices,
         "status_choices": MediaStatusChoices.choices,
         "target_user": target_user,
-        **_build_profile_sections(request, target_user, media_type),
+        "public_reviews": _public_reviews(request, target_user, media_type),
     }
 
     # Handle HTMX requests for partial updates. Soft-navigation requests (e.g.

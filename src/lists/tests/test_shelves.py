@@ -39,7 +39,7 @@ class FeaturedShelvesTest(TestCase):
         shelf = self._make_shelf("Mi top 10 de 2026", 0)
 
         response = self.client.get(
-            reverse("medialist", args=[self.user.username, MediaTypes.MOVIE.value]),
+            reverse("profile", args=[self.user.username]),
         )
 
         self.assertEqual(response.status_code, 200)
@@ -52,7 +52,7 @@ class FeaturedShelvesTest(TestCase):
         self._make_shelf("Private Notes", 0, featured=False)
 
         response = self.client.get(
-            reverse("medialist", args=[self.user.username, MediaTypes.MOVIE.value]),
+            reverse("profile", args=[self.user.username]),
         )
 
         self.assertEqual(response.status_code, 200)

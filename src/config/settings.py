@@ -566,6 +566,10 @@ DEBUG_TOOLBAR_CONFIG = {
     "ROOT_TAG_EXTRA_ATTRS": "hx-preserve",
 }
 
+# DEBUG_TOOLBAR=False hides the toolbar on a DEBUG instance shared with testers.
+if not config("DEBUG_TOOLBAR", default=True, cast=bool):
+    DEBUG_TOOLBAR_CONFIG["SHOW_TOOLBAR_CALLBACK"] = lambda _request: False
+
 SELECT2_CACHE_BACKEND = "default"
 SELECT2_JS = [
     "js/libraries/jquery-3.7.1.min.js",

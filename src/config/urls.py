@@ -17,6 +17,8 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from health_check.views import HealthCheckView
 from redis.asyncio import Redis as RedisClient
 
+from app import views as app_views
+
 urlpatterns = [
     path("", include("app.urls")),
     path("", include("integrations.urls")),
@@ -107,3 +109,7 @@ if settings.ADMIN_ENABLED:
 if settings.DEBUG:
     urlpatterns.append(path("__debug__/", include("debug_toolbar.urls")))
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Public profile at /<username>. Appended last so every named single-segment
+# route above (search, roulette, settings, admin, ...) takes precedence.
+urlpatterns.append(path("<str:username>", app_views.profile, name="profile"))
