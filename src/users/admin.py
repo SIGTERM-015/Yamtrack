@@ -4,7 +4,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import Group
 from django.db.models import Field
 
-from users.models import User
+from users.models import ApiToken, User
 
 
 class CustomUserCreationForm(UserCreationForm):
@@ -68,3 +68,21 @@ class CustomUserAdmin(UserAdmin):
 
 
 admin.site.unregister(Group)
+
+
+@admin.register(ApiToken)
+class ApiTokenAdmin(admin.ModelAdmin):
+    """Admin list of API tokens; secrets are never shown (only hashes exist)."""
+
+    list_display = (
+        "name",
+        "user",
+        "scope",
+        "prefix",
+        "created_at",
+        "last_used_at",
+        "revoked_at",
+    )
+    list_filter = ("scope",)
+    search_fields = ("name", "user__username", "prefix")
+    readonly_fields = ("prefix", "token_hash", "created_at", "last_used_at")

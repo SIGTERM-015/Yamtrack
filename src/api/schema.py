@@ -12,6 +12,11 @@ class BearerAuthenticationScheme(OpenApiAuthenticationExtension):
         return {
             "type": "http",
             "scheme": "bearer",
+            "description": (
+                "Personal API token from Settings > Integrations > API tokens "
+                "(read-only tokens get 403 on POST/PUT/PATCH/DELETE). The legacy "
+                "integration token is also accepted with full access."
+            ),
         }
 
 
@@ -27,4 +32,5 @@ class ApiKeyAuthenticationScheme(OpenApiAuthenticationExtension):
             "type": "apiKey",
             "in": "header",
             "name": "X-API-Key",
+            "description": "Same token as bearerAuth, sent in a header.",
         }

@@ -29,6 +29,8 @@ from users.forms import (
 from users.models import (
     VALID_SEARCH_TYPES,
     WATCH_PROVIDER_REGION_UNSET,
+    ApiToken,
+    ApiTokenScope,
     DateFormatChoices,
     QuickWatchDateChoices,
     Suggestion,
@@ -311,7 +313,45 @@ def preferences(request):
 @require_GET
 def integrations(request):
     """Render the integrations settings page."""
-    return render(request, "users/integrations.html")
+    return render(
+        request,
+        "users/integrations.html",
+        {
+            "api_tokens": request.user.api_tokens.active(),
+            "new_api_token": request.session.pop("new_api_token", None),
+            "api_token_scopes": ApiTokenScope.choices,
+            "api_token_name_max_length": ApiToken._meta.get_field("name").max_length,
+        },
+    )
+
+
+@require_POST
+def create_api_token(request):
+    """Create a named API token and show its value once."""
+    name = request.POST.get("name", "").strip()
+    scope = request.POST.get("scope", ApiTokenScope.READ.value)
+    max_length = ApiToken._meta.get_field("name").max_length
+
+    if not name or len(name) > max_length:
+        messages.error(request, f"Give the token a name (up to {max_length} chars).")
+        return redirect("integrations")
+    if scope not in ApiTokenScope.values:
+        messages.error(request, "Invalid token permission.")
+        return redirect("integrations")
+
+    _, raw_token = ApiToken.create_for(request.user, name, scope)
+    # Shown once on the next page render; only its hash is persisted.
+    request.session["new_api_token"] = {"name": name, "value": raw_token}
+    return redirect("integrations")
+
+
+@require_POST
+def revoke_api_token(request, token_id):
+    """Revoke one of the user's API tokens."""
+    token = get_object_or_404(request.user.api_tokens.active(), id=token_id)
+    token.revoke()
+    messages.success(request, f'API token "{token.name}" revoked.')
+    return redirect("integrations")
 
 
 @require_GET

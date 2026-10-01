@@ -19,7 +19,10 @@
         {% include "app/icons/padlock.svg" with classes="w-6 h-6 text-indigo-400 mr-3" %}
         <h2 class="text-xl font-semibold">Token</h2>
       </div>
-      <p class="text-gray-400 mb-5 text-sm">This token is used to authenticate webhook requests from your media servers.</p>
+      <p class="text-gray-400 mb-5 text-sm">
+        This token is used to authenticate webhook requests from your media servers.
+        It also still works for the API with full access; prefer a named API token below for API clients.
+      </p>
       <div class="bg-[#39404b] p-2 rounded-md mb-4">
         <div class="flex items-center gap-2">
           <input readonly=""
@@ -51,6 +54,7 @@
         </div>
       </div>
     </div>
+    {% include "users/components/api_tokens.html" %}
     <div class="bg-[#2a2f35] rounded-lg p-6">
       <div class="flex items-center mb-4">
         {% include "app/icons/server.svg" with classes="w-6 h-6 text-indigo-400 mr-3" %}

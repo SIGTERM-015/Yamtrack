@@ -1,0 +1,94 @@
+{% load app_tags %}
+<div class="bg-[#2a2f35] rounded-lg p-6" id="api-tokens">
+  <div class="flex items-center mb-4">
+    {% include "app/icons/key.svg" with classes="w-6 h-6 text-indigo-400 mr-3" %}
+    <h2 class="text-xl font-semibold">API tokens</h2>
+  </div>
+  <p class="text-gray-400 mb-5 text-sm">
+    Personal tokens for the REST API (<code class="text-gray-300">/api/v1/</code>, see the
+    <a href="{% url 'swagger-ui' %}" class="text-indigo-400 hover:underline">API docs</a>).
+    Send one as <code class="text-gray-300">Authorization: Bearer &lt;token&gt;</code> or
+    <code class="text-gray-300">X-API-Key: &lt;token&gt;</code>. Each token can be revoked on its own;
+    read-only tokens can't add, edit or delete anything.
+  </p>
+
+  {% if new_api_token %}
+    <div class="mb-5 rounded-md border border-emerald-600 bg-emerald-600/10 p-4" id="new-api-token">
+      <p class="text-sm text-emerald-300 mb-2">
+        Token "{{ new_api_token.name }}" created. Copy it now: it won't be shown again.
+      </p>
+      <div class="bg-[#39404b] p-2 rounded-md">
+        <div class="flex items-center gap-2">
+          <input readonly
+                 id="new-api-token-value"
+                 class="flex-1 py-2 pr-2 pl-3 bg-[#39404b] rounded-md text-gray-100 text-sm border-0 focus:ring-0 outline-none font-mono"
+                 type="text"
+                 value="{{ new_api_token.value }}">
+          <span class="flex items-center cursor-pointer group pr-3"
+                title="Copy"
+                data-copy-target="#new-api-token-value">
+            {% include "app/icons/copy.svg" with classes="w-5 h-5 text-gray-400 group-hover:text-indigo-400 transition-colors" %}
+          </span>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <form method="post"
+        action="{% url 'create_api_token' %}"
+        class="mb-5 flex flex-col sm:flex-row gap-2">
+    {% csrf_token %}
+    <input name="name"
+           type="text"
+           required
+           maxlength="{{ api_token_name_max_length }}"
+           placeholder="Token name, e.g. Stremio addon"
+           autocomplete="off"
+           class="flex-1 rounded-md bg-[#39404b] border border-gray-600 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#4a9eff]">
+    <select name="scope"
+            class="rounded-md bg-[#39404b] border border-gray-600 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#4a9eff]">
+      {% for value, label in api_token_scopes %}
+        <option value="{{ value }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit"
+            class="flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm cursor-pointer">
+      {% include "app/icons/plus.svg" with classes="w-4 h-4 mr-2" %}
+      Create token
+    </button>
+  </form>
+
+  {% if api_tokens %}
+    <ul class="divide-y divide-gray-700 rounded-md bg-[#39404b]">
+      {% for token in api_tokens %}
+        <li class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-white truncate">{{ token.name }}</span>
+              <span class="rounded-full px-2 py-0.5 text-xs {% if token.can_write %}bg-amber-500/20 text-amber-300{% else %}bg-indigo-500/20 text-indigo-300{% endif %}">
+                {{ token.get_scope_display }}
+              </span>
+            </div>
+            <p class="text-xs text-gray-400 mt-1">
+              <span class="font-mono">{{ token.prefix }}…</span>
+              · Created {{ token.created_at|date }}
+              · {% if token.last_used_at %}Last used {{ token.last_used_at|timesince }} ago{% else %}Never used{% endif %}
+            </p>
+          </div>
+          <form method="post"
+                action="{% url 'revoke_api_token' token.id %}"
+                onsubmit="return confirm('Revoke {{ token.name|escapejs }}? Clients using it will stop working.');">
+            {% csrf_token %}
+            <button type="submit"
+                    class="flex items-center px-3 py-1.5 bg-red-700 text-white rounded-md hover:bg-red-800 transition-colors text-sm cursor-pointer">
+              {% include "app/icons/trashcan.svg" with classes="w-4 h-4 mr-2" %}
+              Revoke
+            </button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-sm text-gray-500">No API tokens yet.</p>
+  {% endif %}
+</div>

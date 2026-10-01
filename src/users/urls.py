@@ -41,6 +41,12 @@ urlpatterns = [
         name="delete_import_schedule",
     ),
     path("regenerate_token", views.regenerate_token, name="regenerate_token"),
+    path("api_tokens/create", views.create_api_token, name="create_api_token"),
+    path(
+        "api_tokens/<int:token_id>/revoke",
+        views.revoke_api_token,
+        name="revoke_api_token",
+    ),
     path("clear_search_cache", views.clear_search_cache, name="clear_search_cache"),
     path(
         "update_plex_usernames",

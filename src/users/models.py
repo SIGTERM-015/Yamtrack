@@ -1,9 +1,11 @@
+import hashlib
 import secrets
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 from django_celery_beat.models import PeriodicTask
 from django_celery_results.models import TaskResult
 from PIL import Image
@@ -877,3 +879,119 @@ class Suggestion(models.Model):
     def __str__(self):
         """Return the suggested title and recipient."""
         return f"{self.title} -> {self.target_user}"
+
+
+class ApiTokenScope(models.TextChoices):
+    """Permission level granted by an API token."""
+
+    READ = "read", "Read only"
+    WRITE = "write", "Read and write"
+
+
+class ApiTokenQuerySet(models.QuerySet):
+    """Query helpers for API tokens."""
+
+    def active(self):
+        """Return tokens that have not been revoked."""
+        return self.filter(revoked_at__isnull=True)
+
+
+class ApiToken(models.Model):
+    """
+    A named, revocable personal token for the REST API (ADR 0001 §7).
+
+    Only a SHA-256 hash of the secret is stored; the plain value is shown to
+    the owner once, right after creation. ``prefix`` keeps the first
+    characters visible so tokens can be told apart in the settings list.
+    The legacy ``User.token`` stays for media-server webhooks.
+    """
+
+    PREFIX = "ytk_"
+    VISIBLE_PREFIX_LENGTH = 12
+    #: Minimum gap between ``last_used_at`` writes, to avoid a write per request.
+    LAST_USED_RESOLUTION_SECONDS = 60
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="api_tokens",
+    )
+    name = models.CharField(max_length=100)
+    scope = models.CharField(
+        max_length=5,
+        choices=ApiTokenScope.choices,
+        default=ApiTokenScope.READ.value,
+    )
+    prefix = models.CharField(max_length=VISIBLE_PREFIX_LENGTH)
+    token_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    objects = ApiTokenQuerySet.as_manager()
+
+    class Meta:
+        """Meta options for the model."""
+
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        """Return the token name and visible prefix."""
+        return f"{self.name} ({self.prefix}…)"
+
+    @staticmethod
+    def hash_secret(raw_token):
+        """Return the stored hash for a plain token value."""
+        return hashlib.sha256(raw_token.encode()).hexdigest()
+
+    @classmethod
+    def create_for(cls, user, name, scope):
+        """Create a token and return ``(token, raw_value)``; raw is not stored."""
+        raw_token = f"{cls.PREFIX}{secrets.token_urlsafe(32)}"
+        token = cls.objects.create(
+            user=user,
+            name=name,
+            scope=scope,
+            prefix=raw_token[: cls.VISIBLE_PREFIX_LENGTH],
+            token_hash=cls.hash_secret(raw_token),
+        )
+        return token, raw_token
+
+    @classmethod
+    def from_raw(cls, raw_token):
+        """Return the active token matching ``raw_token``, or ``None``."""
+        if not raw_token.startswith(cls.PREFIX):
+            return None
+        return (
+            cls.objects.active()
+            .select_related("user")
+            .filter(token_hash=cls.hash_secret(raw_token))
+            .first()
+        )
+
+    @property
+    def is_active(self):
+        """Return whether the token can still authenticate."""
+        return self.revoked_at is None
+
+    @property
+    def can_write(self):
+        """Return whether the token may perform unsafe (mutating) requests."""
+        return self.scope == ApiTokenScope.WRITE.value
+
+    def revoke(self):
+        """Revoke the token; it stops authenticating immediately."""
+        if self.revoked_at is None:
+            self.revoked_at = timezone.now()
+            self.save(update_fields=["revoked_at"])
+
+    def touch(self):
+        """Record usage, at most once per ``LAST_USED_RESOLUTION_SECONDS``."""
+        now = timezone.now()
+        if (
+            self.last_used_at is None
+            or (now - self.last_used_at).total_seconds()
+            >= self.LAST_USED_RESOLUTION_SECONDS
+        ):
+            type(self).objects.filter(pk=self.pk).update(last_used_at=now)
+            self.last_used_at = now
