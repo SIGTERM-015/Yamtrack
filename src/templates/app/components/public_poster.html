@@ -1,0 +1,24 @@
+{% load app_tags %}
+{% comment %}
+Poster as shown to visitors (option B): the person's score in large type over
+the poster, title and a short comment underneath. Opens the person's title
+page. Expects ``media`` and ``target_user``; ``show_comments`` gates notes.
+{% endcomment %}
+<a href="{% url 'profile_media' target_user.username media.item.media_type media.item.source media.item.media_id %}"
+   class="group/poster block">
+  <div class="relative overflow-hidden rounded-lg ring-1 ring-white/5 transition group-hover/poster:ring-indigo-500">
+    <img src="{{ IMG_NONE }}"
+         data-src="{% if media.item.image and media.item.image != 'None' %}{{ media.item.image }}{% else %}{{ IMG_NONE }}{% endif %}"
+         alt="{{ media.item.title }}"
+         class="lazyload w-full aspect-2/3 object-cover bg-[#3e454d]">
+    {% if media.score|show_media_score:target_user %}
+      <span class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/90 via-black/50 to-transparent px-2 pt-8 pb-1.5 text-2xl font-bold text-yellow-400">{{ media.formatted_score|floatformat:"-1" }}</span>
+    {% endif %}
+  </div>
+  <p class="mt-2 text-sm font-semibold truncate group-hover/poster:text-[#4a9eff]"
+     title="{{ media.item.title }}">{{ media.item.title }}</p>
+</a>
+<p class="text-xs text-gray-400">{{ media.status|media_status_readable }}</p>
+{% if show_comments and media.notes and media.notes_public %}
+  <p class="mt-1 text-xs text-gray-300 line-clamp-2">{{ media.notes }}</p>
+{% endif %}

@@ -11,6 +11,11 @@ urlpatterns = [
     path("recommendations", views.recommendations, name="recommendations"),
     path("<str:username>/<media_type:media_type>", views.media_list, name="medialist"),
     path(
+        "<str:username>/timeline",
+        views.profile_timeline,
+        name="profile_timeline",
+    ),
+    path(
         "<str:username>/<media_type:media_type>/<source:source>/<str:media_id>",
         views.profile_media,
         name="profile_media",

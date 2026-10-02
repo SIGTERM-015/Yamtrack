@@ -43,7 +43,7 @@
             </div>
             {% if record.score is not None %}
               <p class="shrink-0 text-5xl font-bold leading-none text-yellow-400">
-                {{ record.formatted_score }}<span class="text-lg font-semibold text-gray-400">/10</span>
+                {{ record.formatted_score|floatformat:"-1" }}<span class="text-lg font-semibold text-gray-400">/10</span>
               </p>
             {% endif %}
           </div>

@@ -973,3 +973,115 @@ def get_library_counts(user):
         )
         for media_type in user.get_enabled_media_types()
     ]
+
+
+def _consumption_querysets(user, since=None, before=None):
+    """Yield (kind, queryset) for every finished record and watched episode."""
+
+    def bounded(queryset):
+        queryset = queryset.filter(end_date__isnull=False)
+        if since is not None:
+            queryset = queryset.filter(end_date__gte=since)
+        if before is not None:
+            queryset = queryset.filter(end_date__lt=before)
+        return queryset
+
+    for model_name in user.get_active_media_types():
+        model = apps.get_model(app_label="app", model_name=model_name)
+        if model in (TV, Season):
+            continue
+        yield "media", bounded(model.objects.filter(user=user))
+    yield "episode", bounded(Episode.objects.filter(related_season__user=user))
+
+
+def _timeline_entries(user, since, before, local_tz):
+    """Group consumption into ``{day: [entry, ...]}``; TV episodes per show."""
+    by_day = defaultdict(list)
+    shows = {}
+    for kind, queryset in _consumption_querysets(user, since, before):
+        if kind == "media":
+            for media in queryset.select_related("item"):
+                when = timezone.localtime(media.end_date, local_tz)
+                by_day[when.date()].append(
+                    {"kind": "media", "item": media.item, "media": media, "date": when},
+                )
+            continue
+        for episode in queryset.select_related(
+            "item", "related_season__related_tv__item"
+        ):
+            when = timezone.localtime(episode.end_date, local_tz)
+            tv = episode.related_season.related_tv
+            entry = shows.get((when.date(), tv.id))
+            if entry is None:
+                entry = {
+                    "kind": "episodes",
+                    "item": tv.item,
+                    "media": tv,
+                    "date": when,
+                    "episodes": [],
+                }
+                shows[(when.date(), tv.id)] = entry
+                by_day[when.date()].append(entry)
+            entry["episodes"].append(
+                (episode.item.season_number, episode.item.episode_number),
+            )
+            entry["date"] = max(entry["date"], when)
+    for entry in shows.values():
+        entry["episodes"].sort()
+        entry["episode_label"] = format_episode_ranges(entry["episodes"])
+    return by_day
+
+
+def get_profile_timeline(user, before=None, days=30):
+    """Return what ``user`` consumed, grouped by day, newest day first.
+
+    Covers up to ``days`` days that have activity, ending before ``before``
+    (a date, exclusive; ``None`` means including today). Each day lists
+    finished media, and for TV one entry per show with that day's episodes.
+    Returns ``(day_groups, next_before)``: ``next_before`` is the date to pass
+    for the following page, or ``None`` when there is nothing older.
+    """
+    local_tz = timezone.get_current_timezone()
+    end = (
+        datetime.datetime.combine(before, datetime.time.min, tzinfo=local_tz)
+        if before
+        else None
+    )
+
+    active_days = {
+        timezone.localtime(value, local_tz).date()
+        for _, queryset in _consumption_querysets(user, before=end)
+        for value in queryset.values_list("end_date", flat=True)
+    }
+    ordered_days = sorted(active_days, reverse=True)
+    page_days = ordered_days[:days]
+    if not page_days:
+        return [], None
+    next_before = page_days[-1] if len(ordered_days) > days else None
+    oldest = datetime.datetime.combine(
+        page_days[-1], datetime.time.min, tzinfo=local_tz
+    )
+
+    by_day = _timeline_entries(user, oldest, end, local_tz)
+    day_groups = [
+        {
+            "day": day,
+            "entries": sorted(by_day[day], key=lambda e: e["date"], reverse=True),
+        }
+        for day in page_days
+    ]
+    return day_groups, next_before
+
+
+def format_episode_ranges(episodes):
+    """Compress sorted ``(season, episode)`` pairs: S1E1-E8, S2E3."""
+    parts = []
+    for season, number in episodes:
+        if parts and parts[-1][0] == season and parts[-1][2] == number - 1:
+            parts[-1][2] = number
+        else:
+            parts.append([season, number, number])
+    return ", ".join(
+        f"S{season}E{first}" + (f"-E{last}" if last != first else "")
+        for season, first, last in parts
+    )

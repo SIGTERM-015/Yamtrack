@@ -200,6 +200,21 @@ def _is_app_route(path):
     return match.url_name != "profile_slash"
 
 
+def _split_opinions(entries, *, show_comments, is_owner, opinions=4, others=8):
+    """Split activity into entries with a visible score or comment, and the rest."""
+
+    def has_opinion(entry):
+        media = entry["media"]
+        visible_note = bool(media.notes) and (
+            is_owner or (show_comments and media.notes_public)
+        )
+        return media.score is not None or visible_note
+
+    with_opinion = [entry for entry in entries if has_opinion(entry)]
+    without = [entry for entry in entries if not has_opinion(entry)]
+    return with_opinion[:opinions], without[:others]
+
+
 @login_not_required
 @require_GET
 def profile(request, username):
@@ -235,12 +250,19 @@ def profile(request, username):
         else None
     )
 
+    recent_activity = stats.get_recent_activity(target_user, limit=12)
+    latest_opinions, latest_others = _split_opinions(
+        recent_activity, show_comments=show_reviews, is_owner=is_owner
+    )
+
     context = {
         "target_user": target_user,
         "is_owner": is_owner,
         "public_view": not request.user.is_authenticated or preview,
         "preview": preview,
-        "recent_activity": stats.get_recent_activity(target_user, limit=12),
+        "recent_activity": recent_activity,
+        "latest_opinions": latest_opinions,
+        "latest_others": latest_others,
         "show_comments": show_reviews,
         "library_counts": stats.get_library_counts(target_user),
         "featured_shelves": (
@@ -253,6 +275,35 @@ def profile(request, username):
         "now_year": timezone.localdate().year,
     }
     return render(request, "app/profile.html", context)
+
+
+@login_not_required
+@require_GET
+def profile_timeline(request, username):
+    """Everything someone watched, played or read, day by day, newest first."""
+    target_user = get_object_or_404(User, username=username)
+    preview = request.user == target_user and request.GET.get("as") == "visitor"
+    viewer = AnonymousUser() if preview else request.user
+    is_owner = viewer == target_user
+    if not is_owner and target_user.profile_private and not preview:
+        msg = "User not found"
+        raise Http404(msg)
+
+    before = parse_date(request.GET.get("before", "") or "")
+    day_groups, next_before = stats.get_profile_timeline(target_user, before=before)
+    context = {
+        "target_user": target_user,
+        "is_owner": is_owner,
+        "public_view": not request.user.is_authenticated or preview,
+        "preview": preview,
+        "show_comments": target_user.profile_section_visible(
+            viewer, "profile_show_reviews"
+        ),
+        "day_groups": day_groups,
+        "next_before": next_before,
+        "is_first_page": before is None,
+    }
+    return render(request, "app/profile_timeline.html", context)
 
 
 @login_not_required
@@ -365,10 +416,7 @@ def media_list(request, username, media_type):
                 media_type=enabled_media_types[0],
             )
 
-        layout = target_user.get_valid_preference(
-            f"{media_type}_layout",
-            request.GET.get("layout"),
-        )
+        layout = "grid"
         sort_filter = target_user.get_valid_preference(
             f"{media_type}_sort",
             request.GET.get("sort"),
@@ -416,6 +464,11 @@ def media_list(request, username, media_type):
         "status_choices": MediaStatusChoices.choices,
         "target_user": target_user,
         "public_reviews": _public_reviews(request, target_user, media_type),
+        # Visitors see the person's verdicts as posters, not management cards.
+        "public_grid": request.user != target_user,
+        "show_comments": target_user.profile_section_visible(
+            request.user, "profile_show_reviews"
+        ),
         "public_view": not request.user.is_authenticated,
     }
 

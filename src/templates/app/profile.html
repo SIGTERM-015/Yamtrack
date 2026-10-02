@@ -96,48 +96,46 @@
       </section>
     {% endif %}
 
-    {# Latest: what they finished or watched most recently, with score and comment. #}
+    {% comment %}
+      Latest: a short diary. Titles with a score or comment get a full line;
+      the rest collapse into a thumbnail strip that opens the timeline.
+    {% endcomment %}
     <section aria-labelledby="latest-heading">
-      <h2 id="latest-heading" class="text-xl font-bold mb-4">Latest</h2>
-      {% if recent_activity %}
-        <ol class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-x-4 gap-y-6">
-          {% for entry in recent_activity %}
-            <li class="min-w-0">
-              <a href="{% url 'profile_media' target_user.username entry.item.media_type entry.item.source entry.item.media_id %}{% if preview %}?as=visitor{% endif %}" class="group/poster block">
-                <div class="relative">
-                  <img src="{% if entry.item.image and entry.item.image != 'None' %}{{ entry.item.image }}{% else %}{{ IMG_NONE }}{% endif %}"
-                       alt="{{ entry.item.title }}"
-                       loading="lazy"
-                       class="w-full aspect-2/3 rounded-lg object-cover bg-[#3e454d] ring-1 ring-white/5 transition group-hover/poster:ring-indigo-500">
-                  {% if entry.media.score|show_media_score:target_user %}
-                    <span class="absolute top-2 right-2 bg-gray-900/90 text-white text-sm px-2 py-0.5 rounded-md flex items-center shadow-md">
-                      {% include "app/icons/star.svg" with classes="w-3.5 h-3.5 text-yellow-400 mr-1 fill-current" %}
-                      {{ entry.media.formatted_score }}
-                    </span>
-                  {% endif %}
-                </div>
-                <p class="mt-2 text-sm font-semibold text-white line-clamp-1 group-hover/poster:text-[#4a9eff]"
-                   title="{{ entry.item.title }}">{{ entry.item.title }}</p>
-              </a>
-              <p class="text-xs text-gray-400">
-                {% if entry.kind == "episode" %}
-                  S{{ entry.season_number }}E{{ entry.episode_number }},
-                {% endif %}
-                <time datetime="{{ entry.date|date:'c' }}">{{ entry.date|date_format:target_user }}</time>
-              </p>
-              {% if show_comments and entry.media.notes and entry.media.notes_public or is_owner and entry.media.notes %}
-                <blockquote class="mt-2 border-l-2 border-indigo-500/60 pl-2 text-sm text-gray-300 line-clamp-4"
-                            title="{{ entry.media.notes }}">
-                  {{ entry.media.notes }}
-                </blockquote>
-              {% endif %}
-            </li>
+      <div class="flex items-baseline justify-between gap-3 mb-4">
+        <h2 id="latest-heading" class="text-xl font-bold">Latest</h2>
+        {% if recent_activity %}
+          <a href="{% url 'profile_timeline' target_user.username %}{% if preview %}?as=visitor{% endif %}"
+             class="text-sm text-gray-400 hover:text-white">Full timeline</a>
+        {% endif %}
+      </div>
+      {% if latest_opinions %}
+        <ol class="divide-y divide-white/5 rounded-xl bg-[#2a2f35] ring-1 ring-white/5">
+          {% for entry in latest_opinions %}
+            {% include "app/components/diary_row.html" %}
           {% endfor %}
         </ol>
-      {% elif is_owner %}
-        <p class="text-gray-400">Nothing finished yet. Mark something as completed, or log an episode, and it shows up here.</p>
-      {% else %}
-        <p class="text-gray-400">{{ target_user.username }} hasn't finished anything yet.</p>
+      {% endif %}
+      {% if latest_others %}
+        <a href="{% url 'profile_timeline' target_user.username %}{% if preview %}?as=visitor{% endif %}"
+           class="group/also mt-4 flex items-center gap-3"
+           title="See everything in the timeline">
+          <span class="text-sm text-gray-400 group-hover/also:text-white">{% if latest_opinions %}Also{% else %}Recently{% endif %}</span>
+          {% for entry in latest_others %}
+            <img src="{% if entry.item.image and entry.item.image != 'None' %}{{ entry.item.image }}{% else %}{{ IMG_NONE }}{% endif %}"
+                 alt="{{ entry.item.title }}"
+                 title="{{ entry.item.title }}{% if entry.kind == 'episode' %} · S{{ entry.season_number }}E{{ entry.episode_number }}{% endif %}"
+                 loading="lazy"
+                 class="w-10 h-15 rounded object-cover bg-[#3e454d] ring-1 ring-white/5 group-hover/also:ring-indigo-500">
+          {% endfor %}
+          <span class="text-sm text-indigo-300 group-hover/also:text-white">Timeline</span>
+        </a>
+      {% endif %}
+      {% if not recent_activity %}
+        {% if is_owner %}
+          <p class="text-gray-400">Nothing finished yet. Mark something as completed, or log an episode, and it shows up here.</p>
+        {% else %}
+          <p class="text-gray-400">{{ target_user.username }} hasn't finished anything yet.</p>
+        {% endif %}
       {% endif %}
     </section>
 

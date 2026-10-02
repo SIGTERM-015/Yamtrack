@@ -285,8 +285,8 @@ class MediaListViewTests(TestCase):
         self.assertNotIn(review, response.context["public_reviews"])
         self.assertNotContains(response, "Secret note")
 
-    def test_public_review_shows_score_and_link_to_media_detail(self):
-        """A public review renders its score and links to the media's detail page."""
+    def test_public_review_shows_score_and_link_to_title_page(self):
+        """Visitors see the score and comment on a poster opening the title page."""
         review = self._create_note(
             self.external_user,
             "Loved it",
@@ -305,7 +305,19 @@ class MediaListViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "9")
-        self.assertContains(response, app_tags.media_url(review.item))
+        self.assertContains(response, "Loved it")
+        self.assertContains(
+            response,
+            reverse(
+                "profile_media",
+                args=[
+                    self.external_user.username,
+                    review.item.media_type,
+                    review.item.source,
+                    review.item.media_id,
+                ],
+            ),
+        )
 
     def test_notes_public_defaults_to_false(self):
         """New entries keep their notes private by default."""

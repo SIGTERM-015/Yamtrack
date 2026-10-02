@@ -1,0 +1,39 @@
+{% load app_tags %}
+{% comment %}
+One diary line: thumbnail, title, the person's score in large type and their
+comment. Expects ``entry`` (from get_recent_activity / get_profile_timeline),
+``target_user``, ``show_comments``, ``is_owner`` and ``preview``. ``date_style``
+"time" shows only the hour (inside a day group); default shows the date.
+{% endcomment %}
+<li class="flex gap-4 p-4">
+  <a href="{% url 'profile_media' target_user.username entry.item.media_type entry.item.source entry.item.media_id %}{% if preview %}?as=visitor{% endif %}"
+     class="shrink-0">
+    <img src="{% if entry.item.image and entry.item.image != 'None' %}{{ entry.item.image }}{% else %}{{ IMG_NONE }}{% endif %}"
+         alt="{{ entry.item.title }}"
+         loading="lazy"
+         class="w-16 h-24 rounded-md object-cover bg-[#3e454d]">
+  </a>
+  <div class="min-w-0 flex-1">
+    <div class="flex items-baseline gap-3">
+      <a href="{% url 'profile_media' target_user.username entry.item.media_type entry.item.source entry.item.media_id %}{% if preview %}?as=visitor{% endif %}"
+         class="font-semibold truncate hover:text-[#4a9eff]">{{ entry.item.title }}</a>
+      {% if entry.media.score|show_media_score:target_user %}
+        <span class="ml-auto shrink-0 text-2xl font-bold text-yellow-400">{{ entry.media.formatted_score|floatformat:"-1" }}<span class="text-sm font-medium text-gray-500">/10</span></span>
+      {% endif %}
+    </div>
+    <p class="text-xs text-gray-400">
+      {{ entry.item.media_type|media_type_readable }}
+      {% if entry.kind == "episode" %}
+        · S{{ entry.season_number }}E{{ entry.episode_number }}
+      {% elif entry.kind == "episodes" %}
+        · {{ entry.episode_label }}
+      {% endif %}
+      · <time datetime="{{ entry.date|date:'c' }}">{% if date_style == "time" %}{{ entry.date|time:"H:i" }}{% else %}{{ entry.date|date_format:target_user }}{% endif %}</time>
+    </p>
+    {% if entry.media.notes %}
+      {% if is_owner or show_comments and entry.media.notes_public %}
+        <p class="mt-2 text-gray-200 whitespace-pre-line line-clamp-4">{{ entry.media.notes }}</p>
+      {% endif %}
+    {% endif %}
+  </div>
+</li>

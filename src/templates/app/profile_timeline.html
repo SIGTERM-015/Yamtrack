@@ -1,0 +1,46 @@
+{% extends "app/public_base.html" %}
+{% load app_tags %}
+
+{% block title %}
+  {{ target_user.username }}'s timeline - Yamtrack
+{% endblock title %}
+
+{% block content %}
+  <div class="max-w-3xl mx-auto">
+    <a href="{% url 'profile' target_user.username %}{% if preview %}?as=visitor{% endif %}"
+       class="inline-flex items-center gap-1.5 mb-3 text-sm text-gray-400 hover:text-white">
+      {% include "app/icons/chevron-left.svg" with classes="w-4 h-4" %}
+      {{ target_user.username }}
+    </a>
+    <h1 class="text-3xl font-bold mb-8">Timeline</h1>
+
+    {% for group in day_groups %}
+      <section class="mb-8" aria-labelledby="day-{{ group.day|date:'Ymd' }}">
+        <h2 id="day-{{ group.day|date:'Ymd' }}"
+            class="sticky top-16 z-[5] -mx-2 mb-3 bg-[#212529]/95 px-2 py-1 text-sm font-semibold text-gray-300 backdrop-blur">
+          <time datetime="{{ group.day|date:'Y-m-d' }}">{{ group.day|date:"l, j F Y" }}</time>
+        </h2>
+        <ol class="divide-y divide-white/5 rounded-xl bg-[#2a2f35] ring-1 ring-white/5">
+          {% for entry in group.entries %}
+            {% include "app/components/diary_row.html" with date_style="time" %}
+          {% endfor %}
+        </ol>
+      </section>
+    {% empty %}
+      <p class="text-gray-400">
+        {% if is_first_page %}
+          {% if is_owner %}Nothing here yet. Finished titles and watched episodes show up day by day.{% else %}{{ target_user.username }} hasn't finished anything yet.{% endif %}
+        {% else %}
+          Nothing older.
+        {% endif %}
+      </p>
+    {% endfor %}
+
+    {% if next_before %}
+      <a href="?before={{ next_before|date:'Y-m-d' }}{% if preview %}&as=visitor{% endif %}"
+         class="mt-2 inline-flex items-center gap-2 rounded-md border border-gray-700 px-4 py-2 text-sm text-gray-300 hover:bg-[#39404b] hover:text-white">
+        Older
+      </a>
+    {% endif %}
+  </div>
+{% endblock content %}

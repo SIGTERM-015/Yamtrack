@@ -302,3 +302,140 @@ class ProfileLayoutTests(TestCase):
         """Titles the person hasn't tracked or shelved aren't on their profile."""
         response = self.client.get("/ana/movie/tmdb/999999")
         self.assertEqual(response.status_code, 404)
+
+
+class ProfileDiaryAndTimelineTests(TestCase):
+    """Latest as a diary (option A) and the separate day-by-day timeline."""
+
+    def setUp(self):
+        """Ana finished three movies over three days; one has a comment."""
+        self.owner = get_user_model().objects.create_user(
+            username="ana",
+            password="pw",  # noqa: S106
+        )
+        now = timezone.now()
+        rows = [
+            ("Rated", 8, "", False, 0),
+            ("Commented", None, "Me encantó", True, 1),
+            ("Plain", None, "", False, 2),
+        ]
+        for index, (title, score, notes, public, days_ago) in enumerate(rows):
+            item = Item.objects.create(
+                media_id=str(700 + index),
+                source=Sources.MANUAL.value,
+                media_type=MediaTypes.MOVIE.value,
+                title=title,
+            )
+            Movie.objects.bulk_create(
+                [
+                    Movie(
+                        item=item,
+                        user=self.owner,
+                        status=Status.COMPLETED.value,
+                        score=score,
+                        notes=notes,
+                        notes_public=public,
+                    ),
+                ],
+            )
+            Movie.objects.filter(item=item).update(
+                end_date=now - timedelta(days=days_ago),
+            )
+
+    def test_latest_splits_opinions_from_the_rest(self):
+        """Scored or commented titles get a row; the rest go to the strip."""
+        response = self.client.get("/ana")
+        opinions = [e["item"].title for e in response.context["latest_opinions"]]
+        others = [e["item"].title for e in response.context["latest_others"]]
+        self.assertEqual(opinions, ["Rated", "Commented"])
+        self.assertEqual(others, ["Plain"])
+        self.assertContains(response, 'href="/ana/timeline"')
+
+    def test_timeline_groups_by_day_newest_first(self):
+        """The timeline shows one section per active day, newest first."""
+        response = self.client.get("/ana/timeline")
+        self.assertEqual(response.status_code, 200)
+        days = [group["day"] for group in response.context["day_groups"]]
+        self.assertEqual(days, sorted(days, reverse=True))
+        self.assertEqual(len(days), 3)
+        self.assertContains(response, "Me encantó")
+
+    def test_timeline_paginates_by_days(self):
+        """With a small page size, an Older link continues the timeline."""
+        from app.statistics import get_profile_timeline  # noqa: PLC0415
+
+        first, next_before = get_profile_timeline(self.owner, days=2)
+        self.assertEqual(len(first), 2)
+        self.assertIsNotNone(next_before)
+        rest, after = get_profile_timeline(self.owner, before=next_before, days=2)
+        self.assertEqual([g["entries"][0]["item"].title for g in rest], ["Plain"])
+        self.assertIsNone(after)
+
+    def test_no_template_comment_leaks(self):
+        """Multi-line {# #} comments render as text; none must reach the page."""
+        for url in ("/ana", "/ana/timeline"):
+            with self.subTest(url=url):
+                self.assertNotContains(self.client.get(url), "{#")
+
+    def test_timeline_respects_privacy(self):
+        """A private profile's timeline 404s for others."""
+        self.owner.profile_private = True
+        self.owner.save()
+        self.assertEqual(self.client.get("/ana/timeline").status_code, 404)
+
+
+class PublicListPosterTests(TestCase):
+    """Per-type lists show visitors big-score posters (option B)."""
+
+    def setUp(self):
+        """Ana has one rated movie with a public comment."""
+        self.owner = get_user_model().objects.create_user(
+            username="ana",
+            password="pw",  # noqa: S106
+        )
+        item = Item.objects.create(
+            media_id="801",
+            source=Sources.MANUAL.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Poster Movie",
+        )
+        Movie.objects.bulk_create(
+            [
+                Movie(
+                    item=item,
+                    user=self.owner,
+                    status=Status.COMPLETED.value,
+                    score=7,
+                    notes="Bonita",
+                    notes_public=True,
+                ),
+            ],
+        )
+
+    def test_visitors_get_poster_grid_linking_to_title_pages(self):
+        """No management controls; posters open the person's title page."""
+        response = self.client.get(reverse("medialist", args=["ana", "movie"]))
+        self.assertTrue(response.context["public_grid"])
+        self.assertContains(response, 'href="/ana/movie/manual/801"')
+        self.assertContains(response, "Bonita")
+        self.assertNotContains(response, 'title="Table View"')
+
+    def test_owner_keeps_management_cards(self):
+        """The owner still gets the regular cards and layout toggle."""
+        self.client.login(username="ana", password="pw")  # noqa: S106
+        response = self.client.get(reverse("medialist", args=["ana", "movie"]))
+        self.assertFalse(response.context["public_grid"])
+        self.assertContains(response, 'title="Table View"')
+
+
+class EpisodeRangeLabelTests(TestCase):
+    """Episode lists collapse into ranges in the timeline."""
+
+    def test_format_episode_ranges(self):
+        """Consecutive episodes merge; gaps and seasons split."""
+        from app.statistics import format_episode_ranges  # noqa: PLC0415
+
+        self.assertEqual(
+            format_episode_ranges([(1, 1), (1, 2), (1, 3), (1, 5), (2, 1)]),
+            "S1E1-E3, S1E5, S2E1",
+        )

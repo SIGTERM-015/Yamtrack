@@ -135,6 +135,7 @@
           </div>
         </div>
 
+        {% if not public_grid %}
         <!-- Layout Toggle -->
         <div class="flex rounded-md overflow-hidden border border-gray-700">
           <a :href="`{% url 'medialist' target_user.username media_type %}?${search ? 'search=' + search + '&' : ''}${status !== 'all' ? 'status=' + status + '&' : ''}${sort !== 'score' ? 'sort=' + sort + '&' : ''}layout=grid`"
@@ -148,6 +149,7 @@
              title="Table View"
              @click="layout = 'table'">{% include "app/icons/table.svg" with classes="w-5 h-5" %}</a>
         </div>
+        {% endif %}
       </div>
     </div>
 
@@ -194,7 +196,7 @@
       </div>
     {% endif %}
 
-    {% if public_reviews %}
+    {% if public_reviews and not public_grid %}
       <section class="mt-8">
         <h2 class="text-2xl font-bold mb-4">Public Reviews</h2>
         <div class="space-y-4">
