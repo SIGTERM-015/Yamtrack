@@ -5,8 +5,14 @@
   {{ target_user.username }}'s timeline - Yamtrack
 {% endblock title %}
 
+{# The day headers own the top of the viewport here, so the app's top bar scrolls away. #}
+{% block topbar_attrs %}style="position: relative"{% endblock topbar_attrs %}
+
 {% block content %}
-  <div class="max-w-3xl mx-auto">
+  {# Marks the day header that is currently pinned, so only it gets a shadow. #}
+  <div class="max-w-3xl mx-auto"
+       x-data
+       x-init="const mark = () => $el.querySelectorAll('.timeline-day').forEach((h) => h.toggleAttribute('data-stuck', h.getBoundingClientRect().top <= 0 && h.parentElement.getBoundingClientRect().top < 0)); mark(); window.addEventListener('scroll', mark, { passive: true })">
     <a href="{% url 'profile' target_user.username %}{% if preview %}?as=visitor{% endif %}"
        class="inline-flex items-center gap-1.5 mb-3 text-sm text-gray-400 hover:text-white">
       {% include "app/icons/chevron-left.svg" with classes="w-4 h-4" %}
@@ -15,10 +21,13 @@
     <h1 class="text-3xl font-bold mb-8">Timeline</h1>
 
     {% for group in day_groups %}
-      <section class="mb-8" aria-labelledby="day-{{ group.day|date:'Ymd' }}">
-        <h2 id="day-{{ group.day|date:'Ymd' }}"
-            class="sticky top-16 z-[5] -mx-2 mb-3 bg-[#212529]/95 px-2 py-1 text-sm font-semibold text-gray-300 backdrop-blur">
-          <time datetime="{{ group.day|date:'Y-m-d' }}">{{ group.day|date:"l, j F Y" }}</time>
+      <section class="mb-6" aria-labelledby="day-{{ group.day|date:'Ymd' }}">
+        <h2 id="day-{{ group.day|date:'Ymd' }}" class="timeline-day">
+          <time datetime="{{ group.day|date:'Y-m-d' }}">
+            <span class="text-white">{{ group.day|date:"l" }}</span>
+            <span class="text-gray-400">{{ group.day|date:"j F Y" }}</span>
+          </time>
+          <span class="ml-auto text-xs font-normal text-gray-500">{{ group.entries|length }} title{{ group.entries|length|pluralize }}</span>
         </h2>
         <ol class="divide-y divide-white/5 rounded-xl bg-[#2a2f35] ring-1 ring-white/5">
           {% for entry in group.entries %}

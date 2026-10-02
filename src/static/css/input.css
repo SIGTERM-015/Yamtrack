@@ -203,3 +203,30 @@
   font-size: 15px;
   margin-top: 3px;
 }
+
+/* Timeline day header: pinned to the very top of the viewport so you always
+   know which day you're reading; the page's top bar scrolls away instead. */
+.timeline-day {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0 -0.5rem 0.75rem;
+  padding: 0.75rem 0.5rem 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  background: #212529;
+  box-shadow: 0 12px 12px -12px rgb(0 0 0 / 0);
+  transition: box-shadow 150ms ease;
+}
+/* Only while it's pinned and following you down the page. */
+.timeline-day[data-stuck] {
+  box-shadow: 0 12px 12px -12px rgb(0 0 0 / 0.6);
+}
+@media (prefers-reduced-motion: reduce) {
+  .timeline-day {
+    transition: none;
+  }
+}
