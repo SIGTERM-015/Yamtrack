@@ -302,8 +302,15 @@ def profile_media(request, username, media_type, source, media_id):
         msg = "User not found"
         raise Http404(msg)
     if media_type in (MediaTypes.SEASON.value, MediaTypes.EPISODE.value):
-        msg = "Not found"
-        raise Http404(msg)
+        # Seasons and episodes share the show's id; the show page holds the
+        # person's verdict, so send them there.
+        url = reverse(
+            "profile_media",
+            args=[username, MediaTypes.TV.value, source, media_id],
+        )
+        if preview:
+            url = f"{url}?as=visitor"
+        return redirect(url)
 
     record = BasicMedia.objects.filter_media_prefetch(
         target_user, media_id, media_type, source

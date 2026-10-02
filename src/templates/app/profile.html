@@ -77,7 +77,7 @@
             <ol class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
               {% for item in shelf.items.all %}
                 <li class="w-28 sm:w-32 shrink-0">
-                  <a href="{% if item.media_type == 'season' or item.media_type == 'episode' %}{{ item|media_url }}{% else %}{% url 'profile_media' target_user.username item.media_type item.source item.media_id %}{% if preview %}?as=visitor{% endif %}{% endif %}"
+                  <a href="{% if item.media_type == 'season' or item.media_type == 'episode' %}{% url 'profile_media' target_user.username 'tv' item.source item.media_id %}{% if preview %}?as=visitor{% endif %}{% else %}{% url 'profile_media' target_user.username item.media_type item.source item.media_id %}{% if preview %}?as=visitor{% endif %}{% endif %}"
                      class="group/poster block"
                      title="{{ item.title }}">
                     <img src="{% if item.image and item.image != 'None' %}{{ item.image }}{% else %}{{ IMG_NONE }}{% endif %}"

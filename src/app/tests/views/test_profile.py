@@ -439,3 +439,15 @@ class EpisodeRangeLabelTests(TestCase):
             format_episode_ranges([(1, 1), (1, 2), (1, 3), (1, 5), (2, 1)]),
             "S1E1-E3, S1E5, S2E1",
         )
+
+
+class PublicSeasonLinkTests(TestCase):
+    """Season posters on a public list open the show's title page."""
+
+    def test_season_url_redirects_to_the_show(self):
+        """/<user>/season/<source>/<id> goes to /<user>/tv/<source>/<id>."""
+        get_user_model().objects.create_user(username="ana")
+        response = self.client.get("/ana/season/tmdb/95396")
+        self.assertRedirects(
+            response, "/ana/tv/tmdb/95396", fetch_redirect_response=False
+        )

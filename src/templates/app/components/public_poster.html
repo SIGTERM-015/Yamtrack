@@ -4,7 +4,7 @@ Poster as shown to visitors (option B): the person's score in large type over
 the poster, title and a short comment underneath. Opens the person's title
 page. Expects ``media`` and ``target_user``; ``show_comments`` gates notes.
 {% endcomment %}
-<a href="{% url 'profile_media' target_user.username media.item.media_type media.item.source media.item.media_id %}"
+<a href="{% if media.item.media_type == 'season' %}{% url 'profile_media' target_user.username 'tv' media.item.source media.item.media_id %}{% else %}{% url 'profile_media' target_user.username media.item.media_type media.item.source media.item.media_id %}{% endif %}"
    class="group/poster block">
   <div class="relative overflow-hidden rounded-lg ring-1 ring-white/5 transition group-hover/poster:ring-indigo-500">
     <img src="{{ IMG_NONE }}"
@@ -17,6 +17,7 @@ page. Expects ``media`` and ``target_user``; ``show_comments`` gates notes.
   </div>
   <p class="mt-2 text-sm font-semibold truncate group-hover/poster:text-[#4a9eff]"
      title="{{ media.item.title }}">{{ media.item.title }}</p>
+  {% if media.item.season_number is not None %}<p class="text-xs text-gray-300">Season {{ media.item.season_number }}</p>{% endif %}
 </a>
 <p class="text-xs text-gray-400">{{ media.status|media_status_readable }}</p>
 {% if show_comments and media.notes and media.notes_public %}
