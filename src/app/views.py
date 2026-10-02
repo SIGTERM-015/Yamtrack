@@ -168,29 +168,6 @@ def progress_edit(request, media_type, instance_id):
 PROFILE_HEATMAP_WEEKS = 26
 
 
-def _public_reviews(request, target_user, media_type):
-    """Return the public reviews of ``media_type`` for this viewer, or None.
-
-    The owner always sees them; anyone else only when the reviews section
-    hasn't been hidden (the profile-level privacy check happens before).
-    """
-    if not target_user.profile_section_visible(request.user, "profile_show_reviews"):
-        return None
-    review_model = apps.get_model(app_label="app", model_name=media_type)
-    # TV and Season derive their dates from episodes; they have no end_date.
-    review_ordering = (
-        ("-end_date", "-created_at")
-        if any(field.name == "end_date" for field in review_model._meta.fields)
-        else ("-created_at",)
-    )
-    return (
-        review_model.objects.filter(user=target_user, notes_public=True)
-        .exclude(notes="")
-        .select_related("item")
-        .order_by(*review_ordering)
-    )
-
-
 def _is_app_route(path):
     """Return whether ``path`` resolves to a real route, not the profile alias."""
     try:
@@ -463,7 +440,6 @@ def media_list(request, username, media_type):
         "sort_choices": MediaSortChoices.choices,
         "status_choices": MediaStatusChoices.choices,
         "target_user": target_user,
-        "public_reviews": _public_reviews(request, target_user, media_type),
         # Visitors see the person's verdicts as posters, not management cards.
         "public_grid": request.user != target_user,
         "show_comments": target_user.profile_section_visible(

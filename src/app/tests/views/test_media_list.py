@@ -222,7 +222,7 @@ class MediaListViewTests(TestCase):
 
     def test_public_review_visible_to_anonymous(self):
         """Notes marked public appear as reviews on a public profile."""
-        review = self._create_note(self.external_user, "Great movie", notes_public=True)
+        self._create_note(self.external_user, "Great movie", notes_public=True)
         self.external_user.profile_private = False
         self.external_user.save(update_fields=["profile_private"])
         self.client.logout()
@@ -234,7 +234,6 @@ class MediaListViewTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(review, response.context["public_reviews"])
         self.assertContains(response, "Great movie")
 
     def test_public_review_on_tv_list_without_end_date(self):
@@ -268,9 +267,7 @@ class MediaListViewTests(TestCase):
 
     def test_private_review_hidden(self):
         """Notes not marked public never appear as reviews."""
-        review = self._create_note(
-            self.external_user, "Secret note", notes_public=False
-        )
+        self._create_note(self.external_user, "Secret note", notes_public=False)
         self.external_user.profile_private = False
         self.external_user.save(update_fields=["profile_private"])
         self.client.logout()
@@ -282,7 +279,6 @@ class MediaListViewTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotIn(review, response.context["public_reviews"])
         self.assertNotContains(response, "Secret note")
 
     def test_public_review_shows_score_and_link_to_title_page(self):
