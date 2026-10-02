@@ -7,62 +7,94 @@
 
 {% block content %}
   <div class="space-y-10">
-    {# Who: avatar, name, bio and social links. #}
-    <header class="flex flex-col sm:flex-row sm:items-center gap-5">
+    {# Who: avatar, name, bio and social links, centred like a profile card. #}
+    <header class="flex flex-col items-center text-center">
       {% if target_user.avatar %}
         <img src="{{ target_user.avatar.url }}"
              alt="{{ target_user.username }}"
-             class="w-24 h-24 rounded-full object-cover ring-2 ring-indigo-500/60 shrink-0">
+             class="w-28 h-28 rounded-full object-cover ring-4 ring-[#2a2f35] shadow-lg">
       {% else %}
-        <div class="w-24 h-24 rounded-full bg-indigo-600 flex items-center justify-center text-4xl font-bold text-white shrink-0"
+        <div class="w-28 h-28 rounded-full bg-indigo-600 flex items-center justify-center text-5xl font-bold text-white ring-4 ring-[#2a2f35] shadow-lg"
              aria-hidden="true">{{ target_user.username.0|upper }}</div>
       {% endif %}
-
-      <div class="min-w-0 flex-1">
-        <div class="flex flex-wrap items-center gap-3">
-          <h1 class="text-3xl font-bold break-all">{{ target_user.username }}</h1>
-          {% if is_owner %}
-            <button type="button"
-                    x-data="{ copied: false }"
-                    @click="navigator.clipboard.writeText('{{ request.scheme }}://{{ request.get_host }}{% url 'profile' target_user.username %}'); copied = true; setTimeout(() => copied = false, 2000)"
-                    class="flex items-center gap-1.5 rounded-md border border-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white cursor-pointer">
-              {% include "app/icons/link.svg" with classes="w-4 h-4" %}
-              <span x-text="copied ? 'Link copied' : 'Copy link'">Copy link</span>
-            </button>
-            <a href="?as=visitor"
-               class="flex items-center gap-1.5 rounded-md border border-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white">
-              {% include "app/icons/external-link.svg" with classes="w-4 h-4" %}
-              View as visitor
-            </a>
-            <a href="{% url 'account' %}"
-               class="flex items-center gap-1.5 rounded-md border border-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white">
-              {% include "app/icons/edit.svg" with classes="w-4 h-4" %}
-              Edit profile
-            </a>
-          {% endif %}
+      <h1 class="mt-4 text-3xl font-bold break-all">{{ target_user.username }}</h1>
+      {% if target_user.bio %}
+        <p class="mt-2 max-w-prose text-gray-300 whitespace-pre-line">{{ target_user.bio }}</p>
+      {% elif is_owner %}
+        <p class="mt-2 text-sm text-gray-500">Add a bio and your social links from Edit profile.</p>
+      {% endif %}
+      {% if target_user.social_links %}
+        <ul class="mt-4 flex flex-wrap justify-center gap-2">
+          {% for label, url in target_user.social_links %}
+            <li>
+              <a href="{{ url }}"
+                 target="_blank"
+                 rel="noopener noreferrer me"
+                 class="flex items-center gap-1.5 rounded-full bg-[#39404b] px-3 py-1 text-sm text-gray-200 transition-colors hover:bg-indigo-600 hover:text-white">
+                {% include "app/icons/external-link.svg" with classes="w-3.5 h-3.5" %}
+                {{ label }}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      {% if is_owner %}
+        <div class="mt-5 flex flex-wrap justify-center gap-2">
+          <a href="{% url 'account' %}"
+             class="flex items-center gap-1.5 rounded-md border border-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white">
+            {% include "app/icons/edit.svg" with classes="w-4 h-4" %}
+            Edit profile
+          </a>
+          <a href="?as=visitor"
+             class="flex items-center gap-1.5 rounded-md border border-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white">
+            {% include "app/icons/external-link.svg" with classes="w-4 h-4" %}
+            View as visitor
+          </a>
+          <button type="button"
+                  x-data="{ copied: false }"
+                  @click="navigator.clipboard.writeText('{{ request.scheme }}://{{ request.get_host }}{% url 'profile' target_user.username %}'); copied = true; setTimeout(() => copied = false, 2000)"
+                  class="flex items-center gap-1.5 rounded-md border border-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white cursor-pointer">
+            {% include "app/icons/link.svg" with classes="w-4 h-4" %}
+            <span x-text="copied ? 'Link copied' : 'Copy link'">Copy link</span>
+          </button>
         </div>
-        {% if target_user.bio %}
-          <p class="mt-2 max-w-prose text-gray-300 whitespace-pre-line">{{ target_user.bio }}</p>
-        {% elif is_owner %}
-          <p class="mt-2 text-sm text-gray-500">Add a bio and your social links from Edit profile.</p>
-        {% endif %}
-        {% if target_user.social_links %}
-          <ul class="mt-3 flex flex-wrap gap-2">
-            {% for label, url in target_user.social_links %}
-              <li>
-                <a href="{{ url }}"
-                   target="_blank"
-                   rel="noopener noreferrer me"
-                   class="flex items-center gap-1.5 rounded-full bg-[#39404b] px-3 py-1 text-sm text-gray-200 transition-colors hover:bg-indigo-600 hover:text-white">
-                  {% include "app/icons/external-link.svg" with classes="w-3.5 h-3.5" %}
-                  {{ label }}
-                </a>
-              </li>
-            {% endfor %}
-          </ul>
-        {% endif %}
-      </div>
+      {% endif %}
     </header>
+
+    {# Shelves: the hand-picked showcases, in the owner's order. #}
+    {% if featured_shelves %}
+      <section aria-labelledby="shelves-heading" class="space-y-6">
+        <h2 id="shelves-heading" class="text-xl font-bold">Shelves</h2>
+        {% for shelf in featured_shelves %}
+          <div>
+            <div class="flex flex-wrap items-baseline gap-x-3 mb-3">
+              <a href="{% url 'list_detail' shelf.id %}"
+                 class="text-lg font-semibold text-white hover:text-[#4a9eff]">{{ shelf.name }}</a>
+              {% if shelf.description %}
+                <p class="text-sm text-gray-400">{{ shelf.description }}</p>
+              {% endif %}
+            </div>
+            <ol class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+              {% for item in shelf.items.all %}
+                <li class="w-28 sm:w-32 shrink-0">
+                  <a href="{% if item.media_type == 'season' or item.media_type == 'episode' %}{{ item|media_url }}{% else %}{% url 'profile_media' target_user.username item.media_type item.source item.media_id %}{% if preview %}?as=visitor{% endif %}{% endif %}"
+                     class="group/poster block"
+                     title="{{ item.title }}">
+                    <img src="{% if item.image and item.image != 'None' %}{{ item.image }}{% else %}{{ IMG_NONE }}{% endif %}"
+                         alt="{{ item.title }}"
+                         loading="lazy"
+                         class="w-full aspect-2/3 rounded-lg object-cover bg-[#3e454d] ring-1 ring-white/5 transition group-hover/poster:ring-indigo-500">
+                    <p class="mt-1.5 text-xs text-gray-300 line-clamp-2 group-hover/poster:text-white">{{ item.title }}</p>
+                  </a>
+                </li>
+              {% empty %}
+                <li class="text-sm text-gray-500">This shelf is empty.</li>
+              {% endfor %}
+            </ol>
+          </div>
+        {% endfor %}
+      </section>
+    {% endif %}
 
     {# Latest: what they finished or watched most recently, with score and comment. #}
     <section aria-labelledby="latest-heading">
@@ -71,7 +103,7 @@
         <ol class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-x-4 gap-y-6">
           {% for entry in recent_activity %}
             <li class="min-w-0">
-              <a href="{{ entry.item|media_url }}" class="group/poster block">
+              <a href="{% url 'profile_media' target_user.username entry.item.media_type entry.item.source entry.item.media_id %}{% if preview %}?as=visitor{% endif %}" class="group/poster block">
                 <div class="relative">
                   <img src="{% if entry.item.image and entry.item.image != 'None' %}{{ entry.item.image }}{% else %}{{ IMG_NONE }}{% endif %}"
                        alt="{{ entry.item.title }}"
@@ -110,43 +142,8 @@
     </section>
 
     {% if heatmap %}
-      <section aria-label="Consumption heatmap">
-        {% include "app/components/media_heatmap.html" with heatmap=heatmap now_year=now_year heatmap_username=heatmap_username %}
-      </section>
-    {% endif %}
-
-    {# Shelves: the hand-picked showcases, in the owner's order. #}
-    {% if featured_shelves %}
-      <section aria-labelledby="shelves-heading" class="space-y-6">
-        <h2 id="shelves-heading" class="text-xl font-bold">Shelves</h2>
-        {% for shelf in featured_shelves %}
-          <div>
-            <div class="flex flex-wrap items-baseline gap-x-3 mb-3">
-              <a href="{% url 'list_detail' shelf.id %}"
-                 class="text-lg font-semibold text-white hover:text-[#4a9eff]">{{ shelf.name }}</a>
-              {% if shelf.description %}
-                <p class="text-sm text-gray-400">{{ shelf.description }}</p>
-              {% endif %}
-            </div>
-            <ol class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-              {% for item in shelf.items.all %}
-                <li class="w-28 sm:w-32 shrink-0">
-                  <a href="{{ item|media_url }}"
-                     class="group/poster block"
-                     title="{{ item.title }}">
-                    <img src="{% if item.image and item.image != 'None' %}{{ item.image }}{% else %}{{ IMG_NONE }}{% endif %}"
-                         alt="{{ item.title }}"
-                         loading="lazy"
-                         class="w-full aspect-2/3 rounded-lg object-cover bg-[#3e454d] ring-1 ring-white/5 transition group-hover/poster:ring-indigo-500">
-                    <p class="mt-1.5 text-xs text-gray-300 line-clamp-2 group-hover/poster:text-white">{{ item.title }}</p>
-                  </a>
-                </li>
-              {% empty %}
-                <li class="text-sm text-gray-500">This shelf is empty.</li>
-              {% endfor %}
-            </ol>
-          </div>
-        {% endfor %}
+      <section aria-label="Activity over the last months">
+        {% include "app/components/media_heatmap.html" with heatmap=heatmap now_year=now_year heatmap_username=heatmap_username compact=True %}
       </section>
     {% endif %}
 

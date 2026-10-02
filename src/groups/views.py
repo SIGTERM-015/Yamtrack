@@ -119,6 +119,110 @@ def _build_item_view(group_item, progress_data, members):
     }
 
 
+def _group_stats_context(group, members):
+    """Ratings comparison and genre stats for the stats page and summary."""
+    stats = {}
+    comparison_data = get_group_comparison(group)
+    comparison_items = {
+        item.id: item
+        for item in Item.objects.filter(
+            id__in=[row["item_id"] for row in comparison_data],
+        )
+    }
+    stats["rows"] = [
+        {
+            "item": comparison_items[row["item_id"]],
+            "scores": [
+                {"user": member, "score": row["scores"].get(member.id)}
+                for member in members
+            ],
+            "average": row["average"],
+            "difference": row["difference"],
+        }
+        for row in comparison_data
+        if row["item_id"] in comparison_items
+    ]
+
+    genre_stats = get_group_genre_stats(group)
+    stats["genres"] = [
+        {
+            "genre": genre["genre"],
+            "average": genre["average"],
+            "difference": genre["difference"],
+            "count": genre["count"],
+            "members": [
+                {
+                    "user": member,
+                    "average": genre["members"][member.id]["average"],
+                    "count": genre["members"][member.id]["count"],
+                }
+                for member in members
+            ],
+        }
+        for genre in genre_stats["genres"]
+    ]
+    stats["agreements"] = genre_stats["agreements"]
+    stats["disagreements"] = genre_stats["disagreements"]
+    stats["member_volumes"] = [
+        {"user": member, "count": genre_stats["volume"].get(member.id, 0)}
+        for member in members
+    ]
+
+    return stats
+
+
+def _group_stats_summary(stats):
+    """Pick the two or three facts worth a one-line summary, or None."""
+    rows = [row for row in stats["rows"] if row["average"] is not None]
+    if not rows:
+        return None
+    biggest_gap = max(
+        (row for row in rows if row["difference"] is not None),
+        key=lambda row: row["difference"],
+        default=None,
+    )
+    return {
+        "rated_together": len(rows),
+        "top_agreement": stats["agreements"][0] if stats["agreements"] else None,
+        "biggest_gap": biggest_gap
+        if biggest_gap and biggest_gap["difference"]
+        else None,
+    }
+
+
+def _get_member_group_or_404(request, group_id):
+    group = get_object_or_404(Group, id=group_id)
+    if not group.members.filter(id=request.user.id).exists():
+        msg = "Group not found"
+        raise Http404(msg)
+    return group
+
+
+@login_required
+@require_GET
+def group_settings(request, group_id):
+    """Members, invitations, ownership and leaving: managing the group."""
+    group = _get_member_group_or_404(request, group_id)
+    return render(
+        request,
+        "groups/group_settings.html",
+        {"group": group, "members": list(group.members.all()), "is_member": True},
+    )
+
+
+@login_required
+@require_GET
+def group_stats(request, group_id):
+    """Full ratings comparison and genre stats for the group."""
+    group = _get_member_group_or_404(request, group_id)
+    members = list(group.members.all())
+    return render(
+        request,
+        "groups/group_stats.html",
+        {"group": group, "members": members, **_group_stats_context(group, members)},
+    )
+
+
 @login_required
 def group_list(request):
     """View to list user groups and pending invitations."""
@@ -144,6 +248,10 @@ def group_detail(request, group_id):
         raise Http404(msg)
 
     tab = request.GET.get("tab", "pending")
+    if is_member and tab == "settings":
+        return redirect("group_settings", group_id=group.id)
+    if is_member and tab == "stats":
+        return redirect("group_stats", group_id=group.id)
     if tab not in _VALID_TABS:
         tab = "pending"
 
@@ -176,53 +284,11 @@ def group_detail(request, group_id):
         context["items_data"] = items_data
     elif tab == "discarded":
         context["discards"] = discard_service.group_discarded_items(group)
-    elif tab == "stats":
-        comparison_data = get_group_comparison(group)
-        comparison_items = {
-            item.id: item
-            for item in Item.objects.filter(
-                id__in=[row["item_id"] for row in comparison_data],
-            )
-        }
-        context["rows"] = [
-            {
-                "item": comparison_items[row["item_id"]],
-                "scores": [
-                    {"user": member, "score": row["scores"].get(member.id)}
-                    for member in members
-                ],
-                "average": row["average"],
-                "difference": row["difference"],
-            }
-            for row in comparison_data
-            if row["item_id"] in comparison_items
-        ]
 
-        genre_stats = get_group_genre_stats(group)
-        context["genres"] = [
-            {
-                "genre": genre["genre"],
-                "average": genre["average"],
-                "difference": genre["difference"],
-                "count": genre["count"],
-                "members": [
-                    {
-                        "user": member,
-                        "average": genre["members"][member.id]["average"],
-                        "count": genre["members"][member.id]["count"],
-                    }
-                    for member in members
-                ],
-            }
-            for genre in genre_stats["genres"]
-        ]
-        context["agreements"] = genre_stats["agreements"]
-        context["disagreements"] = genre_stats["disagreements"]
-        context["member_volumes"] = [
-            {"user": member, "count": genre_stats["volume"].get(member.id, 0)}
-            for member in members
-        ]
-
+    if tab == "pending":
+        context["stats_summary"] = _group_stats_summary(
+            _group_stats_context(group, members)
+        )
     return render(request, "groups/group_detail.html", context)
 
 
@@ -270,7 +336,7 @@ def group_invite(request, group_id):
 
     if not username:
         messages.error(request, "Enter a username to invite.")
-        return redirect("group_detail", group_id=group.id)
+        return redirect("group_settings", group_id=group.id)
 
     user_model = get_user_model()
     invited_user = user_model.objects.filter(username__iexact=username).first()
@@ -294,7 +360,7 @@ def group_invite(request, group_id):
         )
         messages.success(request, f"Invitation sent to {invited_user.username}.")
 
-    return redirect("group_detail", group_id=group.id)
+    return redirect("group_settings", group_id=group.id)
 
 
 @login_required
@@ -654,7 +720,7 @@ def group_remove_member(request, group_id, user_id):
     group.members.remove(member)
     _detach_group_origins(member, group)
     messages.success(request, f"{member.username} was removed from the group.")
-    return redirect("group_detail", group_id=group.id)
+    return redirect("group_settings", group_id=group.id)
 
 
 @login_required
@@ -698,7 +764,7 @@ def group_transfer_owner(request, group_id):
     group.owner = new_owner
     group.save(update_fields=["owner"])
     messages.success(request, f"{new_owner.username} is the new owner of the group.")
-    return redirect("group_detail", group_id=group.id)
+    return redirect("group_settings", group_id=group.id)
 
 
 @login_required

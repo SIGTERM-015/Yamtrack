@@ -1,0 +1,107 @@
+{% extends "app/public_base.html" %}
+{% load app_tags %}
+
+{% block title %}
+  {{ media.title }} · {{ target_user.username }} - Yamtrack
+{% endblock title %}
+
+{% block content %}
+  <article class="max-w-4xl mx-auto">
+    <a href="{% url 'profile' target_user.username %}{% if preview %}?as=visitor{% endif %}"
+       class="inline-flex items-center gap-1.5 mb-6 text-sm text-gray-400 hover:text-white">
+      {% include "app/icons/chevron-left.svg" with classes="w-4 h-4" %}
+      {{ target_user.username }}
+    </a>
+
+    <div class="flex flex-col sm:flex-row gap-6 sm:gap-8">
+      <img src="{{ media.image }}"
+           alt="{{ media.title }}"
+           class="w-40 sm:w-48 aspect-2/3 rounded-xl object-cover bg-[#2a2f35] shadow-xl self-center sm:self-start shrink-0">
+
+      <div class="min-w-0 flex-1">
+        <h1 class="text-3xl font-bold">{{ media.title }}</h1>
+        <p class="mt-1 text-sm text-gray-400">
+          {{ media_type|media_type_readable }}
+          {% if media.details.release_date %}· {{ media.details.release_date|slice:":4" }}{% endif %}
+          {% if media.details.first_air_date %}· {{ media.details.first_air_date|slice:":4" }}{% endif %}
+        </p>
+
+        {# The verdict: this person's own score, status, date and comment. #}
+        {% if record %}
+        <section class="mt-6 rounded-xl bg-[#2a2f35] p-5 ring-1 ring-white/5"
+                 aria-label="{{ target_user.username }}'s verdict">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              {% include "app/components/user_link.html" with person=target_user classes="text-sm font-medium text-gray-300" %}
+              <p class="mt-1 text-sm text-gray-400">
+                <span class="{{ record.status|status_color }}">{{ record.status|media_status_readable }}</span>
+                {% if finished_at %}
+                  · <time datetime="{{ finished_at|date:'c' }}">{{ finished_at|date_format:target_user }}</time>
+                {% endif %}
+                {% if record.repeats > 1 %}· {{ record.repeats }} times{% endif %}
+              </p>
+            </div>
+            {% if record.score is not None %}
+              <p class="shrink-0 text-5xl font-bold leading-none text-yellow-400">
+                {{ record.formatted_score }}<span class="text-lg font-semibold text-gray-400">/10</span>
+              </p>
+            {% endif %}
+          </div>
+          {% if show_comment %}
+            <blockquote class="mt-4 text-lg leading-relaxed text-gray-100 whitespace-pre-line">{{ record.notes }}</blockquote>
+            {% if is_owner and not record.notes_public %}
+              <p class="mt-2 text-xs text-gray-500">Only you can see this note.</p>
+            {% endif %}
+          {% endif %}
+        </section>
+        {% else %}
+          <p class="mt-6 text-sm text-gray-400">On {{ target_user.username }}'s shelves, not rated yet.</p>
+        {% endif %}
+
+        {% if media.genres %}
+          <ul class="mt-6 flex flex-wrap gap-2">
+            {% for genre in media.genres %}
+              <li class="px-3 py-1 bg-[#39404b] text-gray-200 rounded-full text-sm">{{ genre }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+
+        {% if media.synopsis %}
+          <p class="mt-4 max-w-prose text-gray-300 leading-relaxed">{{ media.synopsis|linebreaksbr }}</p>
+        {% endif %}
+
+        {% if media.score is not None %}
+          <p class="mt-4 text-sm text-gray-400">
+            {{ media.source|upper }} score
+            <span class="ml-1 font-semibold text-gray-200">{{ media.score }}/10</span>
+            {% if media.score_count %}<span class="text-gray-500">({{ media.score_count }} votes)</span>{% endif %}
+          </p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if media.cast %}
+      <section class="mt-10" aria-labelledby="cast-heading">
+        <h2 id="cast-heading" class="text-lg font-semibold mb-3">Cast</h2>
+        <ol class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+          {% for cast in media.cast|slice:":12" %}
+            <li class="w-24 shrink-0">
+              <img src="{{ cast.image }}"
+                   alt="{{ cast.name }}"
+                   loading="lazy"
+                   class="w-full aspect-2/3 rounded-lg object-cover bg-[#3e454d]">
+              <p class="mt-1.5 text-xs font-medium text-white line-clamp-1">{{ cast.name }}</p>
+              {% if cast.character %}<p class="text-xs text-gray-400 line-clamp-1">{{ cast.character }}</p>{% endif %}
+            </li>
+          {% endfor %}
+        </ol>
+      </section>
+    {% endif %}
+
+    {% if request.user.is_authenticated and not preview %}
+      <p class="mt-10 text-sm">
+        <a href="{% url 'media_details' source=media.source media_type=media.media_type media_id=media.media_id title=media.title|slug %}" class="text-indigo-300 hover:text-white">Open the full page to track it yourself</a>
+      </p>
+    {% endif %}
+  </article>
+{% endblock content %}

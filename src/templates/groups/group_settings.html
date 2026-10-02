@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load app_tags %}
+
+{% block title %}
+  Group settings - {{ group.name }} - Yamtrack
+{% endblock title %}
+
+{% block content %}
+  <div class="max-w-2xl">
+    <a href="{% url 'group_detail' group.id %}"
+       class="inline-flex items-center gap-1.5 mb-3 text-sm text-gray-400 hover:text-white">
+      {% include "app/icons/chevron-left.svg" with classes="w-4 h-4" %}
+      {{ group.name }}
+    </a>
+    <h1 class="text-3xl font-bold mb-6">Group settings</h1>
+    {% if is_member %}
+      <div class="mb-6 rounded-lg bg-[#2a2f35] px-4 py-3">
+        <form method="post" action="{% url 'group_invite' group.id %}" class="flex flex-col sm:flex-row gap-2">
+          {% csrf_token %}
+          <input name="username" type="text" placeholder="Username to invite" autocomplete="off"
+                 class="flex-1 rounded-lg bg-[#1e2329] border border-[#39404b] px-3 py-2 text-white">
+          <button type="submit"
+                  class="rounded-lg bg-[#4f46e5] px-4 py-2 font-medium text-white hover:bg-[#4338ca]">
+            Invite
+          </button>
+        </form>
+        {% if group.invitations.all %}
+          <p class="mt-2 text-sm text-gray-400">
+            Pending:
+            {% for inv in group.invitations.all %}{{ inv.invited_user.username }}{% if not forloop.last %}, {% endif %}{% endfor %}
+          </p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <div class="mb-6 rounded-lg bg-[#2a2f35] px-4 py-3">
+      <h2 class="mb-3 text-sm font-semibold text-gray-300">Members</h2>
+      <ul class="space-y-2">
+        {% for member in members %}
+          <li class="flex items-center justify-between gap-3">
+            <span class="flex items-center gap-2">
+              <span class="text-sm text-white">{% include "app/components/user_link.html" with person=member %}</span>
+              {% if member == group.owner %}
+                <span class="rounded-full bg-[#4f46e5] px-2 py-0.5 text-xs text-white">Owner</span>
+              {% endif %}
+            </span>
+            {% if is_member and group.owner == request.user and member != group.owner %}
+              <span class="flex gap-2">
+                <form method="post" action="{% url 'group_remove_member' group.id member.id %}">
+                  {% csrf_token %}
+                  <button type="submit"
+                          class="rounded-lg border border-[#39404b] px-3 py-1 text-xs font-medium text-gray-300 hover:bg-[#1e2329]">
+                    Remove
+                  </button>
+                </form>
+                <form method="post" action="{% url 'group_transfer_owner' group.id %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="user_id" value="{{ member.id }}">
+                  <button type="submit"
+                          class="rounded-lg border border-[#4f46e5] px-3 py-1 text-xs font-medium text-[#8b93ff] hover:bg-[#1e2329]">
+                    Make owner
+                  </button>
+                </form>
+              </span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+      {% if is_member and group.owner == request.user %}
+        <p class="mt-3 text-xs text-gray-400">Transfer ownership before leaving the group.</p>
+      {% elif is_member %}
+        <form method="post" action="{% url 'group_leave' group.id %}" class="mt-3">
+          {% csrf_token %}
+          <button type="submit"
+                  class="rounded-lg border border-[#39404b] px-3 py-1.5 text-sm font-medium text-gray-300 hover:bg-[#1e2329]">
+            Leave group
+          </button>
+        </form>
+      {% endif %}
+    </div>
+
+  </div>
+{% endblock content %}

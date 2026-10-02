@@ -1,8 +1,11 @@
 {% comment %}
 GitHub-style media consumption heatmap. Expects:
   heatmap: output of app.statistics.get_media_heatmap
+  compact: optional; no title or year navigation (the public profile's
+           rolling last-months view)
 {% endcomment %}
 <div class="bg-[#2a2f35] rounded-xl p-6 max-w-[calc(100svw-4rem)] mb-8 ring-1 ring-white/5">
+  {% if not compact %}
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-xl font-semibold">Consumption Heatmap</h2>
     <div class="flex items-center gap-3">
@@ -19,9 +22,10 @@ GitHub-style media consumption heatmap. Expects:
       {% endif %}
     </div>
   </div>
+  {% endif %}
   <div class="overflow-x-auto flex flex-col justify-center"
        x-data="{ graphTooWide: false }"
-       x-init="$nextTick(() => { const graphWidth = $refs.graphContainer.scrollWidth; const parentWidth = $el.clientWidth; graphTooWide = graphWidth > parentWidth; if (graphTooWide && {{ heatmap.year }} === {{ now_year }}) { $el.scrollLeft = graphWidth; } })"
+       x-init="$nextTick(() => { const graphWidth = $refs.graphContainer.scrollWidth; const parentWidth = $el.clientWidth; graphTooWide = graphWidth > parentWidth; if (graphTooWide && ({{ compact|yesno:'true,false' }} || {{ heatmap.year }} === {{ now_year }})) { $el.scrollLeft = graphWidth; } })"
        :class="graphTooWide ? 'items-start' : 'items-center'">
     <div class="p-4" x-ref="graphContainer">
       <!-- Months row -->
@@ -79,7 +83,7 @@ GitHub-style media consumption heatmap. Expects:
       <div class="w-4 h-4 rounded-sm bg-indigo-400"></div>
       <div class="w-4 h-4 rounded-sm bg-indigo-300"></div>
       <span>More</span>
-      <span class="ml-4">{{ heatmap.total }} consumed in {{ heatmap.year }}</span>
+      <span class="ml-4">{% if compact %}{{ heatmap.total }} in the last months{% else %}{{ heatmap.total }} consumed in {{ heatmap.year }}{% endif %}</span>
       <div id="heatmap-day-detail-indicator" class="htmx-indicator ml-2">
         <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-500"></div>
       </div>

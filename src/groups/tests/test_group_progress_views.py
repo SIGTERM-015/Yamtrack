@@ -149,19 +149,35 @@ class GroupDetailTabsTest(TestCase):
         )
         self.assertContains(response, "Paused Movie")
 
-    def test_stats_tab_renders_without_error(self):
-        """?tab=stats renders the embedded comparison/genre sections."""
-        response = self.client.get(
-            reverse("group_detail", args=[self.group.id]), {"tab": "stats"}
-        )
+    def test_stats_page_renders_without_error(self):
+        """The group stats page renders the comparison/genre sections."""
+        response = self.client.get(reverse("group_stats", args=[self.group.id]))
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ratings comparison")
 
-    def test_settings_tab_shows_members(self):
-        """?tab=settings shows the members/invite/leave block."""
-        response = self.client.get(
-            reverse("group_detail", args=[self.group.id]), {"tab": "settings"}
-        )
+    def test_settings_page_shows_members(self):
+        """The group settings page shows the members/invite/leave block."""
+        response = self.client.get(reverse("group_settings", args=[self.group.id]))
         self.assertContains(response, "alice")
+
+    def test_legacy_tabs_redirect_to_their_pages(self):
+        """Old ?tab=settings / ?tab=stats links land on the new pages."""
+        url = reverse("group_detail", args=[self.group.id])
+        self.assertRedirects(
+            self.client.get(url, {"tab": "settings"}),
+            reverse("group_settings", args=[self.group.id]),
+        )
+        self.assertRedirects(
+            self.client.get(url, {"tab": "stats"}),
+            reverse("group_stats", args=[self.group.id]),
+        )
+
+    def test_tabs_are_only_statuses(self):
+        """The tab row holds the four status tabs plus a Group settings button."""
+        response = self.client.get(reverse("group_detail", args=[self.group.id]))
+        self.assertNotContains(response, 'href="?tab=stats"')
+        self.assertNotContains(response, 'href="?tab=settings"')
+        self.assertContains(response, "Group settings")
 
 
 class GroupItemRemoveTest(TestCase):

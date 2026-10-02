@@ -10,6 +10,11 @@ urlpatterns = [
     path("", views.home, name="home"),
     path("recommendations", views.recommendations, name="recommendations"),
     path("<str:username>/<media_type:media_type>", views.media_list, name="medialist"),
+    path(
+        "<str:username>/<media_type:media_type>/<source:source>/<str:media_id>",
+        views.profile_media,
+        name="profile_media",
+    ),
     path("search", views.media_search, name="search"),
     path(
         "details/<source:source>/<media_type:media_type>/<str:media_id>/<str:title>",

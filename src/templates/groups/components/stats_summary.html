@@ -1,0 +1,25 @@
+{% comment %}
+One-line taste summary above the Planning grid; the full tables live on the
+group stats page. Hidden until there's at least one title rated by the group.
+{% endcomment %}
+{% if stats_summary %}
+  <a href="{% url 'group_stats' group.id %}"
+     class="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-[#2a2f35] px-4 py-3 ring-1 ring-white/5 text-sm hover:bg-[#30363d] transition-colors">
+    <span class="text-gray-300">
+      <span class="font-semibold text-white">{{ stats_summary.rated_together }}</span>
+      rated by the group
+    </span>
+    {% if stats_summary.top_agreement %}
+      <span class="text-gray-300">
+        Most in sync on <span class="font-semibold text-white">{{ stats_summary.top_agreement.genre }}</span>
+      </span>
+    {% endif %}
+    {% if stats_summary.biggest_gap %}
+      <span class="text-gray-300">
+        Biggest split: <span class="font-semibold text-white">{{ stats_summary.biggest_gap.item.title }}</span>
+        ({{ stats_summary.biggest_gap.difference|floatformat:"-1" }} pts)
+      </span>
+    {% endif %}
+    <span class="ml-auto text-indigo-300">See stats</span>
+  </a>
+{% endif %}

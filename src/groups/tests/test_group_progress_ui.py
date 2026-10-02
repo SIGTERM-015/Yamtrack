@@ -190,9 +190,7 @@ class GroupMemberLinksTest(TestCase):
         self.client.login(username="alice", password="pw")  # noqa: S106
 
         overview = self.client.get(reverse("group_detail", args=[group.id]))
-        settings_tab = self.client.get(
-            reverse("group_detail", args=[group.id]), {"tab": "settings"}
-        )
+        settings_tab = self.client.get(reverse("group_settings", args=[group.id]))
 
         self.assertContains(overview, f'href="{reverse("profile", args=["bob"])}"')
         self.assertContains(settings_tab, f'href="{reverse("profile", args=["bob"])}"')

@@ -216,7 +216,7 @@ class GroupCreateInviteViewsTest(TestCase):
         response = self.client.post(
             reverse("group_invite", args=[self.group.id]), {"username": "user2"}
         )
-        self.assertRedirects(response, reverse("group_detail", args=[self.group.id]))
+        self.assertRedirects(response, reverse("group_settings", args=[self.group.id]))
         self.assertTrue(
             GroupInvitation.objects.filter(
                 group=self.group, invited_user=self.user2, invited_by=self.user1

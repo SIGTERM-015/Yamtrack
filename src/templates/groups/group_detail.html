@@ -24,10 +24,17 @@
         </div>
       </div>
       {% if is_member %}
-        <a href="{% url 'roulette' %}?group={{ group.id }}"
-           class="rounded-lg bg-[#4f46e5] px-4 py-2 font-medium text-white hover:bg-[#4338ca]">
-          Roulette
-        </a>
+        <div class="flex items-center gap-2">
+          <a href="{% url 'group_settings' group.id %}"
+             class="flex items-center gap-2 rounded-lg border border-gray-700 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-[#39404b] hover:text-white">
+            {% include "app/icons/settings.svg" with classes="w-4 h-4" %}
+            Group settings
+          </a>
+          <a href="{% url 'roulette' %}?group={{ group.id }}"
+             class="rounded-lg bg-[#4f46e5] px-4 py-2 font-medium text-white hover:bg-[#4338ca]">
+            Roulette
+          </a>
+        </div>
       {% endif %}
     </div>
   </div>
@@ -65,112 +72,26 @@
           <span id="tab-count-{{ nav_tab.key }}" class="ml-1 text-xs text-gray-500">({{ nav_tab.count }})</span>
         </a>
       {% endfor %}
-      <a href="?tab=stats"
-         class="pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-200 {% if tab == 'stats' %}text-white border-indigo-500{% else %}text-gray-400 border-transparent hover:text-white{% endif %}">
-        Stats
-      </a>
-      <a href="?tab=discarded"
-         class="pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-200 {% if tab == 'discarded' %}text-white border-indigo-500{% else %}text-gray-400 border-transparent hover:text-white{% endif %}">
-        Discarded
-        <span class="ml-1 text-xs text-gray-500">({{ discarded_count }})</span>
-      </a>
-      <a href="?tab=settings"
-         class="pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-200 {% if tab == 'settings' %}text-white border-indigo-500{% else %}text-gray-400 border-transparent hover:text-white{% endif %}">
-        Settings
-      </a>
     </nav>
   {% endif %}
 
-  {% if tab == 'settings' %}
-    {% if is_member %}
-      <div class="mb-6 rounded-lg bg-[#2a2f35] px-4 py-3">
-        <form method="post" action="{% url 'group_invite' group.id %}" class="flex flex-col sm:flex-row gap-2">
-          {% csrf_token %}
-          <input name="username" type="text" placeholder="Username to invite" autocomplete="off"
-                 class="flex-1 rounded-lg bg-[#1e2329] border border-[#39404b] px-3 py-2 text-white">
-          <button type="submit"
-                  class="rounded-lg bg-[#4f46e5] px-4 py-2 font-medium text-white hover:bg-[#4338ca]">
-            Invite
-          </button>
-        </form>
-        {% if group.invitations.all %}
-          <p class="mt-2 text-sm text-gray-400">
-            Pending:
-            {% for inv in group.invitations.all %}{{ inv.invited_user.username }}{% if not forloop.last %}, {% endif %}{% endfor %}
-          </p>
-        {% endif %}
-      </div>
-    {% endif %}
-
-    <div class="mb-6 rounded-lg bg-[#2a2f35] px-4 py-3">
-      <h2 class="mb-3 text-sm font-semibold text-gray-300">Members</h2>
-      <ul class="space-y-2">
-        {% for member in members %}
-          <li class="flex items-center justify-between gap-3">
-            <span class="flex items-center gap-2">
-              <span class="text-sm text-white">{% include "app/components/user_link.html" with person=member %}</span>
-              {% if member == group.owner %}
-                <span class="rounded-full bg-[#4f46e5] px-2 py-0.5 text-xs text-white">Owner</span>
-              {% endif %}
-            </span>
-            {% if is_member and group.owner == request.user and member != group.owner %}
-              <span class="flex gap-2">
-                <form method="post" action="{% url 'group_remove_member' group.id member.id %}">
-                  {% csrf_token %}
-                  <button type="submit"
-                          class="rounded-lg border border-[#39404b] px-3 py-1 text-xs font-medium text-gray-300 hover:bg-[#1e2329]">
-                    Remove
-                  </button>
-                </form>
-                <form method="post" action="{% url 'group_transfer_owner' group.id %}">
-                  {% csrf_token %}
-                  <input type="hidden" name="user_id" value="{{ member.id }}">
-                  <button type="submit"
-                          class="rounded-lg border border-[#4f46e5] px-3 py-1 text-xs font-medium text-[#8b93ff] hover:bg-[#1e2329]">
-                    Make owner
-                  </button>
-                </form>
-              </span>
-            {% endif %}
-          </li>
-        {% endfor %}
-      </ul>
-      {% if is_member and group.owner == request.user %}
-        <p class="mt-3 text-xs text-gray-400">Transfer ownership before leaving the group.</p>
-      {% elif is_member %}
-        <form method="post" action="{% url 'group_leave' group.id %}" class="mt-3">
-          {% csrf_token %}
-          <button type="submit"
-                  class="rounded-lg border border-[#39404b] px-3 py-1.5 text-sm font-medium text-gray-300 hover:bg-[#1e2329]">
-            Leave group
-          </button>
-        </form>
-      {% endif %}
+  {% if tab == 'discarded' %}
+    <div class="flex items-center justify-between gap-3 mb-4">
+      <h2 class="text-xl font-bold">Not interested</h2>
+      <a href="?tab=pending" class="text-sm text-gray-400 hover:text-white">Back to Planning</a>
     </div>
-
-  {% elif tab == 'discarded' %}
     {% include "groups/components/discarded.html" with group=group discards=discards %}
 
-  {% elif tab == 'stats' %}
-    <div class="space-y-8">
-      <section>
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-xl font-bold">Ratings comparison</h2>
-          <a href="{% url 'group_comparison' group.id %}" class="text-sm text-indigo-400 hover:underline">Open full page</a>
-        </div>
-        {% include "groups/components/comparison_table.html" %}
-      </section>
-      <section>
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-xl font-bold">Genre comparison</h2>
-          <a href="{% url 'group_genre_stats' group.id %}" class="text-sm text-indigo-400 hover:underline">Open full page</a>
-        </div>
-        {% include "groups/components/genre_stats_table.html" %}
-      </section>
-    </div>
-
   {% else %}
+    {% if tab == 'pending' and is_member %}
+      {% include "groups/components/stats_summary.html" %}
+    {% endif %}
     {# Planning / Watching / Watched / Other tabs share the same poster grid. #}
     {% include "groups/components/item_grid.html" %}
+    {% if tab == 'pending' and discarded_count %}
+      <p class="mt-6 text-sm text-gray-400">
+        <a href="?tab=discarded" class="hover:text-white underline-offset-2 hover:underline">{{ discarded_count }} title{{ discarded_count|pluralize }} marked not interested</a>
+      </p>
+    {% endif %}
   {% endif %}
 {% endblock content %}

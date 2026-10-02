@@ -69,7 +69,7 @@ class GroupMembershipViewsTest(TestCase):
         url = reverse("group_remove_member", args=[self.group.id, self.member.id])
         response = self.client.post(url)
 
-        self.assertRedirects(response, reverse("group_detail", args=[self.group.id]))
+        self.assertRedirects(response, reverse("group_settings", args=[self.group.id]))
         self.assertFalse(self.group.members.filter(id=self.member.id).exists())
 
         self.origin.refresh_from_db()
@@ -143,7 +143,7 @@ class GroupMembershipViewsTest(TestCase):
         url = reverse("group_transfer_owner", args=[self.group.id])
         response = self.client.post(url, {"user_id": self.member.id})
 
-        self.assertRedirects(response, reverse("group_detail", args=[self.group.id]))
+        self.assertRedirects(response, reverse("group_settings", args=[self.group.id]))
         self.group.refresh_from_db()
         self.assertEqual(self.group.owner, self.member)
         self.assertTrue(self.group.members.filter(id=self.owner.id).exists())
@@ -174,10 +174,9 @@ class GroupMembershipViewsTest(TestCase):
     # --- detail page ---
 
     def test_group_detail_lists_members_and_marks_owner(self):
-        """The Settings tab lists members and flags the owner."""
+        """The Group settings page lists members and flags the owner."""
         self.login("member")
-        url = reverse("group_detail", args=[self.group.id])
-        response = self.client.get(url, {"tab": "settings"})
+        response = self.client.get(reverse("group_settings", args=[self.group.id]))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "owner")

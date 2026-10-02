@@ -384,7 +384,7 @@ class ProfileSectionVisibilityViewTests(TestCase):
 
         response = self._get_profile()
 
-        self.assertContains(response, "Consumption Heatmap")
+        self.assertContains(response, "Activity over the last months")
         self.assertContains(response, "Owner Shelf")
         self.assertContains(response, "A public review")
 
@@ -394,7 +394,7 @@ class ProfileSectionVisibilityViewTests(TestCase):
 
         response = self._get_profile()
 
-        self.assertContains(response, "Consumption Heatmap")
+        self.assertContains(response, "Activity over the last months")
         self.assertContains(response, "Owner Shelf")
         self.assertContains(response, "A public review")
 
@@ -406,7 +406,7 @@ class ProfileSectionVisibilityViewTests(TestCase):
 
         response = self._get_profile()
 
-        self.assertNotContains(response, "Consumption Heatmap")
+        self.assertNotContains(response, "Activity over the last months")
 
     def test_visitor_does_not_see_disabled_shelves(self):
         """Hiding shelves removes the section for a visitor."""
@@ -436,7 +436,7 @@ class ProfileSectionVisibilityViewTests(TestCase):
         response = self._get_profile()
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Consumption Heatmap")
+        self.assertContains(response, "Activity over the last months")
         self.assertNotContains(response, "A public review")
 
 

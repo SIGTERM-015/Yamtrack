@@ -1,6 +1,7 @@
 """The unified public profile at /<username>."""
 
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -203,3 +204,101 @@ class ProfileChromeTests(TestCase):
         """The per-type lists use the same visitor chrome."""
         response = self.client.get(reverse("medialist", args=["leo", "movie"]))
         self.assertNotContains(response, 'id="global-search"')
+
+
+class ProfileLayoutTests(TestCase):
+    """Section order, compact heatmap and the public title page."""
+
+    def setUp(self):
+        """Create ana with one rated, commented movie and a shelf."""
+        self.owner = get_user_model().objects.create_user(
+            username="ana",
+            password="pw",  # noqa: S106
+        )
+        self.item = Item.objects.create(
+            media_id="27205",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.MOVIE.value,
+            title="Inception",
+        )
+        Movie.objects.bulk_create(
+            [
+                Movie(
+                    item=self.item,
+                    user=self.owner,
+                    status=Status.COMPLETED.value,
+                    score=9,
+                    notes="Los sueños dentro de sueños",
+                    notes_public=True,
+                ),
+            ],
+        )
+        Movie.objects.filter(item=self.item).update(end_date=timezone.now())
+        from lists.models import CustomList, CustomListItem  # noqa: PLC0415
+
+        shelf = CustomList.objects.create(
+            name="Top", owner=self.owner, is_featured=True
+        )
+        CustomListItem.objects.create(custom_list=shelf, item=self.item)
+        self.metadata = {
+            "title": "Inception",
+            "media_type": "movie",
+            "source": "tmdb",
+            "media_id": "27205",
+            "image": "https://example.com/i.jpg",
+            "synopsis": "A thief who steals secrets through dreams.",
+            "genres": ["Science Fiction"],
+            "score": 8.4,
+            "score_count": 40000,
+            "cast": [{"name": "Leonardo DiCaprio", "character": "Cobb", "image": ""}],
+            "details": {},
+            "related": {"recommendations": [{"title": "Should not show"}]},
+            "max_progress": 1,
+        }
+
+    def test_shelves_come_before_latest_and_heatmap_is_compact(self):
+        """Shelves lead; the heatmap has no title or year navigation."""
+        content = self.client.get("/ana").content.decode()
+        self.assertLess(
+            content.index("shelves-heading"), content.index("latest-heading")
+        )
+        self.assertNotIn("Consumption Heatmap", content)
+        self.assertNotIn("Previous year", content)
+        self.assertIn("in the last months", content)
+
+    def test_cards_open_the_public_title_page(self):
+        """Latest and shelf cards link to /<user>/<type>/<source>/<id>."""
+        response = self.client.get("/ana")
+        self.assertContains(response, 'href="/ana/movie/tmdb/27205"')
+
+    @patch("app.views.services.get_media_metadata")
+    def test_title_page_puts_the_verdict_first(self, mock_metadata):
+        """Score, status, date and public comment, plus title info; no recs."""
+        mock_metadata.return_value = self.metadata
+        response = self.client.get("/ana/movie/tmdb/27205")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Los sueños dentro de sueños")
+        self.assertContains(response, "A thief who steals secrets through dreams.")
+        self.assertContains(response, "Leonardo DiCaprio")
+        self.assertContains(response, "8.4/10")
+        self.assertNotContains(response, "Should not show")
+        self.assertNotContains(response, "Add to tracker")
+        self.assertNotContains(response, 'id="global-search"')
+
+    @patch("app.views.services.get_media_metadata")
+    def test_title_page_hides_private_notes_from_visitors(self, mock_metadata):
+        """A private note only shows to its owner."""
+        mock_metadata.return_value = self.metadata
+        Movie.objects.filter(item=self.item).update(notes_public=False)
+        self.assertNotContains(
+            self.client.get("/ana/movie/tmdb/27205"), "Los sueños dentro de sueños"
+        )
+        self.client.login(username="ana", password="pw")  # noqa: S106
+        self.assertContains(
+            self.client.get("/ana/movie/tmdb/27205"), "Only you can see this note."
+        )
+
+    def test_title_page_404s_outside_the_library(self):
+        """Titles the person hasn't tracked or shelved aren't on their profile."""
+        response = self.client.get("/ana/movie/tmdb/999999")
+        self.assertEqual(response.status_code, 404)

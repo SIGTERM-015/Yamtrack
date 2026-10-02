@@ -164,6 +164,10 @@ def progress_edit(request, media_type, instance_id):
     )
 
 
+#: About six months: enough to read a rhythm without scrolling on a phone.
+PROFILE_HEATMAP_WEEKS = 26
+
+
 def _public_reviews(request, target_user, media_type):
     """Return the public reviews of ``media_type`` for this viewer, or None.
 
@@ -225,13 +229,11 @@ def profile(request, username):
     show_shelves = target_user.profile_section_visible(viewer, "profile_show_shelves")
     show_heatmap = target_user.profile_section_visible(viewer, "profile_show_heatmap")
 
-    heatmap = None
-    if show_heatmap:
-        try:
-            heatmap_year = int(request.GET.get("heatmap-year"))
-        except (TypeError, ValueError):
-            heatmap_year = None
-        heatmap = stats.get_media_heatmap(target_user, heatmap_year)
+    heatmap = (
+        stats.get_media_heatmap(target_user, weeks=PROFILE_HEATMAP_WEEKS)
+        if show_heatmap
+        else None
+    )
 
     context = {
         "target_user": target_user,
@@ -251,6 +253,78 @@ def profile(request, username):
         "now_year": timezone.localdate().year,
     }
     return render(request, "app/profile.html", context)
+
+
+@login_not_required
+@require_GET
+def profile_media(request, username, media_type, source, media_id):
+    """One title as seen on someone's profile: their verdict comes first.
+
+    Shows the title's poster, synopsis, genres, provider score and cast, but
+    the protagonist is this person's own record: score, status, when they
+    finished it and their comment. No tracking controls or recommendations.
+    Same visibility rules as the profile; a private note is only shown to
+    its owner.
+    """
+    target_user = get_object_or_404(User, username=username)
+    preview = request.user == target_user and request.GET.get("as") == "visitor"
+    viewer = AnonymousUser() if preview else request.user
+    is_owner = viewer == target_user
+    if not is_owner and target_user.profile_private and not preview:
+        msg = "User not found"
+        raise Http404(msg)
+    if media_type in (MediaTypes.SEASON.value, MediaTypes.EPISODE.value):
+        msg = "Not found"
+        raise Http404(msg)
+
+    record = BasicMedia.objects.filter_media_prefetch(
+        target_user, media_id, media_type, source
+    ).first()
+    on_shelf = CustomList.objects.get_featured_shelves(target_user).filter(
+        items__media_type=media_type,
+        items__source=source,
+        items__media_id=media_id,
+    )
+    if record is None and not on_shelf.exists():
+        msg = "Not in this library"
+        raise Http404(msg)
+
+    metadata = services.get_media_metadata(media_type, media_id, source)
+    show_comment = (
+        record is not None
+        and bool(record.notes)
+        and (
+            is_owner
+            or (
+                record.notes_public
+                and target_user.profile_section_visible(viewer, "profile_show_reviews")
+            )
+        )
+    )
+    finished_at = getattr(record, "end_date", None)
+    if record is not None and finished_at is None and media_type == MediaTypes.TV.value:
+        last_episode = (
+            Episode.objects.filter(
+                related_season__related_tv=record,
+                end_date__isnull=False,
+            )
+            .order_by("-end_date")
+            .first()
+        )
+        finished_at = last_episode.end_date if last_episode else None
+
+    context = {
+        "target_user": target_user,
+        "is_owner": is_owner,
+        "public_view": not request.user.is_authenticated or preview,
+        "preview": preview,
+        "media": metadata,
+        "record": record,
+        "finished_at": finished_at,
+        "show_comment": show_comment,
+        "media_type": media_type,
+    }
+    return render(request, "app/profile_media.html", context)
 
 
 @login_not_required

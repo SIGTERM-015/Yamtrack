@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load app_tags %}
+
+{% block title %}
+  Stats - {{ group.name }} - Yamtrack
+{% endblock title %}
+
+{% block content %}
+  <a href="{% url 'group_detail' group.id %}"
+     class="inline-flex items-center gap-1.5 mb-3 text-sm text-gray-400 hover:text-white">
+    {% include "app/icons/chevron-left.svg" with classes="w-4 h-4" %}
+    {{ group.name }}
+  </a>
+  <h1 class="text-3xl font-bold mb-6">How you rate together</h1>
+    <div class="space-y-8">
+      <section>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xl font-bold">Ratings comparison</h2>
+        </div>
+        {% include "groups/components/comparison_table.html" %}
+      </section>
+      <section>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xl font-bold">Genre comparison</h2>
+        </div>
+        {% include "groups/components/genre_stats_table.html" %}
+      </section>
+    </div>
+
+{% endblock content %}

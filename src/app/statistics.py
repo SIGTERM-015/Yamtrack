@@ -648,27 +648,26 @@ def get_activity_data(user, start_date, end_date):
     }
 
 
-def get_media_heatmap(user, year=None):
-    """Daily media consumption for a calendar year, from real ``end_date``s.
+def get_media_heatmap(user, year=None, *, weeks=None):
+    """Daily media consumption from real ``end_date``s.
 
-    Counts tracked media and episodes on the day they were actually consumed,
-    so imports or edits that bump history timestamps do not distort the
-    calendar. Returns the same grid shape as ``get_activity_data``.
+    Covers a calendar year, or with ``weeks`` the last ``weeks`` weeks up to
+    today (the public profile's rolling view). Counts tracked media and
+    episodes on the day they were actually consumed, so imports or edits that
+    bump history timestamps do not distort the calendar. Returns the same grid
+    shape as ``get_activity_data``.
     """
     today = timezone.localdate()
     year = year or today.year
     local_tz = timezone.get_current_timezone()
-    start = datetime.datetime(year, 1, 1, tzinfo=local_tz)
-    end = datetime.datetime(
-        year,
-        12,
-        31,
-        23,
-        59,
-        59,
-        999999,
-        tzinfo=local_tz,
-    )
+    if weeks:
+        first_day = today - datetime.timedelta(weeks=weeks)
+        last_day = today
+    else:
+        first_day = datetime.date(year, 1, 1)
+        last_day = datetime.date(year, 12, 31)
+    start = datetime.datetime.combine(first_day, datetime.time.min, tzinfo=local_tz)
+    end = datetime.datetime.combine(last_day, datetime.time.max, tzinfo=local_tz)
 
     date_counts = defaultdict(int)
 
@@ -693,15 +692,13 @@ def get_media_heatmap(user, year=None):
     )
 
     week_start_sunday = user.week_start_day == WeekStartDayChoices.SUNDAY
-    year_start = datetime.datetime(year, 1, 1, tzinfo=local_tz)
-    year_end = datetime.datetime(year, 12, 31, tzinfo=local_tz)
     start_aligned = get_aligned_week_start(
-        year_start,
+        datetime.datetime.combine(first_day, datetime.time.min, tzinfo=local_tz),
         week_start_sunday=week_start_sunday,
     )
     date_range = [
         start_aligned.date() + datetime.timedelta(days=offset)
-        for offset in range((year_end.date() - start_aligned.date()).days + 1)
+        for offset in range((last_day - start_aligned.date()).days + 1)
     ]
 
     activity_data = [
