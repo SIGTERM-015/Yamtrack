@@ -1,0 +1,12 @@
+{% load app_tags %}
+{# Holder for the group picker opened by quick_add_button.html. Expects item and user_groups. #}
+{% if user_groups %}
+  <div x-show="groupsOpen"
+       @keydown.escape.window="groupsOpen = false"
+       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="w-96 max-h-[90vh] px-4 md:px-0 relative z-60"
+         @click.outside="groupsOpen = false">
+      <div id="{% component_id 'groups' item %}"></div>
+    </div>
+  </div>
+{% endif %}

@@ -843,11 +843,14 @@ def group_quick_add(
             "item": item,
             "group": group,
             "toast": Message(level, text),
-            # Only an add this action made can be moved; "fixed" callers
-            # (group recommendations) already name their group.
+            # Only an add this action made can be moved, and only somewhere
+            # the item is not yet; "fixed" callers already name their group.
             "can_change": (added or bool(moved_from))
-            and len(memberships) > 1
-            and not request.POST.get("fixed"),
+            and not request.POST.get("fixed")
+            and GroupItem.objects.filter(
+                group__in=[m.group_id for m in memberships], item=item
+            ).count()
+            < len(memberships),
         },
     )
 
