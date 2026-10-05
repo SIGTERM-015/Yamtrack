@@ -33,6 +33,14 @@
       {% endif %}
       {% if is_owner %}
         <div class="mt-5 flex flex-wrap justify-center gap-2">
+          {% if target_user.suggestions_enabled %}
+            <a href="{% url 'suggestions' %}"
+               class="flex items-center gap-1.5 rounded-md border border-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white">
+              {% include "app/icons/bell.svg" with classes="w-4 h-4" %}
+              Suggestions
+              {% if pending_suggestions %}<span class="rounded-full bg-indigo-600 px-1.5 text-xs font-semibold text-white">{{ pending_suggestions }}</span>{% endif %}
+            </a>
+          {% endif %}
           <a href="{% url 'account' %}"
              class="flex items-center gap-1.5 rounded-md border border-gray-700 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-[#39404b] hover:text-white">
             {% include "app/icons/edit.svg" with classes="w-4 h-4" %}
@@ -51,6 +59,8 @@
             <span x-text="copied ? 'Link copied' : 'Copy link'">Copy link</span>
           </button>
         </div>
+      {% elif target_user.suggestions_enabled and not target_user.profile_private %}
+        {% include "app/components/recommend_dialog.html" %}
       {% endif %}
     </header>
 

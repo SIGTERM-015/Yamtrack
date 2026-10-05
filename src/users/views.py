@@ -484,10 +484,26 @@ def _suggestion_rate_limited(request, target_user):
     return count > SUGGESTION_RATE_LIMIT
 
 
+def _suggest_search(media_type, query):
+    """Return provider search results for the suggestion box, or an error."""
+    source = config.get_default_source_name(media_type).value
+    try:
+        data = services.search(media_type, query, 1, source)
+    except services.ProviderAPIError:
+        # Already logged; the provider's message is meant for the admin.
+        return [], "Search isn't working right now, try again in a moment."
+    return data.get("results", []), None
+
+
 @login_not_required
 @require_http_methods(["GET", "POST"])
 def suggest_media(request, username):
-    """Let anyone suggest a title to a user from their public profile."""
+    """Let anyone suggest a title to a user from their public profile.
+
+    The suggestion box (profile dialog or this URL's standalone page) drives
+    the view with HTMX: searches return the result list and sending returns a
+    feedback fragment, so errors show in place instead of as page messages.
+    """
     target_user = get_object_or_404(User, username=username)
 
     if target_user == request.user:
@@ -501,50 +517,54 @@ def suggest_media(request, username):
         msg = "Suggestions are disabled for this user"
         raise Http404(msg)
 
-    media_types = [
-        media_type
-        for media_type in target_user.get_enabled_media_types()
-        if media_type in VALID_SEARCH_TYPES
-    ]
-
     if request.method == "POST":
         form = SuggestionForm(request.POST)
+        error, status = None, 200
         if not form.is_valid():
-            messages.error(request, "Invalid suggestion.")
-            return HttpResponseBadRequest("Invalid suggestion.")
-
-        if _suggestion_rate_limited(request, target_user):
-            messages.error(
-                request,
-                "You have sent too many suggestions, try again later.",
-            )
+            error, status = "That title can't be suggested.", 400
+        elif _suggestion_rate_limited(request, target_user):
+            error, status = "You have sent too many suggestions, try again later.", 429
         else:
             Suggestion.objects.create(
                 suggested_by=(request.user if request.user.is_authenticated else None),
                 target_user=target_user,
                 **form.cleaned_data,
             )
-            messages.success(
-                request,
-                f"Your suggestion was sent to {target_user.username}.",
-            )
-        return redirect("suggest_media", username=username)
+        return render(
+            request,
+            "users/components/suggest_feedback.html",
+            {
+                "target_user": target_user,
+                "title": request.POST.get("title", ""),
+                "error": error,
+            },
+            status=status,
+        )
 
-    results = []
-    query = request.GET.get("q")
+    media_types = [
+        media_type
+        for media_type in target_user.get_enabled_media_types()
+        if media_type in VALID_SEARCH_TYPES
+    ]
+    query = request.GET.get("q", "").strip()
     selected_type = request.GET.get("media_type")
-    if query and selected_type in media_types:
-        source = config.get_default_source_name(selected_type).value
-        data = services.search(selected_type, query, 1, source)
-        results = data.get("results", [])
+    if selected_type not in media_types:
+        selected_type = media_types[0] if media_types else ""
+
+    results, search_error = [], None
+    if query and selected_type:
+        results, search_error = _suggest_search(selected_type, query)
 
     context = {
         "target_user": target_user,
-        "media_types": media_types,
         "results": results,
-        "query": query or "",
-        "selected_type": selected_type or (media_types[0] if media_types else ""),
+        "search_error": search_error,
+        "query": query,
+        "selected_type": selected_type,
+        "public_view": not request.user.is_authenticated,
     }
+    if request.headers.get("HX-Request"):
+        return render(request, "users/components/suggest_results.html", context)
     return render(request, "users/suggest.html", context)
 
 

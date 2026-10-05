@@ -1,4 +1,5 @@
 {% extends "users/base.html" %}
+{% load app_tags humanize %}
 
 {% block title %}
   Suggestions - Yamtrack
@@ -13,47 +14,67 @@
       </div>
 
       {% if pending_suggestions %}
-        <div class="space-y-4">
+        <ul class="space-y-4">
           {% for suggestion in pending_suggestions %}
-            <div class="flex flex-col sm:flex-row gap-4 p-3 bg-[#39404b] rounded-md">
-              {% if suggestion.image %}
-                <img src="{{ suggestion.image }}"
+            <li class="flex gap-4 p-4 bg-[#39404b] rounded-md">
+              <a href="{% url 'media_details' suggestion.source suggestion.media_type suggestion.media_id suggestion.title|slug %}"
+                 class="shrink-0"
+                 title="Open {{ suggestion.title }}">
+                <img src="{% if suggestion.image %}{{ suggestion.image }}{% else %}{{ IMG_NONE }}{% endif %}"
                      alt="{{ suggestion.title }}"
-                     class="w-16 h-24 object-cover rounded-md shrink-0">
-              {% endif %}
-              <div class="grow">
-                <h3 class="font-semibold">{{ suggestion.title }}</h3>
+                     loading="lazy"
+                     class="w-16 sm:w-20 aspect-2/3 object-cover rounded-md bg-[#3e454d] ring-1 ring-white/5 hover:ring-indigo-500">
+              </a>
+              <div class="min-w-0 grow">
                 <p class="text-xs text-gray-400">
-                  {{ suggestion.media_type|capfirst }} &middot; {{ suggestion.source }}
-                  {% if suggestion.suggested_by %}&middot; from {% include "app/components/user_link.html" with person=suggestion.suggested_by %}{% endif %}
+                  {{ suggestion.media_type|media_type_readable }} &middot;
+                  <time datetime="{{ suggestion.created_at|date:'c' }}">{{ suggestion.created_at|naturaltime }}</time>
+                </p>
+                <a href="{% url 'media_details' suggestion.source suggestion.media_type suggestion.media_id suggestion.title|slug %}"
+                   class="font-semibold text-white hover:text-[#4a9eff]">{{ suggestion.title }}</a>
+                <p class="mt-1 text-sm text-gray-400">
+                  Recommended by
+                  {% if suggestion.suggested_by %}
+                    {% include "app/components/user_link.html" with person=suggestion.suggested_by classes="text-gray-200 font-medium" %}
+                  {% else %}
+                    <span class="text-gray-300">an anonymous visitor</span>
+                  {% endif %}
                 </p>
                 {% if suggestion.message %}
-                  <p class="mt-2 text-sm text-gray-300">{{ suggestion.message }}</p>
+                  <blockquote class="mt-2 border-l-2 border-indigo-500 pl-3 text-sm text-gray-200 whitespace-pre-line">{{ suggestion.message }}</blockquote>
                 {% endif %}
-                <div class="flex gap-2 mt-3">
+                <div class="flex flex-wrap gap-2 mt-3">
                   <form method="post"
                         action="{% url 'accept_suggestion' suggestion.id %}">
                     {% csrf_token %}
                     <button type="submit"
-                            class="px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm cursor-pointer">
-                      Accept
+                            class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm cursor-pointer">
+                      {% include "app/icons/plus.svg" with classes="w-4 h-4" %}
+                      Add to planning
                     </button>
                   </form>
                   <form method="post"
                         action="{% url 'discard_suggestion' suggestion.id %}">
                     {% csrf_token %}
                     <button type="submit"
-                            class="px-3 py-1.5 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm cursor-pointer">
+                            class="px-3 py-1.5 text-gray-300 rounded-md hover:bg-[#454d5a] hover:text-white transition-colors text-sm cursor-pointer">
                       Discard
                     </button>
                   </form>
                 </div>
               </div>
-            </div>
+            </li>
           {% endfor %}
-        </div>
+        </ul>
       {% else %}
-        <p class="text-gray-400 text-sm">No pending suggestions.</p>
+        <p class="text-gray-400 text-sm">
+          No pending suggestions.
+          {% if user.suggestions_enabled %}
+            Anyone visiting <a href="{% url 'profile' user.username %}" class="text-[#4a9eff] hover:underline">your profile</a> can recommend you something.
+          {% else %}
+            Suggestions are turned off; turn them on in <a href="{% url 'account' %}" class="text-[#4a9eff] hover:underline">Account</a>.
+          {% endif %}
+        </p>
       {% endif %}
     </div>
 
@@ -70,6 +91,7 @@
               <tr>
                 <th class="py-2 pr-4">Title</th>
                 <th class="py-2 pr-4">Type</th>
+                <th class="py-2 pr-4">From</th>
                 <th class="py-2 pr-4">Status</th>
                 <th class="py-2">Resolved</th>
               </tr>
@@ -78,7 +100,14 @@
               {% for suggestion in resolved_suggestions %}
                 <tr class="border-t border-gray-700">
                   <td class="py-2 pr-4">{{ suggestion.title }}</td>
-                  <td class="py-2 pr-4">{{ suggestion.media_type|capfirst }}</td>
+                  <td class="py-2 pr-4">{{ suggestion.media_type|media_type_readable }}</td>
+                  <td class="py-2 pr-4">
+                    {% if suggestion.suggested_by %}
+                      {% include "app/components/user_link.html" with person=suggestion.suggested_by %}
+                    {% else %}
+                      <span class="text-gray-400">Anonymous</span>
+                    {% endif %}
+                  </td>
                   <td class="py-2 pr-4">{{ suggestion.get_status_display }}</td>
                   <td class="py-2">{{ suggestion.resolved_at|date:"Y-m-d" }}</td>
                 </tr>

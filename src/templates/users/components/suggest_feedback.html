@@ -1,0 +1,25 @@
+{% comment %}
+Answer to sending a suggestion from the box. Success tells the box to show
+only this panel; errors appear under the "why" form so it can be retried.
+{% endcomment %}
+{% if not error %}
+  <div x-init="$dispatch('suggestion-sent')"
+       class="flex flex-col items-center text-center gap-3 py-6">
+    {% include "app/icons/circle-check.svg" with classes="w-10 h-10 text-emerald-400" %}
+    <p class="text-lg font-semibold text-white">Sent to {{ target_user.username }}</p>
+    <p class="text-sm text-gray-400">
+      They'll find <span class="text-gray-200">{{ title }}</span> in their suggestions.
+    </p>
+    <button type="button"
+            @click="reset()"
+            class="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm cursor-pointer">
+      Recommend something else
+    </button>
+  </div>
+{% else %}
+  <p role="alert"
+     class="mt-3 flex items-center gap-2 text-sm text-red-400">
+    {% include "app/icons/warning.svg" with classes="w-4 h-4 shrink-0" %}
+    {{ error }}
+  </p>
+{% endif %}
