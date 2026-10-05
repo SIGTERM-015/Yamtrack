@@ -16,7 +16,7 @@
     </div>
   {% endif %}
 
-  <form method="post" action="{% url 'group_create' %}" class="max-w-xl space-y-4">
+  <form method="post" action="{% url 'group_create' %}" enctype="multipart/form-data" class="max-w-xl space-y-4">
     {% csrf_token %}
     <div>
       <label for="name" class="block text-sm font-medium mb-1">Name</label>
@@ -28,6 +28,12 @@
       <label for="description" class="block text-sm font-medium mb-1">Description</label>
       <textarea id="description" name="description" rows="3"
                 class="w-full rounded-lg bg-[#2a2f35] border border-[#39404b] px-3 py-2 text-white">{{ description|default:'' }}</textarea>
+    </div>
+    <div>
+      <label for="banner" class="block text-sm font-medium mb-1">Banner <span class="text-gray-400 font-normal">(optional)</span></label>
+      <input id="banner" name="banner" type="file" accept="image/jpeg,image/png,image/webp,image/gif"
+             class="w-full rounded-lg bg-[#2a2f35] border border-[#39404b] px-3 py-1.5 text-sm text-gray-300 file:mr-3 file:rounded-md file:border-0 file:bg-[#39404b] file:px-3 file:py-1 file:text-sm file:text-white">
+      <p class="mt-1 text-xs text-gray-400">Shown on the group card. Max 5 MB, JPEG/PNG/WEBP/GIF.</p>
     </div>
     <div class="flex gap-3">
       <button type="submit"

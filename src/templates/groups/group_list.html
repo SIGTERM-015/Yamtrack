@@ -57,6 +57,13 @@
     {% for group in groups %}
       <div class="bg-[#2a2f35] rounded-lg overflow-hidden hover:shadow-lg group relative">
         <div class="relative h-48 flex items-center justify-center bg-[#39404b]">
+          {% if group.banner %}
+            <img src="{{ group.banner.url }}"
+                 alt=""
+                 loading="lazy"
+                 class="absolute inset-0 h-full w-full object-cover"
+                 onerror="this.remove()">
+          {% endif %}
           <div class="absolute inset-0 bg-gradient-to-t from-[#1e2329] to-transparent"></div>
           <a href="{% url 'group_detail' group.id %}" class="absolute inset-0"></a>
           

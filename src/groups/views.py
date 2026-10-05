@@ -14,6 +14,7 @@ from app import config
 from app.models import Item, MediaTypes, Status
 from app.providers import services as provider_services
 from groups import discards as discard_service
+from groups.forms import GroupBannerForm
 from groups.models import Group, GroupInvitation, GroupItem, GroupOrigin
 from groups.services import (
     GROUP_TABS,
@@ -306,11 +307,19 @@ def group_create(request):
             },
         )
 
-    group = Group.objects.create(
-        name=name,
-        description=description,
-        owner=request.user,
-    )
+    group = Group(name=name, description=description, owner=request.user)
+    banner_form = GroupBannerForm(request.POST, request.FILES, instance=group)
+    if not banner_form.is_valid():
+        return render(
+            request,
+            "groups/group_create.html",
+            {
+                "error": banner_form.errors["banner"][0],
+                "name": name,
+                "description": description,
+            },
+        )
+    banner_form.save()
     group.members.add(request.user)
     messages.success(request, f"Group '{group.name}' created.")
     return redirect("group_detail", group_id=group.id)
@@ -734,6 +743,36 @@ def group_leave(request, group_id):
     _detach_group_origins(request.user, group)
     messages.success(request, f"You left '{group.name}'.")
     return redirect("group_list")
+
+
+@login_required
+@require_POST
+def group_banner(request, group_id):
+    """Set or remove the group's cover image. Owner-only: managing the group."""
+    group = _get_member_group_or_404(request, group_id)
+
+    if group.owner_id != request.user.id:
+        return HttpResponse("Only the owner can change the banner.", status=403)
+
+    previous = group.banner.name
+    if request.POST.get("remove"):
+        group.banner = ""
+        group.save(update_fields=["banner"])
+        messages.success(request, "Banner removed.")
+    else:
+        form = GroupBannerForm(request.POST, request.FILES, instance=group)
+        if "banner" not in request.FILES:
+            messages.error(request, "Choose an image to upload.")
+            return redirect("group_settings", group_id=group.id)
+        if not form.is_valid():
+            messages.error(request, form.errors["banner"][0])
+            return redirect("group_settings", group_id=group.id)
+        form.save()
+        messages.success(request, "Banner updated.")
+
+    if previous and previous != group.banner.name:
+        group.banner.storage.delete(previous)
+    return redirect("group_settings", group_id=group.id)
 
 
 @login_required

@@ -49,6 +49,7 @@ urlpatterns = [
         name="group_transfer_owner",
     ),
     path("<int:group_id>/settings/", views.group_settings, name="group_settings"),
+    path("<int:group_id>/banner/", views.group_banner, name="group_banner"),
     path("<int:group_id>/stats/", views.group_stats, name="group_stats"),
     path(
         "<int:group_id>/comparison/",

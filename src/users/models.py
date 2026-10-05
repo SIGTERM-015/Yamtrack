@@ -17,10 +17,14 @@ MAX_AVATAR_SIZE = 2 * 1024 * 1024  # 2 MB
 ALLOWED_AVATAR_FORMATS = {"JPEG", "PNG", "WEBP", "GIF"}
 
 
-def validate_avatar(image):
-    """Reject avatars that are too large or not a supported image format."""
-    if image.size > MAX_AVATAR_SIZE:
-        msg = f"Avatar must be smaller than {MAX_AVATAR_SIZE // (1024 * 1024)} MB."
+def validate_image_upload(image, *, max_size, label):
+    """Reject uploads that are too large or not a supported raster image.
+
+    Pillow must recognise the bytes as one of ALLOWED_AVATAR_FORMATS, so HTML,
+    SVG or scripts renamed to .png never reach MEDIA_ROOT.
+    """
+    if image.size > max_size:
+        msg = f"{label} must be smaller than {max_size // (1024 * 1024)} MB."
         raise ValidationError(msg)
 
     try:
@@ -34,6 +38,11 @@ def validate_avatar(image):
         allowed = ", ".join(sorted(ALLOWED_AVATAR_FORMATS))
         msg = f"Unsupported image format. Allowed formats: {allowed}."
         raise ValidationError(msg)
+
+
+def validate_avatar(image):
+    """Reject avatars that are too large or not a supported image format."""
+    validate_image_upload(image, max_size=MAX_AVATAR_SIZE, label="Avatar")
 
 
 SOCIAL_LINK_FIELDS = [

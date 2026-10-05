@@ -34,6 +34,55 @@
     {% endif %}
 
     <div class="mb-6 rounded-lg bg-[#2a2f35] px-4 py-3">
+      <h2 class="mb-3 text-sm font-semibold text-gray-300">Banner</h2>
+      <div class="relative mb-3 h-32 overflow-hidden rounded-lg bg-[#39404b]">
+        {% if group.banner %}
+          <img src="{{ group.banner.url }}"
+               alt="Current banner"
+               class="h-full w-full object-cover"
+               onerror="this.remove()">
+        {% else %}
+          <div class="flex h-full items-center justify-center text-sm text-gray-400">No banner yet</div>
+        {% endif %}
+        <div class="absolute inset-0 bg-gradient-to-t from-[#1e2329] to-transparent pointer-events-none"></div>
+        <span class="absolute bottom-3 left-4 text-lg font-semibold text-white">{{ group.name }}</span>
+      </div>
+      {% if group.owner == request.user %}
+        <div class="flex flex-col sm:flex-row gap-2">
+          <form method="post"
+                action="{% url 'group_banner' group.id %}"
+                enctype="multipart/form-data"
+                class="flex flex-1 flex-col sm:flex-row gap-2">
+            {% csrf_token %}
+            <input name="banner"
+                   type="file"
+                   accept="image/jpeg,image/png,image/webp,image/gif"
+                   required
+                   aria-label="Banner image"
+                   class="flex-1 rounded-lg bg-[#1e2329] border border-[#39404b] px-3 py-1.5 text-sm text-gray-300 file:mr-3 file:rounded-md file:border-0 file:bg-[#39404b] file:px-3 file:py-1 file:text-sm file:text-white">
+            <button type="submit"
+                    class="rounded-lg bg-[#4f46e5] px-4 py-2 text-sm font-medium text-white hover:bg-[#4338ca]">
+              Upload
+            </button>
+          </form>
+          {% if group.banner %}
+            <form method="post" action="{% url 'group_banner' group.id %}">
+              {% csrf_token %}
+              <input type="hidden" name="remove" value="1">
+              <button type="submit"
+                      class="w-full rounded-lg border border-[#39404b] px-4 py-2 text-sm font-medium text-gray-300 hover:bg-[#1e2329]">
+                Remove
+              </button>
+            </form>
+          {% endif %}
+        </div>
+        <p class="mt-2 text-xs text-gray-400">Wide images work best. Max 5 MB, JPEG/PNG/WEBP/GIF.</p>
+      {% else %}
+        <p class="text-xs text-gray-400">Only the owner can change the banner.</p>
+      {% endif %}
+    </div>
+
+    <div class="mb-6 rounded-lg bg-[#2a2f35] px-4 py-3">
       <h2 class="mb-3 text-sm font-semibold text-gray-300">Members</h2>
       <ul class="space-y-2">
         {% for member in members %}
