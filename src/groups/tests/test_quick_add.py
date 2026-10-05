@@ -163,6 +163,16 @@ class QuickAddTest(TestCase):
         self.assertTrue(self.in_group(friends))
         self.assertTrue(self.in_group(self.couple))
 
+    def test_no_change_offered_when_every_group_has_the_item(self):
+        """Change would lead nowhere if the item is already in all the groups."""
+        friends = self.add_friends_group()
+        GroupItem.objects.create(group=self.couple, item=self.item, added_by=self.bob)
+
+        response = self.post(self.url, {"group_id": friends.id})
+
+        self.assertContains(response, "Added to Friends")
+        self.assertNotContains(response, "Change")
+
     def test_change_picker_offers_move(self):
         """The toast's Change link opens the picker in move mode."""
         self.add_friends_group()

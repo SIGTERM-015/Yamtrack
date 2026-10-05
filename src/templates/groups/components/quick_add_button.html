@@ -1,0 +1,9 @@
+{% load app_tags %}
+{# "Add to group" hover button: one click adds to the only or last used group. Expects item and user_groups. #}
+{% if user_groups %}
+  <button class="p-2.5 bg-sky-600 text-white rounded-full hover:bg-sky-500 hover:scale-110 hover:shadow-[0_0_15px_rgba(14,165,233,0.5)] transition-all duration-200 cursor-pointer"
+          title="Add to group"
+          hx-post="{% media_view_url 'group_quick_add' item %}"
+          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+          hx-target="#{% component_id 'groups' item %}">{% include "app/icons/persons.svg" with classes="w-4 h-4" %}</button>
+{% endif %}

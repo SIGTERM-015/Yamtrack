@@ -6,7 +6,7 @@
   {% component_id 'history' media.item as history_component_id %}
   <div id="home-media-{{ media.item.media_type }}-{{ media.id }}"
        class="bg-[#2a2f35] rounded-lg overflow-hidden shadow-lg transition-all duration-300"
-       x-data="{ trackOpen: false, listsOpen: false, historyOpen: false }">
+       x-data="{ trackOpen: false, listsOpen: false, groupsOpen: false, historyOpen: false }">
     <div class="relative">
       <a href="{{ media.item|media_url }}">
         <img alt="{{ media }}"
@@ -34,7 +34,7 @@
       <div class="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 hover-tap:opacity-100{% if user.clickable_media_cards %} pointer-coarse:hidden{% endif %}">
         <a href="{{ media.item|media_url }}" class="absolute inset-0 z-0"></a>
 
-        <div class="relative z-10 flex items-center justify-center space-x-2.5">
+        <div class="relative z-10 {% if user_groups %}grid grid-cols-2 gap-2.5{% else %}flex items-center justify-center space-x-2.5{% endif %}">
           <button class="cursor-pointer rounded-full bg-indigo-600 p-2.5 text-white transition-all duration-200 hover:scale-110 hover:bg-indigo-500 hover:shadow-[0_0_15px_rgba(99,102,241,0.5)]"
                   title="Add to tracker"
                   hx-get="{% media_view_url 'track_modal' media.item %}"
@@ -50,6 +50,8 @@
                   hx-target="#{{ lists_component_id }}"
                   hx-trigger="click once"
                   @click="listsOpen = true">{% include "app/icons/list-add.svg" with classes="w-4 h-4" %}</button>
+
+          {% include "groups/components/quick_add_button.html" with item=media.item %}
 
           <button class="cursor-pointer rounded-full bg-amber-600 p-2.5 text-white transition-all duration-200 hover:scale-110 hover:bg-amber-500 hover:shadow-[0_0_15px_rgba(245,158,11,0.5)]"
                   title="View your activity history"
@@ -93,6 +95,8 @@
         <div id="{{ lists_component_id }}"></div>
       </div>
     </div>
+
+    {% include "groups/components/quick_add_modal.html" with item=media.item %}
 
     <div x-show="historyOpen"
          @keydown.escape.window="historyOpen = false"
