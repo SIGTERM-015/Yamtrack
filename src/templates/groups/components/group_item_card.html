@@ -136,6 +136,7 @@
                          value="{{ mp.user.id }}"
                          {% if mp.default_checked %}checked{% endif %}
                          class="accent-indigo-500">
+                  {% user_avatar mp.user "xs" %}
                   {{ mp.user.username }}
                 </label>
               {% endfor %}

@@ -14,6 +14,7 @@ from django.contrib import admin
 from django.contrib.auth.decorators import login_not_required
 from django.urls import include, path
 from django.views.generic import RedirectView
+from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from health_check.views import HealthCheckView
 from redis.asyncio import Redis as RedisClient
@@ -109,7 +110,13 @@ if settings.ADMIN_ENABLED:
 # Add debug toolbar if in DEBUG mode
 if settings.DEBUG:
     urlpatterns.append(path("__debug__/", include("debug_toolbar.urls")))
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Uploads are public, like nginx serves them in production (avatars show on
+    # public profiles).
+    urlpatterns += static(
+        settings.MEDIA_URL,
+        view=login_not_required(serve),
+        document_root=settings.MEDIA_ROOT,
+    )
 
 # Public profile at /<username>. Appended last so every named single-segment
 # route above (search, roulette, settings, admin, ...) takes precedence.

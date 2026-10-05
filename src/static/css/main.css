@@ -2033,6 +2033,12 @@
     font-size: var(--text-xs);
     line-height: var(--tw-leading, var(--text-xs--line-height));
   }
+  .text-\[9px\] {
+    font-size: 9px;
+  }
+  .text-\[10px\] {
+    font-size: 10px;
+  }
   .leading-none {
     --tw-leading: 1;
     line-height: 1;
@@ -2261,6 +2267,9 @@
   }
   .ring-\[\#2a2f35\] {
     --tw-ring-color: #2a2f35;
+  }
+  .ring-indigo-400 {
+    --tw-ring-color: var(--color-indigo-400);
   }
   .ring-indigo-500 {
     --tw-ring-color: var(--color-indigo-500);

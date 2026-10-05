@@ -523,3 +523,31 @@ def seconds_to_duration(seconds):
     if minutes >= 45:  # noqa: PLR2004
         return f"{hours + 1}h"
     return f"{hours}h" if minutes < 15 else f"{hours}h 30m"  # noqa: PLR2004
+
+
+# Avatar sizes: dimensions plus the initial's type scale, and the edge that
+# separates overlapping avatars in a stack ("sm") or lifts the profile hero.
+AVATAR_SIZES = {
+    "xs": "w-4 h-4 text-[9px] font-semibold",
+    "sm": "w-6 h-6 text-xs font-medium border-2",
+    "nav": "w-5 h-5 text-[10px] font-semibold",
+    "md": "w-16 h-16 text-2xl font-bold",
+    "xl": "w-28 h-28 text-5xl font-bold ring-4 ring-[#2a2f35] shadow-lg",
+}
+
+
+@register.inclusion_tag("app/components/user_avatar.html")
+def user_avatar(person, size="sm", *, owner=None, link=False, classes=""):
+    """Render a person's photo, or the initial bubble when they have none.
+
+    ``owner`` is whoever owns the group or list the avatar is shown in; when
+    it is this person their bubble (or, with a photo, its edge) turns indigo.
+    ``link`` makes the avatar open their profile.
+    """
+    return {
+        "person": person,
+        "size_classes": AVATAR_SIZES[size],
+        "owner": owner is not None and owner == person,
+        "link": link,
+        "classes": classes,
+    }

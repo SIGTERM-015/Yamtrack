@@ -1,3 +1,4 @@
+{% load app_tags %}
 <div class="flex items-center justify-between mb-4">
   <h2 class="text-lg font-bold text-white line-clamp-1">{{ item.title }} — Episodes</h2>
   <button type="button"
@@ -16,6 +17,7 @@
     {% for member in members %}
       <label class="flex items-center gap-1.5 text-xs text-gray-200 bg-[#39404b] rounded-full px-2.5 py-1 cursor-pointer">
         <input type="checkbox" name="participants" value="{{ member.id }}" checked class="accent-indigo-500">
+        {% user_avatar member "xs" %}
         {{ member.username }}
       </label>
     {% endfor %}

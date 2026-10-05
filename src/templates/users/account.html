@@ -1,4 +1,5 @@
 {% extends "users/base.html" %}
+{% load app_tags %}
 
 {% load socialaccount %}
 {% load static %}
@@ -131,11 +132,7 @@
         <div>
           <label for="{{ user_form.avatar.id_for_label }}"
                  class="block text-sm font-medium mb-2 text-gray-300">Avatar</label>
-          {% if user.avatar %}
-            <img src="{{ user.avatar.url }}"
-                 alt="Current avatar"
-                 class="w-16 h-16 rounded-full object-cover mb-2">
-          {% endif %}
+          {% user_avatar user "md" owner=user classes="mb-2" %}
           <input id="{{ user_form.avatar.id_for_label }}"
                  name="{{ user_form.avatar.html_name }}"
                  class="w-full py-2 px-3 bg-[#39404b] rounded-md text-white text-sm border {% if user_form.avatar.errors %}border-red-500{% else %}border-gray-600{% endif %} focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"

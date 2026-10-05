@@ -9,14 +9,7 @@
   <div class="space-y-10">
     {# Who: avatar, name, bio and social links, centred like a profile card. #}
     <header class="flex flex-col items-center text-center">
-      {% if target_user.avatar %}
-        <img src="{{ target_user.avatar.url }}"
-             alt="{{ target_user.username }}"
-             class="w-28 h-28 rounded-full object-cover ring-4 ring-[#2a2f35] shadow-lg">
-      {% else %}
-        <div class="w-28 h-28 rounded-full bg-indigo-600 flex items-center justify-center text-5xl font-bold text-white ring-4 ring-[#2a2f35] shadow-lg"
-             aria-hidden="true">{{ target_user.username.0|upper }}</div>
-      {% endif %}
+      {% user_avatar target_user "xl" owner=target_user %}
       <h1 class="mt-4 text-3xl font-bold break-all">{{ target_user.username }}</h1>
       {% if target_user.bio %}
         <p class="mt-2 max-w-prose text-gray-300 whitespace-pre-line">{{ target_user.bio }}</p>
