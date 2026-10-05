@@ -102,6 +102,21 @@ def minutes_to_hhmm(total_minutes):
     return f"{hours}h {minutes:02d}min"
 
 
+def is_safe_url(request, url):
+    """Whether ``url`` points back to this site (rejects ``//host`` and schemes)."""
+    return url_has_allowed_host_and_scheme(
+        url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    )
+
+
+def safe_next(request, default):
+    """Return ``next`` (POST or GET) if it points to this site, else ``default``."""
+    next_url = request.POST.get("next") or request.GET.get("next")
+    return next_url if is_safe_url(request, next_url) else default
+
+
 def redirect_back(request):
     """Redirect to the previous page, removing the 'page' parameter if present.
 

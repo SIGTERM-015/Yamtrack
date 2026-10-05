@@ -4,9 +4,11 @@ suggestion box in a dialog. In the owner's visitor preview it only explains
 what visitors get, since nobody can recommend to themselves.
 {% endcomment %}
 <div x-data="{ open: false }"
+     x-init="$watch('open', value => value || $nextTick(() => $refs.trigger.focus()))"
      @keydown.escape.window="open = false"
      class="mt-5">
   <button type="button"
+          x-ref="trigger"
           @click="open = true; $nextTick(() => document.getElementById('suggest-search')?.focus())"
           class="flex items-center gap-1.5 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 cursor-pointer">
     {% include "app/icons/circle-plus.svg" with classes="w-4 h-4" %}

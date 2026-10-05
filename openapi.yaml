@@ -259,7 +259,10 @@ paths:
           schema:
             type: string
             enum: [planning, in_progress, completed, other]
-          description: Bucket by the group's own status (Planning, In progress, Completed, Paused/Dropped)
+          description: >-
+            Bucket by the group's own status (Planning, In progress, Completed,
+            Paused/Dropped). Renamed on 2026-10-06 from pending, watching,
+            watched and others; the old values now return 400.
         - in: query
           name: limit
           schema:

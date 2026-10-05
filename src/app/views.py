@@ -1572,14 +1572,6 @@ def recommendations(request):
     return _mine_recommendations(request)
 
 
-def _safe_next(request, default):
-    """Return ``?next=`` if it is a same-site relative path, else ``default``."""
-    next_url = request.POST.get("next") or request.GET.get("next")
-    if next_url and next_url.startswith("/"):
-        return next_url
-    return default
-
-
 @login_required
 @require_POST
 def discard_item_view(request):
@@ -1597,7 +1589,7 @@ def discard_item_view(request):
         )
     )
     discard_service.discard_item(request.user, item)
-    next_url = _safe_next(request, reverse("recommendations"))
+    next_url = helpers.safe_next(request, reverse("recommendations"))
     return redirect(
         f"{next_url}{'&' if '?' in next_url else '?'}"
         f"{urlencode({'discarded_item': item.id, 'discarded_title': item.title})}",
@@ -1611,7 +1603,9 @@ def restore_item_view(request, item_id):
     item = get_object_or_404(Item, id=item_id)
     discard_service.restore_item(request.user, item)
     messages.success(request, f'"{item.title}" is back in your recommendations.')
-    return redirect(_safe_next(request, f"{reverse('recommendations')}?mode=discarded"))
+    return redirect(
+        helpers.safe_next(request, f"{reverse('recommendations')}?mode=discarded")
+    )
 
 
 @require_GET
