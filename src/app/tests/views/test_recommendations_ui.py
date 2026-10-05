@@ -125,7 +125,9 @@ class RecommendationViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
         self.assertIn("Recommended One", content)
-        self.assertIn(reverse("group_recommend_add", args=[group.id]), content)
+        self.assertIn(
+            reverse("group_quick_add", args=["tmdb", "movie", "rec1"]), content
+        )
         self.assertIn(reverse("group_discard_item", args=[group.id]), content)
 
     def test_group_mode_excludes_group_library_and_discards(self):

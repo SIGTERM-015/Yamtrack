@@ -326,15 +326,13 @@
           </div>
 
           {# Groups #}
-          {% if request.user.joined_groups.exists %}
+          {% if user_groups %}
             <div x-data="{ groupsOpen: false }">
               <button class="w-full flex items-center gap-x-3 px-4 py-3 text-sm text-gray-200 hover:bg-[#343a40] transition-colors duration-200 cursor-pointer"
                       title="Add to group"
-                      hx-get="{% media_view_url 'groups_modal' media %}"
-                      hx-vals='{"return_url": "{{ request.get_full_path|urlencode }}"}'
-                      hx-target="#{% component_id 'groups' media %}"
-                      hx-trigger="click once"
-                      @click="groupsOpen = true">
+                      hx-post="{% media_view_url 'group_quick_add' media %}"
+                      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                      hx-target="#{% component_id 'groups' media %}">
                 <span class="flex items-center justify-center w-8 h-8 rounded-md bg-sky-600/15 text-sky-400 shrink-0">
                   {% include "app/icons/persons.svg" with classes="w-4 h-4" %}
                 </span>

@@ -1073,6 +1073,9 @@
   .gap-2 {
     gap: calc(var(--spacing) * 2);
   }
+  .gap-2\.5 {
+    gap: calc(var(--spacing) * 2.5);
+  }
   .gap-3 {
     gap: calc(var(--spacing) * 3);
   }
@@ -2315,6 +2318,9 @@
   .opacity-70 {
     opacity: 70%;
   }
+  .opacity-90 {
+    opacity: 90%;
+  }
   .opacity-100 {
     opacity: 100%;
   }
@@ -3243,9 +3249,27 @@
       --tw-ring-inset: inset;
     }
   }
+  .disabled\:cursor-default {
+    &:disabled {
+      cursor: default;
+    }
+  }
   .disabled\:cursor-not-allowed {
     &:disabled {
       cursor: not-allowed;
+    }
+  }
+  .disabled\:bg-emerald-600\/20 {
+    &:disabled {
+      background-color: color-mix(in srgb, oklch(59.6% 0.145 163.225) 20%, transparent);
+      @supports (color: color-mix(in lab, red, red)) {
+        background-color: color-mix(in oklab, var(--color-emerald-600) 20%, transparent);
+      }
+    }
+  }
+  .disabled\:text-emerald-400 {
+    &:disabled {
+      color: var(--color-emerald-400);
     }
   }
   .disabled\:opacity-30 {

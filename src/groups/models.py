@@ -61,6 +61,9 @@ class GroupMembership(models.Model):
         related_name="group_memberships",
     )
     joined_at = models.DateTimeField(auto_now_add=True)
+    # When the member last used quick add with this group. The most recent
+    # membership is the default target for the next quick add.
+    quick_added_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         """Meta class."""

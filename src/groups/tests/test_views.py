@@ -323,7 +323,7 @@ class GroupCreateInviteViewsTest(TestCase):
 
 
 class GroupItemAddViewsTest(TestCase):
-    """Test cases for the group item add view."""
+    """Adding an item to a chosen group through quick add."""
 
     def setUp(self):
         """Set up test data."""
@@ -362,15 +362,19 @@ class GroupItemAddViewsTest(TestCase):
             media_type=MediaTypes.TV.value,
             source=Sources.TMDB.value,
         )
+        self.add_url = reverse(
+            "group_quick_add", args=[Sources.TMDB.value, MediaTypes.TV.value, "101"]
+        )
 
     def test_member_adds_item_creates_planning_for_all_members(self):
         """Adding an item creates Planning records for every member."""
         self.client.login(username="user1", password="testpassword123")  # noqa: S106
         response = self.client.post(
-            reverse("group_item_add", args=[self.group.id]),
-            {"item_id": self.item.id},
+            self.add_url,
+            {"group_id": self.group.id},
+            headers={"HX-Request": "true"},
         )
-        self.assertRedirects(response, reverse("group_detail", args=[self.group.id]))
+        self.assertEqual(response.status_code, 200)
         self.assertTrue(self.group.group_items.filter(item=self.item).exists())
         self.assertEqual(
             TV.objects.filter(item=self.item, status=Status.PLANNING).count(), 2
@@ -381,10 +385,11 @@ class GroupItemAddViewsTest(TestCase):
         TV.objects.create(user=self.user1, item=self.item, status="Watching", score=8)
         self.client.login(username="user2", password="testpassword123")  # noqa: S106
         response = self.client.post(
-            reverse("group_item_add", args=[self.group.id]),
-            {"item_id": self.item.id},
+            self.add_url,
+            {"group_id": self.group.id},
+            headers={"HX-Request": "true"},
         )
-        self.assertRedirects(response, reverse("group_detail", args=[self.group.id]))
+        self.assertEqual(response.status_code, 200)
         existing = TV.objects.get(user=self.user1, item=self.item)
         self.assertEqual(existing.status, "Watching")
         self.assertEqual(existing.score, 8)
@@ -396,8 +401,8 @@ class GroupItemAddViewsTest(TestCase):
         """A non-member gets 404 and no item is linked to the group."""
         self.client.login(username="outsider", password="testpassword123")  # noqa: S106
         response = self.client.post(
-            reverse("group_item_add", args=[self.group.id]),
-            {"item_id": self.item.id},
+            self.add_url,
+            {"group_id": self.group.id},
         )
         self.assertEqual(response.status_code, 404)
         self.assertFalse(self.group.group_items.filter(item=self.item).exists())
@@ -406,7 +411,7 @@ class GroupItemAddViewsTest(TestCase):
     def test_get_is_not_allowed(self):
         """The endpoint only accepts POST."""
         self.client.login(username="user1", password="testpassword123")  # noqa: S106
-        response = self.client.get(reverse("group_item_add", args=[self.group.id]))
+        response = self.client.get(self.add_url)
         self.assertEqual(response.status_code, 405)
         self.assertFalse(self.group.group_items.filter(item=self.item).exists())
 

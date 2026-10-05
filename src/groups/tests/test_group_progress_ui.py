@@ -178,20 +178,6 @@ class GroupCardPolishTest(TestCase):
             fetch_redirect_response=False,
         )
 
-    def test_add_item_redirects_back_to_group(self):
-        """The generic Add to group modal posts and returns to the group."""
-        item2 = Item.objects.create(
-            media_id="m2", title="Movie 2", media_type="movie", source="tmdb"
-        )
-        with patch("app.models.providers.services.get_media_metadata") as meta:
-            meta.return_value = {"max_progress": 1}
-            response = self.client.post(
-                reverse("group_item_add", args=[self.group.id]),
-                {"item_id": item2.id},
-            )
-        self.assertRedirects(response, reverse("group_detail", args=[self.group.id]))
-        self.assertTrue(GroupItem.objects.filter(group=self.group, item=item2).exists())
-
 
 class GroupMemberLinksTest(TestCase):
     """Member names and avatars open their public profiles."""

@@ -1,7 +1,14 @@
-
-<div class="bg-[#2a2f35] p-6 rounded-lg max-h-[70svh] overflow-y-auto">
+{% load app_tags %}
+<div class="bg-[#2a2f35] p-6 rounded-lg max-h-[70svh] overflow-y-auto"
+     x-init="groupsOpen = true">
   <div class="flex items-center justify-between mb-6">
-    <h2 class="text-2xl font-bold text-white">Groups</h2>
+    <h2 class="text-2xl font-bold text-white">
+      {% if change %}
+        Move to group
+      {% else %}
+        Add to group
+      {% endif %}
+    </h2>
     <button class="text-gray-400 hover:text-white cursor-pointer"
             @click="groupsOpen = false">{% include "app/icons/x.svg" with classes="w-6 h-6" %}</button>
   </div>
@@ -12,14 +19,17 @@
         {% if group.has_item %}
           <span class="px-3 py-1 rounded bg-emerald-600/20 text-emerald-400 text-sm">Added</span>
         {% else %}
-          <form method="post" action="{% url 'group_item_add' group.id %}">
-            {% csrf_token %}
-            <input type="hidden" name="item_id" value="{{ item.id }}">
-            <button type="submit"
-                    class="px-3 py-1 rounded transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-opacity-50 bg-gray-500 hover:bg-gray-600">
+          <button hx-post="{% media_view_url 'group_quick_add' item %}"
+                  hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                  hx-vals='{"group_id": "{{ group.id }}"{% if change %}, "change": "1"{% endif %}}'
+                  hx-target="#{% component_id 'groups' item %}"
+                  class="px-3 py-1 rounded transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-opacity-50 bg-gray-500 hover:bg-gray-600">
+            {% if change %}
+              Move
+            {% else %}
               Add
-            </button>
-          </form>
+            {% endif %}
+          </button>
         {% endif %}
       </li>
     {% empty %}

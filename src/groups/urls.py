@@ -62,11 +62,6 @@ urlpatterns = [
         name="group_genre_stats",
     ),
     path(
-        "<int:group_id>/add_item/",
-        views.group_item_add,
-        name="group_item_add",
-    ),
-    path(
         "<int:group_id>/items/<int:item_id>/episodes/",
         views.group_episodes_modal,
         name="group_episodes_modal",
@@ -87,6 +82,21 @@ urlpatterns = [
         name="groups_modal",
     ),
     path(
+        "quick_add/<source:source>/<media_type:media_type>/<str:media_id>",
+        views.group_quick_add,
+        name="group_quick_add",
+    ),
+    path(
+        "quick_add/<source:source>/<media_type:media_type>/<str:media_id>/<int:season_number>",
+        views.group_quick_add,
+        name="group_quick_add",
+    ),
+    path(
+        "quick_add/<source:source>/<media_type:media_type>/<str:media_id>/<int:season_number>/<int:episode_number>",
+        views.group_quick_add,
+        name="group_quick_add",
+    ),
+    path(
         "<int:group_id>/discard/",
         views.group_discard_item,
         name="group_discard_item",
@@ -100,10 +110,5 @@ urlpatterns = [
         "<int:group_id>/discarded/",
         views.group_discarded,
         name="group_discarded",
-    ),
-    path(
-        "<int:group_id>/recommend_add/",
-        views.group_recommend_add,
-        name="group_recommend_add",
     ),
 ]

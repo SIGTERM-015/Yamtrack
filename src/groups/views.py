@@ -4,10 +4,13 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.db.models import Exists, OuterRef
+from django.contrib.messages.storage.base import Message
+from django.db.models import Exists, F, OuterRef
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_POST
 
@@ -579,23 +582,6 @@ def group_item_remove(request, group_id, item_id):
 
 
 @login_required
-@require_POST
-def group_item_add(request, group_id):
-    """Add an item to a group, creating Planning for members without it."""
-    group = get_object_or_404(Group, id=group_id)
-
-    if not group.members.filter(id=request.user.id).exists():
-        msg = "Group not found"
-        raise Http404(msg)
-
-    item = get_object_or_404(Item, id=request.POST.get("item_id"))
-    add_item_to_group(group, item, request.user)
-
-    messages.success(request, f"{item.title} was added to '{group.name}'.")
-    return redirect("group_detail", group_id=group.id)
-
-
-@login_required
 @require_GET
 def group_episodes_modal(request, group_id, item_id):
     """
@@ -678,6 +664,44 @@ def group_episodes_modal(request, group_id, item_id):
     )
 
 
+def _is_safe_url(request, url):
+    """Whether ``url`` points back to this site."""
+    return url_has_allowed_host_and_scheme(
+        url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    )
+
+
+def _safe_next(request, default):
+    """Return ``next`` (POST or GET) if it points to this site, else ``default``."""
+    next_url = request.POST.get("next") or request.GET.get("next")
+    return next_url if _is_safe_url(request, next_url) else default
+
+
+def _safe_referer(request):
+    """Return the Referer if it points to this site, else ``None``."""
+    referer = request.headers.get("Referer")
+    return referer if _is_safe_url(request, referer) else None
+
+
+# Session key holding the GroupItem the last quick add created, so "Change"
+# can move it elsewhere without touching items the user added on purpose.
+_QUICK_ADD_UNDO = "group_quick_add_undo"
+
+
+def _render_group_picker(request, item, *, change=False):
+    """Render the modal to choose which group receives the item."""
+    groups = request.user.joined_groups.annotate(
+        has_item=Exists(GroupItem.objects.filter(group=OuterRef("pk"), item=item)),
+    ).order_by("name")
+    return render(
+        request,
+        "groups/components/fill_groups.html",
+        {"item": item, "groups": groups, "change": change},
+    )
+
+
 @login_required
 @require_GET
 def groups_modal(
@@ -688,7 +712,7 @@ def groups_modal(
     season_number=None,
     episode_number=None,
 ):
-    """Return the modal showing the user's groups and allowing to add the item."""
+    """Return the group picker; ``?change=1`` moves the last quick add."""
     item = get_or_create_item(
         media_type,
         media_id,
@@ -696,15 +720,135 @@ def groups_modal(
         season_number,
         episode_number,
     )
+    return _render_group_picker(request, item, change="change" in request.GET)
 
-    groups = request.user.joined_groups.annotate(
-        has_item=Exists(GroupItem.objects.filter(group=OuterRef("pk"), item=item)),
-    ).order_by("name")
 
+def _undo_quick_add(request, item, target_group):
+    """
+    Remove the item from the group the last quick add put it in.
+
+    Only the GroupItem that quick add itself created is removed, and only while
+    nobody has used it yet. Personal records stay (agreement 4).
+    """
+    group_item = (
+        GroupItem.objects.filter(
+            id=request.session.get(_QUICK_ADD_UNDO),
+            item=item,
+            group__members=request.user,
+            status=Status.PLANNING.value,
+            progress=0,
+        )
+        .exclude(group=target_group)
+        .select_related("group")
+        .first()
+    )
+    if group_item is None:
+        return None
+    group_item.delete()
+    del request.session[_QUICK_ADD_UNDO]
+    return group_item.group
+
+
+def _quick_add_target(memberships, group_id):
+    """
+    Pick the membership quick add should use, or ``None`` to ask.
+
+    ``memberships`` comes most recently quick-added first.
+    """
+    if group_id:
+        membership = next((m for m in memberships if str(m.group_id) == group_id), None)
+    elif len(memberships) == 1 or (memberships and memberships[0].quick_added_at):
+        return memberships[0]
+    elif memberships:
+        return None
+    else:
+        membership = None
+    if membership is None:
+        msg = "Group not found"
+        raise Http404(msg)
+    return membership
+
+
+@login_required
+@require_POST
+def group_quick_add(
+    request,
+    source,
+    media_type,
+    media_id,
+    season_number=None,
+    episode_number=None,
+):
+    """
+    Add an item to one of the user's groups in a single click.
+
+    The target is ``group_id`` when given, else the only group, else the group
+    last used with quick add. A user with several groups who never chose one
+    gets the picker instead. The answer is a toast; with several groups it
+    offers "Change", which reopens the picker with ``change`` set so the item
+    moves out of the group this action just added it to.
+    """
+    memberships = list(
+        request.user.group_memberships.select_related("group").order_by(
+            F("quick_added_at").desc(nulls_last=True), "group__name"
+        )
+    )
+    membership = _quick_add_target(memberships, request.POST.get("group_id"))
+
+    item = get_or_create_item(
+        media_type,
+        media_id,
+        source,
+        season_number,
+        episode_number,
+    )
+    back = _safe_next(request, _safe_referer(request) or reverse("home"))
+    if membership is None:
+        if request.headers.get("HX-Request"):
+            return _render_group_picker(request, item)
+        messages.info(request, "Choose a group to add it to.")
+        return redirect(back)
+
+    group = membership.group
+    moved_from = None
+    if request.POST.get("change"):
+        moved_from = _undo_quick_add(request, item, group)
+    group_item = GroupItem.objects.filter(group=group, item=item).first()
+    added = group_item is None
+    if added:
+        group_item, _ = add_item_to_group(group, item, request.user)
+        request.session[_QUICK_ADD_UNDO] = group_item.id
+    elif request.session.get(_QUICK_ADD_UNDO) != group_item.id:
+        # The item was already there: "Change" must never take it out.
+        request.session.pop(_QUICK_ADD_UNDO, None)
+
+    membership.quick_added_at = timezone.now()
+    membership.save(update_fields=["quick_added_at"])
+
+    if moved_from:
+        text = f"Moved to {group.name}"
+    elif added:
+        text = f"Added to {group.name}"
+    else:
+        text = f"Already in {group.name}"
+    level = messages.SUCCESS if added or moved_from else messages.INFO
+    if not request.headers.get("HX-Request"):
+        # Without JS, stay where the user was, never on the group page.
+        messages.add_message(request, level, text)
+        return redirect(back)
     return render(
         request,
-        "groups/components/fill_groups.html",
-        {"item": item, "groups": groups},
+        "groups/components/quick_add_done.html",
+        {
+            "item": item,
+            "group": group,
+            "toast": Message(level, text),
+            # Only an add this action made can be moved; "fixed" callers
+            # (group recommendations) already name their group.
+            "can_change": (added or bool(moved_from))
+            and len(memberships) > 1
+            and not request.POST.get("fixed"),
+        },
     )
 
 
@@ -902,14 +1046,6 @@ def group_genre_stats(request, group_id):
 # --- Group discards ("Not interested"), E9 ----------------------------------
 
 
-def _safe_next(request, default):
-    """Return ``?next=`` if it is a same-site relative path, else ``default``."""
-    next_url = request.POST.get("next") or request.GET.get("next")
-    if next_url and next_url.startswith("/"):
-        return next_url
-    return default
-
-
 def _resolve_group_item(request):
     """Return the Item named in the POST body, creating it if needed."""
     if request.POST.get("item_id"):
@@ -971,21 +1107,4 @@ def group_discarded(request, group_id):
         request,
         "groups/group_discarded.html",
         {"group": group, "discards": discards},
-    )
-
-
-@login_required
-@require_POST
-def group_recommend_add(request, group_id):
-    """Add a recommendation candidate to the group, creating its Item first."""
-    group = get_object_or_404(Group, id=group_id)
-    if not group.members.filter(id=request.user.id).exists():
-        msg = "Group not found"
-        raise Http404(msg)
-
-    item = _resolve_group_item(request)
-    add_item_to_group(group, item, request.user)
-    messages.success(request, f"{item.title} was added to '{group.name}'.")
-    return redirect(
-        _safe_next(request, f"{reverse('recommendations')}?mode=group&group={group.id}")
     )

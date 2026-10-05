@@ -1,0 +1,12 @@
+{% load app_tags %}
+<div x-init="groupsOpen = false"></div>
+<div id="messages-list" hx-swap-oob="beforeend">
+  {% url 'group_detail' group.id as group_url %}
+  {% if can_change %}
+    {% media_view_url 'groups_modal' item as change_url %}
+    {% component_id 'groups' item as change_target %}
+    {% include "app/components/messages/toast.html" with message=toast action_label="Change" action_url=change_url|add:"?change=1" action_target=change_target link_label="View group" link_url=group_url only %}
+  {% else %}
+    {% include "app/components/messages/toast.html" with message=toast link_label="View group" link_url=group_url only %}
+  {% endif %}
+</div>
