@@ -73,7 +73,8 @@ class GroupEpisodesModalTest(TestCase):
 
         self.assertRedirects(
             response,
-            reverse("group_detail", args=[self.group.id]) + "?tab=in_progress",
+            reverse("group_detail", args=[self.group.id]) + "#in-progress",
+            fetch_redirect_response=False,
         )
         self.group_item.refresh_from_db()
         self.assertEqual(self.group_item.progress, 2)
@@ -114,29 +115,35 @@ class GroupCardPolishTest(TestCase):
         self.assertNotContains(response, "Add media to the group")
         self.assertNotContains(response, "group-search-results")
 
-    def test_card_has_quick_action_select(self):
-        """Non-TV cards offer the other statuses plus More options."""
+    def test_card_actions_live_on_the_poster_not_in_a_select(self):
+        """Like home cards: hover buttons and a touch button, no select."""
         response = self.client.get(reverse("group_detail", args=[self.group.id]))
-        self.assertContains(response, "Quick action for Movie 1")
-        self.assertContains(response, "Mark as completed")
-        self.assertNotContains(response, "Mark as planning")
-        self.assertContains(response, "More options…")
-
-    def test_bulk_bar_and_checkboxes_are_on_demand(self):
-        """The bulk bar only shows with 2+ selected; checkboxes start hidden."""
-        response = self.client.get(reverse("group_detail", args=[self.group.id]))
-        self.assertContains(response, 'x-show="selected.length > 1"')
+        self.assertNotContains(response, "Quick action")
         self.assertContains(
-            response, ":class=\"selecting ? 'opacity-100' : 'opacity-0'\""
+            response, 'aria-label="Update the group\'s status for Movie 1"'
         )
+        self.assertContains(response, 'aria-label="More group actions for Movie 1"')
+        self.assertContains(response, 'aria-label="Group actions for Movie 1"')
+        self.assertContains(response, "Update group status…")
+
+    def test_selection_mode_and_bulk_bar(self):
+        """Select enters selection mode; the bar shows with one selected."""
+        response = self.client.get(reverse("group_detail", args=[self.group.id]))
+        self.assertContains(response, "group-selection-toggle")
+        self.assertContains(response, 'x-show="selected.length > 0"')
+        self.assertContains(response, 'aria-label="Select Movie 1"')
+        self.assertContains(response, 'name="participants"', count=2)
 
     def test_manage_modal_keeps_full_controls(self):
-        """More options opens the modal with participants and removal."""
+        """The card's actions keep participants, discard and removal."""
         response = self.client.get(reverse("group_detail", args=[self.group.id]))
         self.assertContains(response, "Participants")
         self.assertContains(response, "Apply to group")
         self.assertContains(response, "Just me: match group status")
         self.assertContains(response, "Remove from group")
+        self.assertContains(
+            response, reverse("group_discard_item", args=[self.group.id])
+        )
 
     def test_tv_card_quick_action_marks_episodes(self):
         """A TV item's quick action opens the episode checklist."""
@@ -148,18 +155,27 @@ class GroupCardPolishTest(TestCase):
         response = self.client.get(reverse("group_detail", args=[self.group.id]))
 
         self.assertContains(response, "Mark episodes…")
+        self.assertContains(
+            response, 'aria-label="Mark episodes of Show 1 for the group"'
+        )
         self.assertContains(response, 'hx-trigger="load-episodes once"')
 
-    def test_quick_status_keeps_the_current_tab(self):
-        """Actions posted from a tab come back to that tab."""
+    def test_status_change_returns_to_its_section(self):
+        """Actions posted from a section come back to that section."""
         with patch("app.models.providers.services.get_media_metadata") as meta:
             meta.return_value = {"max_progress": 1}
             response = self.client.post(
                 reverse("group_set_item_status", args=[self.group.id]),
-                {"item_id": self.item.id, "status": "In progress", "tab": "planning"},
+                {
+                    "item_id": self.item.id,
+                    "status": "In progress",
+                    "section": "Planning",
+                },
             )
         self.assertRedirects(
-            response, reverse("group_detail", args=[self.group.id]) + "?tab=planning"
+            response,
+            reverse("group_detail", args=[self.group.id]) + "#planning",
+            fetch_redirect_response=False,
         )
 
     def test_add_item_redirects_back_to_group(self):

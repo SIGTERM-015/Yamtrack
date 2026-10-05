@@ -9,6 +9,16 @@ from app.models import TV, Item, MediaTypes, Sources, Status
 from groups.models import Group, GroupInvitation
 
 
+def _cards(response):
+    """Every poster on the group page, in page order."""
+    return [
+        data
+        for section in response.context["sections"]
+        for media_type in section["media_types"]
+        for data in media_type["items"]
+    ]
+
+
 class GroupViewsTest(TestCase):
     """Test case for the Group views."""
 
@@ -116,7 +126,7 @@ class GroupViewsTest(TestCase):
         self.assertContains(response, "Item 1")
 
         # Check context
-        items_data = response.context["items_data"]
+        items_data = _cards(response)
         self.assertEqual(len(items_data), 1)
         self.assertEqual(items_data[0]["item"].id, self.item1.id)
 
@@ -137,7 +147,7 @@ class GroupViewsTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
-        item = response.context["items_data"][0]
+        item = _cards(response)[0]
         self.assertEqual(item["completed_count"], 1)
         self.assertEqual(item["total_members"], 3)
 
@@ -155,7 +165,7 @@ class GroupViewsTest(TestCase):
         self.client.login(username="user1", password="testpassword123")  # noqa: S106
         response = self.client.get(reverse("group_detail", args=[self.group.id]))
 
-        item = response.context["items_data"][0]
+        item = _cards(response)[0]
         by_user = {mp["user"].id: mp for mp in item["member_progress"]}
         self.assertEqual(
             by_user[self.user2.id]["status_color"],

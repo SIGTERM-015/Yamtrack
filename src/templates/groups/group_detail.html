@@ -32,8 +32,20 @@
       </div>
       {% if is_member %}
         <div class="flex items-center gap-2">
+          {% if has_items %}
+            {# Selection lives in the sections below; they answer with group-selection. #}
+            <button type="button"
+                    x-data="{ selecting: false }"
+                    @group-selection.window="selecting = $event.detail"
+                    @click="$dispatch('group-selection-toggle')"
+                    :class="selecting ? 'border-indigo-500 bg-indigo-600 text-white hover:bg-indigo-700' : 'border-gray-700 text-gray-300 hover:bg-[#39404b] hover:text-white'"
+                    class="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium cursor-pointer transition-colors">
+              {% include "app/icons/circle-check.svg" with classes="w-4 h-4" %}
+              <span x-text="selecting ? 'Cancel' : 'Select'">Select</span>
+            </button>
+          {% endif %}
           <a href="{% url 'group_settings' group.id %}"
-             class="flex items-center gap-2 rounded-lg border border-gray-700 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-[#39404b] hover:text-white">
+             class="flex items-center gap-2 whitespace-nowrap rounded-lg border border-gray-700 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-[#39404b] hover:text-white">
             {% include "app/icons/settings.svg" with classes="w-4 h-4" %}
             Group settings
           </a>
@@ -70,33 +82,36 @@
     </div>
   {% endif %}
 
-  {% if is_member %}
-    <nav class="mb-6 flex gap-x-6 overflow-x-auto scrollbar-hide border-b border-[#2c3136]">
-      {% for nav_tab in nav_tabs %}
-        <a href="?tab={{ nav_tab.key }}"
-           class="pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-200 {% if tab == nav_tab.key %}text-white border-indigo-500{% else %}text-gray-400 border-transparent hover:text-white{% endif %}">
-          {{ nav_tab.label }}
-          <span id="tab-count-{{ nav_tab.key }}" class="ml-1 text-xs text-gray-500">({{ nav_tab.count }})</span>
-        </a>
-      {% endfor %}
-    </nav>
+  {% if request.GET.discarded_title %}
+    <div class="mb-6 flex items-center justify-between gap-3 rounded-md border border-gray-700 bg-[#2a2f35] px-4 py-3 text-sm text-gray-200">
+      <span>"{{ request.GET.discarded_title }}" won't be suggested to the group again.</span>
+      <form method="post" action="{% url 'group_restore_item' group.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="item_id" value="{{ request.GET.discarded_item }}">
+        <input type="hidden" name="next" value="{{ request.path }}">
+        <button type="submit"
+                class="cursor-pointer rounded-md border border-indigo-500 px-3 py-1 font-medium text-indigo-300 transition-colors hover:bg-indigo-500 hover:text-white">
+          Undo
+        </button>
+      </form>
+    </div>
   {% endif %}
 
-  {% if tab == 'discarded' %}
+  {% if show_discarded %}
     <div class="flex items-center justify-between gap-3 mb-4">
       <h2 class="text-xl font-bold">Not interested</h2>
-      <a href="?tab=planning" class="text-sm text-gray-400 hover:text-white">Back to Planning</a>
+      <a href="{% url 'group_detail' group.id %}" class="text-sm text-gray-400 hover:text-white">Back to the group</a>
     </div>
     {% include "groups/components/discarded.html" with group=group discards=discards %}
 
   {% else %}
-    {% if tab == 'planning' and is_member %}
+    {% if is_member %}
       {% include "groups/components/stats_summary.html" %}
     {% endif %}
-    {# Planning / In Progress / Completed / Other tabs share the same poster grid. #}
+    {# Status sections, then media types inside each: the home page layout. #}
     {% include "groups/components/item_grid.html" %}
-    {% if tab == 'planning' and discarded_count %}
-      <p class="mt-6 text-sm text-gray-400">
+    {% if discarded_count %}
+      <p class="mt-10 text-sm text-gray-400">
         <a href="?tab=discarded" class="hover:text-white underline-offset-2 hover:underline">{{ discarded_count }} title{{ discarded_count|pluralize }} marked not interested</a>
       </p>
     {% endif %}
