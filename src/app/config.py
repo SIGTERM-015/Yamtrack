@@ -227,6 +227,8 @@ MEDIA_TYPE_CONFIG = {
 }
 
 # --- Status Configuration ---
+# "section_icon" and "section_gradient" style a status section header (the
+# count pill icon and the divider under the title), as on the home page.
 STATUS_CONFIG = {
     Status.COMPLETED.value: {
         "text_color": COLORS["emerald"]["text"],
@@ -234,6 +236,8 @@ STATUS_CONFIG = {
         "background_color": COLORS["emerald"]["background"],
         "background_color_strong": COLORS["emerald"]["background_strong"],
         "icon": "app/icons/states/completed.svg",
+        "section_icon": "app/icons/trophy.svg",
+        "section_gradient": "from-emerald-400 via-emerald-400/45 to-emerald-400/8",
     },
     Status.IN_PROGRESS.value: {
         "text_color": COLORS["indigo"]["text"],
@@ -241,6 +245,8 @@ STATUS_CONFIG = {
         "background_color": COLORS["indigo"]["background"],
         "background_color_strong": COLORS["indigo"]["background_strong"],
         "icon": "app/icons/states/in-progress.svg",
+        "section_icon": "app/icons/pulse.svg",
+        "section_gradient": "from-indigo-400 via-indigo-400/45 to-indigo-400/8",
     },
     Status.PAUSED.value: {
         "text_color": COLORS["orange"]["text"],
@@ -248,6 +254,8 @@ STATUS_CONFIG = {
         "background_color": COLORS["orange"]["background"],
         "background_color_strong": COLORS["orange"]["background_strong"],
         "icon": "app/icons/states/paused.svg",
+        "section_icon": "app/icons/clock.svg",
+        "section_gradient": "from-orange-400 via-orange-400/45 to-orange-400/8",
     },
     Status.PLANNING.value: {
         "text_color": COLORS["sky"]["text"],
@@ -255,6 +263,8 @@ STATUS_CONFIG = {
         "background_color": COLORS["sky"]["background"],
         "background_color_strong": COLORS["sky"]["background_strong"],
         "icon": "app/icons/states/planning.svg",
+        "section_icon": "app/icons/leaf.svg",
+        "section_gradient": "from-sky-400 via-sky-400/45 to-sky-400/8",
     },
     Status.DROPPED.value: {
         "text_color": COLORS["red"]["text"],
@@ -262,6 +272,8 @@ STATUS_CONFIG = {
         "background_color": COLORS["red"]["background"],
         "background_color_strong": COLORS["red"]["background_strong"],
         "icon": "app/icons/states/dropped.svg",
+        "section_icon": "app/icons/circle-x.svg",
+        "section_gradient": "from-red-400 via-red-400/45 to-red-400/8",
     },
 }
 
@@ -396,6 +408,16 @@ def get_status_background_color(status):
 def get_status_icon(status):
     """Get the icon template for a status."""
     return get_status_property(status, "icon")
+
+
+def get_status_section_icon(status):
+    """Get the summary pill icon of a status section header."""
+    return get_status_property(status, "section_icon")
+
+
+def get_status_section_gradient(status):
+    """Get the divider gradient classes of a status section header."""
+    return get_status_property(status, "section_gradient")
 
 
 def get_journal_accent(accent):
