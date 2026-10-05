@@ -14,49 +14,33 @@
         x-data="mediaForm"
         x-init="init">
     {% csrf_token %}
-    {{ form.instance_id }}
-    {{ form.media_type }}
-    {{ form.source }}
-    {{ form.media_id }}
-    {{ form.season_number }}
+    {% for field in form.hidden_fields %}{{ field }}{% endfor %}
 
-    {% with total_fields=form.fields|length %}
-      {% if total_fields > 8 %}<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">{% endif %}
-
-        {% for field in form %}
-          {% if field.name != 'notes' and field.name != 'notes_public' and field.name != 'instance_id' and field.name != 'media_type' and field.name != 'source' and field.name != 'media_id' and field.name != 'season_number' %}
-            <div class="mb-5 {% if field.name == 'status' and total_fields|divisibleby:2 %}sm:col-span-2{% endif %}">
-              <label class="block text-sm font-medium mb-1 text-gray-300"
-                     for="{{ field.id_for_label }}">{{ field.label }}</label>
-              <div class="relative">
-                {% if field.name == "status" %}
-                  {{ field|add_class:"w-full p-2 bg-[#39404b] rounded-md text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4a9eff] appearance-none" }}
-                  <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                    {% include "app/icons/chevron-down.svg" with classes="w-4 h-4" %}
-                  </div>
-                {% elif field.field.widget.input_type == 'number' %}
-                  {{ field|add_class:"w-full p-2 pr-12 bg-[#39404b] rounded-md text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4a9eff] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" }}
-                  <div class="absolute inset-y-0 right-0 flex flex-col border-l border-gray-600">
-                    <button type="button"
-                            class="flex-1 px-2 hover:bg-gray-700 transition-colors rounded-tr-md border-t border-r border-gray-600"
-                            onclick="this.parentElement.previousElementSibling.stepUp()">
-                      {% include "app/icons/chevron-up.svg" with classes="w-3.5 h-3.5" %}
-                    </button>
-                    <button type="button"
-                            class="flex-1 px-2 hover:bg-gray-700 transition-colors rounded-br-md border-b border-r border-gray-600"
-                            onclick="this.parentElement.previousElementSibling.stepDown()">
-                      {% include "app/icons/chevron-down.svg" with classes="w-3.5 h-3.5" %}
-                    </button>
-                  </div>
-                {% else %}
-                  {{ field|add_class:"w-full p-2 bg-[#39404b] rounded-md text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[#4a9eff]" }}
-                {% endif %}
-              </div>
-            </div>
-          {% endif %}
+    {% with main_fields=form.main_fields %}
+      {% if main_fields|length > 1 %}<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">{% endif %}
+        {% for field in main_fields %}
+          <div class="mb-5 {% if forloop.last and not main_fields|length|divisibleby:2 %}sm:col-span-2{% endif %}">
+            {% include "app/components/fill_track_field.html" %}
+          </div>
         {% endfor %}
+        {% if main_fields|length > 1 %}</div>{% endif %}
+    {% endwith %}
 
-        {% if total_fields > 8 %}</div>{% endif %}
+    {% with detail_fields=form.detail_fields %}
+      {% if detail_fields %}
+        <details class="group mb-5" {% if form.details_open %}open{% endif %}>
+          <summary class="flex items-center gap-1 w-fit text-sm text-gray-400 hover:text-gray-200 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+            {% include "app/icons/chevron-down.svg" with classes="w-4 h-4 transition-transform -rotate-90 group-open:rotate-0" %}
+            More details
+          </summary>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-3">
+            {% for field in detail_fields %}
+              <div class="mb-5">{% include "app/components/fill_track_field.html" %}</div>
+            {% endfor %}
+          </div>
+          <p class="-mt-3 text-xs text-gray-500">Dates fill in automatically when you start or complete it.</p>
+        </details>
+      {% endif %}
     {% endwith %}
 
     {% if form.notes %}

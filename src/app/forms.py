@@ -240,6 +240,29 @@ class MediaForm(forms.ModelForm):
             ),
         }
 
+    # Fields tucked into the collapsible "More details" block of the track
+    # form; the server stamps them on status changes, so they are optional.
+    detail_field_names = ("start_date", "end_date")
+    # Fields rendered on their own after the main grid.
+    trailing_field_names = ("notes", "notes_public")
+
+    def main_fields(self):
+        """Return the visible fields shown in the form's main grid."""
+        skip = (*self.detail_field_names, *self.trailing_field_names)
+        return [field for field in self.visible_fields() if field.name not in skip]
+
+    def detail_fields(self):
+        """Return the visible fields of the collapsible details block."""
+        return [
+            field
+            for field in self.visible_fields()
+            if field.name in self.detail_field_names
+        ]
+
+    def details_open(self):
+        """Open the details block only when one of its fields has a value."""
+        return any(field.value() for field in self.detail_fields())
+
 
 class MangaForm(MediaForm):
     """Form for manga."""
@@ -264,10 +287,31 @@ class AnimeForm(MediaForm):
         model = Anime
 
 
-class MovieForm(MediaForm):
-    """Form for movies."""
+class SingleDateMediaForm(MediaForm):
+    """Form for media consumed in one sitting, shown with a single date.
+
+    ``start_date`` stays in the form as a hidden input so API clients and
+    imports keep their data contract and an existing value survives edits.
+    """
 
     class Meta(MediaForm.Meta):
+        """Hide the start date."""
+
+        widgets = {
+            **MediaForm.Meta.widgets,
+            "start_date": forms.HiddenInput(),
+        }
+        help_texts = {
+            "end_date": "Leave empty to use today's date when you complete it.",
+        }
+
+    detail_field_names = ()
+
+
+class MovieForm(SingleDateMediaForm):
+    """Form for movies."""
+
+    class Meta(SingleDateMediaForm.Meta):
         """Bind form to model."""
 
         model = Movie
@@ -279,6 +323,7 @@ class MovieForm(MediaForm):
             "notes",
             "notes_public",
         ]
+        labels = {"end_date": "Watched on"}
 
 
 class GameForm(MediaForm):
@@ -324,10 +369,10 @@ class ComicForm(MediaForm):
         }
 
 
-class BoardgameForm(MediaForm):
+class BoardgameForm(SingleDateMediaForm):
     """Form for board games."""
 
-    class Meta(MediaForm.Meta):
+    class Meta(SingleDateMediaForm.Meta):
         """Bind form to model."""
 
         model = BoardGame
@@ -336,6 +381,7 @@ class BoardgameForm(MediaForm):
                 "Progress "
                 f"({config.get_unit(MediaTypes.BOARDGAME.value, short=False)}s)"
             ),
+            "end_date": "Played on",
         }
 
 

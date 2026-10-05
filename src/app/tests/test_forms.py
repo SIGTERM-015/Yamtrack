@@ -7,6 +7,7 @@ from app.forms import (
     EpisodeForm,
     GameForm,
     ManualItemForm,
+    MovieForm,
     SeasonForm,
     TvForm,
 )
@@ -76,6 +77,28 @@ class BasicMediaForm(TestCase):
 
         self.assertFalse(form.fields["start_date"].required)
         self.assertFalse(form.fields["end_date"].required)
+
+    def test_movie_form_shows_single_date(self):
+        """Movies show one "Watched on" date; start_date rides along hidden."""
+        form = MovieForm()
+
+        self.assertEqual(
+            [field.name for field in form.main_fields()],
+            ["score", "status", "end_date"],
+        )
+        self.assertEqual(form.fields["end_date"].label, "Watched on")
+        self.assertIn("start_date", [f.name for f in form.hidden_fields()])
+        self.assertEqual(form.detail_fields(), [])
+
+    def test_anime_form_tucks_dates_into_details(self):
+        """Range media keep both dates in the collapsible details block."""
+        form = AnimeForm()
+
+        self.assertEqual(
+            [field.name for field in form.detail_fields()],
+            ["start_date", "end_date"],
+        )
+        self.assertFalse(form.details_open())
 
     def test_valid_season_form(self):
         """Test the season form with valid data."""
