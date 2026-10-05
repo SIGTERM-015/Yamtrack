@@ -18,13 +18,15 @@ For the default SQLite setup:
 curl -LO https://raw.githubusercontent.com/FuzzyGrim/Yamtrack/release/docker-compose.yml
 ```
 
-SQLite is enough for most personal installs. It stores the database in the local `db` directory created beside the Compose file.
+SQLite is enough for most personal installs. It stores the database in the local `db` directory created beside the Compose file, together with uploaded images (such as profile avatars) under `db/media`.
 
 If you prefer PostgreSQL, download the PostgreSQL example instead:
 
 ```bash
 curl -LO https://raw.githubusercontent.com/FuzzyGrim/Yamtrack/release/docker-compose.postgres.yml
 ```
+
+With PostgreSQL, uploaded images are kept in the local `media` directory, mounted at `/yamtrack/db/media`. Keep that volume: without it uploaded images are lost when the container is recreated.
 
 ## 2) Update the environment values
 

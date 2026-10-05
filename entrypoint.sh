@@ -35,6 +35,9 @@ sed -i \
     -e "s/listen \[::\]:[0-9]\{1,5\};/listen [::]:${YAMTRACK_INTERNAL_PORT};/" \
     /etc/nginx/nginx.conf /etc/nginx/nginx.ipv6.conf
 
+# Uploads live inside the persisted db volume; nginx serves them from there.
+mkdir -p db/media
+
 chown abc:abc /yamtrack
 chown -R abc:abc db
 chown -R abc:abc staticfiles

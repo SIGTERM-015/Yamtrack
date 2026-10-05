@@ -369,9 +369,11 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
-# Media files (user uploads, e.g. profile avatars)
+# Media files (user uploads, e.g. profile avatars). They live inside db/ so the
+# volume that persists the database persists them too; in the Docker image
+# nginx serves them from there (see nginx.conf).
 MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = BASE_DIR / "db" / "media"
 
 if BASE_URL:
     STATIC_URL = f"{BASE_URL}/static/"
