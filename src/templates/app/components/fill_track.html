@@ -10,9 +10,7 @@
   </div>
 
   <form hx-post="{% url 'media_save' %}?next={{ return_url }}"
-        hx-swap="none"
-        x-data="mediaForm"
-        x-init="init">
+        hx-swap="none">
     {% csrf_token %}
     {% for field in form.hidden_fields %}{{ field }}{% endfor %}
 
