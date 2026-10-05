@@ -57,15 +57,13 @@
                   hx-trigger="click once"
                   @click="listsOpen = true">{% include "app/icons/list-add.svg" with classes="w-4 h-4" %}</button>
 
-          {# Groups Button #}
-          {% if request.user.joined_groups.exists %}
+          {# Groups Button: one click adds to the only or last used group #}
+          {% if user_groups %}
             <button class="p-2.5 bg-sky-600 text-white rounded-full hover:bg-sky-500 hover:scale-110 hover:shadow-[0_0_15px_rgba(14,165,233,0.5)] transition-all duration-200 cursor-pointer"
                     title="Add to group"
-                    hx-get="{% media_view_url 'groups_modal' item %}"
-                    hx-vals='{"return_url": "{{ request.get_full_path|urlencode }}"}'
-                    hx-target="#{% component_id 'groups' item %}"
-                    hx-trigger="click once"
-                    @click="groupsOpen = true">{% include "app/icons/persons.svg" with classes="w-4 h-4" %}</button>
+                    hx-post="{% media_view_url 'group_quick_add' item %}"
+                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                    hx-target="#{% component_id 'groups' item %}">{% include "app/icons/persons.svg" with classes="w-4 h-4" %}</button>
           {% endif %}
 
           {# History Button #}
@@ -106,7 +104,7 @@
   </div>
 
   {# Groups Modal #}
-  {% if request.user.joined_groups.exists %}
+  {% if user_groups %}
     <div x-show="groupsOpen"
          @keydown.escape.window="groupsOpen = false"
          class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">

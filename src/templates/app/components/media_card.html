@@ -1,7 +1,7 @@
 {% load app_tags %}
 
 <div class="{% if secondary_color %}bg-[#39404b]{% else %}bg-[#2a2f35]{% endif %} rounded-lg overflow-hidden shadow-lg relative {% if active %}ring-[1.5px] ring-slate-400{% endif %}"
-     x-data="{ trackOpen: false, listsOpen: false, historyOpen: false }">
+     x-data="{ trackOpen: false, listsOpen: false, groupsOpen: false, historyOpen: false }">
   <div class="relative">
     <a href="{{ item|media_url }}">
       <img alt="{{ title }}"
@@ -60,7 +60,8 @@
       <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover-tap:opacity-100{% if user.clickable_media_cards %} pointer-coarse:hidden{% endif %}">
         <a href="{{ item|media_url }}" class="absolute inset-0"></a>
         {% if request.user == user %}
-          <div class="relative flex items-center justify-center space-x-2.5">
+          {# Four buttons do not fit one row on narrow posters: use a 2x2 grid #}
+          <div class="relative {% if user_groups %}grid grid-cols-2 gap-2.5{% else %}flex items-center justify-center space-x-2.5{% endif %}">
             {% if item.media_type == MediaTypes.EPISODE.value %}
               <button @click="trackOpen = true"
                       class="p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full hover:scale-110 hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all duration-200 cursor-pointer">
@@ -89,6 +90,15 @@
                     hx-target="#{% component_id 'lists' item %}"
                     hx-trigger="click once"
                     @click="listsOpen = true">{% include "app/icons/list-add.svg" with classes="w-4 h-4" %}</button>
+
+            {# Groups Button: one click adds to the only or last used group #}
+            {% if user_groups %}
+              <button class="p-2.5 bg-sky-600 text-white rounded-full hover:bg-sky-500 hover:scale-110 hover:shadow-[0_0_15px_rgba(14,165,233,0.5)] transition-all duration-200 cursor-pointer"
+                      title="Add to group"
+                      hx-post="{% media_view_url 'group_quick_add' item %}"
+                      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                      hx-target="#{% component_id 'groups' item %}">{% include "app/icons/persons.svg" with classes="w-4 h-4" %}</button>
+            {% endif %}
 
             {# History Button #}
             <button class="p-2.5 bg-amber-600 text-white rounded-full hover:bg-amber-500 hover:scale-110 hover:shadow-[0_0_15px_rgba(245,158,11,0.5)] transition-all duration-200 cursor-pointer"
@@ -133,6 +143,18 @@
       <div id="{% component_id 'lists' item %}"></div>
     </div>
   </div>
+
+  {# Groups Modal #}
+  {% if user_groups %}
+    <div x-show="groupsOpen"
+         @keydown.escape.window="groupsOpen = false"
+         class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="w-96 max-h-[90vh] px-4 md:px-0 relative z-60"
+           @click.outside="groupsOpen = false">
+        <div id="{% component_id 'groups' item %}"></div>
+      </div>
+    </div>
+  {% endif %}
 
   {# History Modal #}
   <div x-show="historyOpen"

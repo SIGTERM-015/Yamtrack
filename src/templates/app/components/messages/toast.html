@@ -22,6 +22,16 @@
   {% endif %}
 
   <p class="text-sm font-medium flex-1">{{ message }}</p>
+  {% if action_url %}
+    <button class="text-sm font-semibold underline underline-offset-2 opacity-90 hover:opacity-100 transition-opacity cursor-pointer"
+            hx-get="{{ action_url }}"
+            hx-target="#{{ action_target }}"
+            @htmx:after-request="$el.parentElement.remove()">{{ action_label }}</button>
+  {% endif %}
+  {% if link_url %}
+    <a href="{{ link_url }}"
+       class="text-sm font-semibold underline underline-offset-2 opacity-90 hover:opacity-100 transition-opacity">{{ link_label }}</a>
+  {% endif %}
   <button class="text-current opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
           @click="$el.parentElement.remove()">
     {% include "app/icons/x.svg" with classes="w-4 h-4" %}

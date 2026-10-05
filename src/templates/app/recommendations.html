@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load app_tags %}
 
 {% block title %}
   Recommendations - Yamtrack
@@ -114,16 +115,20 @@
                     <p class="text-sm text-gray-500">Not enough shared ratings yet to explain this pick; ranked by relevance and quality.</p>
                   {% endif %}
                   <div class="mt-auto flex flex-wrap items-center gap-3 pt-2">
-                    <form method="post" action="{% url 'group_recommend_add' group.id %}">
+                    <form method="post"
+                          action="{% media_view_url 'group_quick_add' candidate %}"
+                          hx-post="{% media_view_url 'group_quick_add' candidate %}"
+                          hx-swap="none"
+                          x-data="{ added: false }"
+                          @htmx:after-request="added = $event.detail.successful">
                       {% csrf_token %}
-                      <input type="hidden" name="media_id" value="{{ candidate.media_id }}">
-                      <input type="hidden" name="source" value="{{ candidate.source }}">
-                      <input type="hidden" name="media_type" value="{{ candidate.media_type }}">
-                      {% if candidate.season_number %}<input type="hidden" name="season_number" value="{{ candidate.season_number }}">{% endif %}
+                      <input type="hidden" name="group_id" value="{{ group.id }}">
+                      <input type="hidden" name="fixed" value="1">
+                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
                       <button type="submit"
-                              class="cursor-pointer rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
-                        Add to group
-                      </button>
+                              :disabled="added"
+                              class="cursor-pointer rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-default disabled:bg-emerald-600/20 disabled:text-emerald-400"
+                              x-text="added ? 'Added' : 'Add to group'">Add to group</button>
                     </form>
                     <form method="post" action="{% url 'group_discard_item' group.id %}">
                       {% csrf_token %}
