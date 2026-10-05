@@ -207,6 +207,7 @@ class MediaForm(forms.ModelForm):
     media_id = forms.CharField(widget=forms.HiddenInput(), required=True)
     notes_public = forms.BooleanField(
         required=False,
+        initial=True,
         label="Show this note publicly",
         help_text="Visible as a review on your public profile",
     )
