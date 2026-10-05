@@ -1,7 +1,8 @@
+{% load app_tags %}
 <div class="mb-6 flex flex-wrap gap-4">
   {% for entry in member_volumes %}
     <div class="bg-[#2a2f35] rounded-lg shadow-lg px-4 py-3">
-      <span class="text-gray-400 text-sm">{% include "app/components/user_link.html" with person=entry.user %}</span>
+      <span class="inline-flex items-center gap-2 text-gray-400 text-sm">{% user_avatar entry.user owner=group.owner %}{% include "app/components/user_link.html" with person=entry.user %}</span>
       <span class="ml-2 font-bold">{{ entry.count }}</span>
       <span class="text-gray-500 text-sm">rated</span>
     </div>
@@ -15,7 +16,7 @@
         <tr class="text-left text-gray-400 border-b border-[#3e454d]">
           <th class="p-3">Genre</th>
           {% for member in members %}
-            <th class="p-3 text-center">{% include "app/components/user_link.html" with person=member %}</th>
+            <th class="p-3 text-center"><span class="inline-flex items-center gap-1.5">{% user_avatar member "xs" owner=group.owner %}{% include "app/components/user_link.html" with person=member %}</span></th>
           {% endfor %}
           <th class="p-3 text-center">Average</th>
           <th class="p-3 text-center">Difference</th>

@@ -13,9 +13,7 @@
         <div class="flex items-center">
           <div class="flex -space-x-2 mr-2">
             {% for member in members %}
-              <a href="{% url 'profile' member.username %}"
-                 class="w-6 h-6 rounded-full {% if member == group.owner %}bg-[#4f46e5]{% else %}bg-[#4b5563]{% endif %} flex items-center justify-center border-2 border-[#2a2f35] text-xs font-medium hover:z-10 hover:ring-2 hover:ring-indigo-400"
-                 title="{{ member.username }}">{{ member.username.0|upper }}</a>
+              {% user_avatar member owner=group.owner link=True %}
             {% endfor %}
           </div>
           <span class="text-sm text-gray-400">

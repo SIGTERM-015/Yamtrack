@@ -18,13 +18,9 @@
       <div class="flex items-center gap-4">
         <div class="flex items-center">
           <div class="flex -space-x-2 mr-2">
-            <a href="{% url 'profile' custom_list.owner.username %}"
-               class="w-6 h-6 rounded-full bg-[#4f46e5] flex items-center justify-center border-2 border-[#2a2f35] text-xs font-medium hover:z-10 hover:ring-2 hover:ring-indigo-400"
-               title="{{ custom_list.owner.username }}">{{ custom_list.owner.username.0|upper }}</a>
+            {% user_avatar custom_list.owner owner=custom_list.owner link=True %}
             {% for collaborator in custom_list.collaborators.all %}
-              <a href="{% url 'profile' collaborator.username %}"
-                 class="w-6 h-6 rounded-full bg-[#4b5563] flex items-center justify-center border-2 border-[#2a2f35] text-xs font-medium hover:z-10 hover:ring-2 hover:ring-indigo-400"
-                 title="{{ collaborator.username }}">{{ collaborator.username.0|upper }}</a>
+              {% user_avatar collaborator link=True %}
             {% endfor %}
           </div>
           <span class="text-sm text-gray-400">

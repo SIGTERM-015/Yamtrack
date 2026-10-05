@@ -39,6 +39,7 @@
         {% for member in members %}
           <li class="flex items-center justify-between gap-3">
             <span class="flex items-center gap-2">
+              {% user_avatar member owner=group.owner link=True %}
               <span class="text-sm text-white">{% include "app/components/user_link.html" with person=member %}</span>
               {% if member == group.owner %}
                 <span class="rounded-full bg-[#4f46e5] px-2 py-0.5 text-xs text-white">Owner</span>

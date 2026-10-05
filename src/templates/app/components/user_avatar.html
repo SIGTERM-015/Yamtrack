@@ -1,0 +1,18 @@
+{% comment %}
+  Rendered by the ``user_avatar`` tag. The initial always sits underneath; a
+  photo covers it and removes itself if it fails to load, revealing the initial.
+{% endcomment %}
+{% with tag=link|yesno:"a,span" %}
+  <{{ tag }} {% if link %}href="{% url 'profile' person.username %}" aria-label="{{ person.username }}"{% endif %}
+     title="{{ person.username }}"
+     class="relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full select-none text-white {{ size_classes }} {% if owner %}bg-[#4f46e5]{% else %}bg-[#4b5563]{% endif %} {% if owner and person.avatar %}border-[#4f46e5]{% else %}border-[#2a2f35]{% endif %} {% if link %}hover:z-10 hover:ring-2 hover:ring-indigo-400{% endif %} {{ classes }}">
+    <span aria-hidden="true">{{ person.username.0|upper }}</span>
+    {% if person.avatar %}
+      <img src="{{ person.avatar.url }}"
+           alt=""
+           loading="lazy"
+           class="absolute inset-0 h-full w-full object-cover"
+           onerror="this.remove()">
+    {% endif %}
+  </{{ tag }}>
+{% endwith %}
