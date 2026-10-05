@@ -2,6 +2,14 @@ from django.conf import settings
 from django.db import models
 
 from app.models import Item, Status
+from users.models import validate_image_upload
+
+MAX_BANNER_SIZE = 5 * 1024 * 1024  # 5 MB
+
+
+def validate_banner(image):
+    """Reject banners that are too large or not a supported image format."""
+    validate_image_upload(image, max_size=MAX_BANNER_SIZE, label="Banner")
 
 
 class Group(models.Model):
@@ -13,6 +21,12 @@ class Group(models.Model):
 
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, default="")
+    banner = models.ImageField(
+        upload_to="group_banners/",
+        blank=True,
+        validators=[validate_banner],
+        help_text="Cover image (max 5 MB, JPEG/PNG/WEBP/GIF).",
+    )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
