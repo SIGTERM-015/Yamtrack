@@ -30,6 +30,11 @@
               {% include "app/icons/cube.svg" with classes="w-4 h-4" %}
               {{ item.media_type|default_source }}
             </span>
+
+            {% if item.is_anime %}
+              <span class="bg-gray-900/90 text-indigo-300 text-xs font-medium px-2 py-0.5 rounded-md"
+                    title="Looks like anime: Anime search has better metadata">Anime</span>
+            {% endif %}
           </div>
         </div>
 

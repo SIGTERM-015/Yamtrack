@@ -518,6 +518,14 @@ def media_search(request):
         "source": source,
         "media_type": media_type,
         "layout": layout,
+        "query": query,
+        # TMDB also returns anime; point users at the dedicated anime search.
+        "suggest_anime_search": (
+            MediaTypes.ANIME.value in request.user.get_enabled_media_types()
+            and any(
+                result["item"].get("is_anime") for result in data.get("results", [])
+            )
+        ),
     }
 
     return render(request, "app/search.html", context)

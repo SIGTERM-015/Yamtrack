@@ -51,6 +51,11 @@
       </div>
     {% endif %}
 
+    {% if item.is_anime %}
+      <div class="absolute {% if media.repeats > 1 %}bottom-10{% else %}bottom-2{% endif %} right-2 bg-gray-900/90 text-indigo-300 text-xs font-medium px-2 py-1 rounded-md shadow-md"
+           title="Looks like anime: Anime search has better metadata">Anime</div>
+    {% endif %}
+
     {% with user=target_user|default:user %}
       <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover-tap:opacity-100{% if user.clickable_media_cards %} pointer-coarse:hidden{% endif %}">
         <a href="{{ item|media_url }}" class="absolute inset-0"></a>

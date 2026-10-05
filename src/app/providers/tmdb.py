@@ -16,6 +16,8 @@ base_params = {
     "api_key": settings.TMDB_API,
     "language": settings.TMDB_LANG,
 }
+# TMDB's genre id for Animation, shared by its movie and TV genre lists.
+ANIMATION_GENRE_ID = 16
 
 
 def handle_error(error):
@@ -72,7 +74,8 @@ def get_external_links(external_ids, tmdb_id=None):
 
 def search(media_type, query, page):
     """Search for media on TMDB."""
-    cache_key = f"search_{Sources.TMDB.value}_{media_type}_{query}_{page}"
+    # v2: results carry ``is_anime``; older cached pages lack it.
+    cache_key = f"search_v2_{Sources.TMDB.value}_{media_type}_{query}_{page}"
     data = cache.get(cache_key)
 
     if data is None:
@@ -104,6 +107,7 @@ def search(media_type, query, page):
                 "media_type": media_type,
                 "title": get_title(media),
                 "image": get_image_url(media["poster_path"]),
+                "is_anime": looks_like_anime(media),
             }
             for media in response["results"]
         ]
@@ -120,6 +124,19 @@ def search(media_type, query, page):
         cache.set(cache_key, data)
 
     return data
+
+
+def looks_like_anime(media):
+    """Return whether a TMDB search result is Japanese animation.
+
+    TMDB lists anime alongside other shows and movies, while MyAnimeList is the
+    better source for it, so search flags these results to point users there.
+    """
+    is_animation = ANIMATION_GENRE_ID in media.get("genre_ids", [])
+    is_japanese = media.get("original_language") == "ja" or "JP" in media.get(
+        "origin_country", []
+    )
+    return is_animation and is_japanese
 
 
 def find(external_id, external_source):
