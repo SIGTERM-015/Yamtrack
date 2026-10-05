@@ -173,6 +173,26 @@ class QuickAddTest(TestCase):
         self.assertContains(response, "Added to Friends")
         self.assertNotContains(response, "Change")
 
+    def test_each_toast_changes_its_own_add(self):
+        """Adding A then B, A's Change still moves A, not just the latest add."""
+        friends = self.add_friends_group()
+        other = Item.objects.create(
+            media_id="202",
+            source=Sources.TMDB.value,
+            media_type=MediaTypes.TV.value,
+            title="Other",
+        )
+        other_url = reverse("group_quick_add", args=["tmdb", "tv", "202"])
+        self.post(self.url, {"group_id": friends.id})
+        self.post(other_url, {"group_id": friends.id})
+
+        response = self.post(self.url, {"group_id": self.couple.id, "change": "1"})
+
+        self.assertContains(response, "Moved to Couple")
+        self.assertFalse(self.in_group(friends))
+        self.assertTrue(self.in_group(self.couple))
+        self.assertTrue(GroupItem.objects.filter(group=friends, item=other).exists())
+
     def test_change_picker_offers_move(self):
         """The toast's Change link opens the picker in move mode."""
         self.add_friends_group()

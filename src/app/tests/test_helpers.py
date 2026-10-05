@@ -3,9 +3,10 @@ from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
+from app import helpers
 from app.helpers import (
     build_absolute_app_url,
     enrich_items_with_user_data,
@@ -318,3 +319,31 @@ class EnrichItemsWithUserDataTest(TestCase):
             self.request, raw_items, "recommendations"
         )
         self.assertEqual(len(enriched_items), 2)
+
+
+class SafeNextTests(TestCase):
+    """``safe_next`` only follows ``next`` back to this site."""
+
+    def setUp(self):
+        """Build requests against testserver."""
+        self.factory = RequestFactory()
+
+    def next_for(self, value):
+        """Resolve ``next=value`` with ``/fallback`` as the default."""
+        request = self.factory.post("/", {"next": value})
+        return helpers.safe_next(request, "/fallback")
+
+    def test_relative_path_is_kept(self):
+        """A same-site path is followed."""
+        self.assertEqual(self.next_for("/groups/1/?tab=x"), "/groups/1/?tab=x")
+
+    def test_offsite_urls_fall_back(self):
+        """Absolute, protocol-relative and backslash tricks are all rejected."""
+        for value in (
+            "https://evil.example/",
+            "//evil.example/",
+            "/\\evil.example/",
+            "javascript:alert(1)",
+        ):
+            with self.subTest(value=value):
+                self.assertEqual(self.next_for(value), "/fallback")

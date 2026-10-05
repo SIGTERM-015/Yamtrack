@@ -20,8 +20,10 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
+from app import helpers
 from app.discards import discarded_item_ids
 from app.models import Item, MediaTypes, Status
 from app.providers import services
@@ -437,7 +439,4 @@ def roulette_start(request):
         apply_status_to_user(item, request.user, Status.IN_PROGRESS)
         messages.success(request, f'"{item.title}" is now in progress.')
 
-    next_url = request.POST.get("next") or "/roulette"
-    if not next_url.startswith("/"):
-        next_url = "/roulette"
-    return redirect(next_url)
+    return redirect(helpers.safe_next(request, reverse("roulette")))

@@ -10,11 +10,10 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_POST
 
-from app import config
+from app import config, helpers
 from app.models import Item, MediaTypes, Status
 from app.providers import services as provider_services
 from groups import discards as discard_service
@@ -664,30 +663,20 @@ def group_episodes_modal(request, group_id, item_id):
     )
 
 
-def _is_safe_url(request, url):
-    """Whether ``url`` points back to this site."""
-    return url_has_allowed_host_and_scheme(
-        url,
-        allowed_hosts={request.get_host()},
-        require_https=request.is_secure(),
-    )
-
-
-def _safe_next(request, default):
-    """Return ``next`` (POST or GET) if it points to this site, else ``default``."""
-    next_url = request.POST.get("next") or request.GET.get("next")
-    return next_url if _is_safe_url(request, next_url) else default
-
-
 def _safe_referer(request):
     """Return the Referer if it points to this site, else ``None``."""
     referer = request.headers.get("Referer")
-    return referer if _is_safe_url(request, referer) else None
+    return referer if helpers.is_safe_url(request, referer) else None
 
 
-# Session key holding the GroupItem the last quick add created, so "Change"
-# can move it elsewhere without touching items the user added on purpose.
+# Session key mapping item id -> the GroupItem quick add created for it, so each
+# toast's "Change" moves its own add without touching items added on purpose.
 _QUICK_ADD_UNDO = "group_quick_add_undo"
+
+
+def _undo_ids(request):
+    """Return the session's ``{item_id: group_item_id}`` quick add undo map."""
+    return request.session.setdefault(_QUICK_ADD_UNDO, {})
 
 
 def _render_group_picker(request, item, *, change=False):
@@ -732,7 +721,7 @@ def _undo_quick_add(request, item, target_group):
     """
     group_item = (
         GroupItem.objects.filter(
-            id=request.session.get(_QUICK_ADD_UNDO),
+            id=_undo_ids(request).get(str(item.id)),
             item=item,
             group__members=request.user,
             status=Status.PLANNING.value,
@@ -745,7 +734,8 @@ def _undo_quick_add(request, item, target_group):
     if group_item is None:
         return None
     group_item.delete()
-    del request.session[_QUICK_ADD_UNDO]
+    _undo_ids(request).pop(str(item.id))
+    request.session.modified = True
     return group_item.group
 
 
@@ -802,7 +792,7 @@ def group_quick_add(
         season_number,
         episode_number,
     )
-    back = _safe_next(request, _safe_referer(request) or reverse("home"))
+    back = helpers.safe_next(request, _safe_referer(request) or reverse("home"))
     if membership is None:
         if request.headers.get("HX-Request"):
             return _render_group_picker(request, item)
@@ -815,12 +805,14 @@ def group_quick_add(
         moved_from = _undo_quick_add(request, item, group)
     group_item = GroupItem.objects.filter(group=group, item=item).first()
     added = group_item is None
+    undo_ids = _undo_ids(request)
     if added:
         group_item, _ = add_item_to_group(group, item, request.user)
-        request.session[_QUICK_ADD_UNDO] = group_item.id
-    elif request.session.get(_QUICK_ADD_UNDO) != group_item.id:
+        undo_ids[str(item.id)] = group_item.id
+    elif undo_ids.get(str(item.id)) != group_item.id:
         # The item was already there: "Change" must never take it out.
-        request.session.pop(_QUICK_ADD_UNDO, None)
+        undo_ids.pop(str(item.id), None)
+    request.session.modified = True
 
     membership.quick_added_at = timezone.now()
     membership.save(update_fields=["quick_added_at"])
@@ -1074,7 +1066,7 @@ def group_discard_item(request, group_id):
 
     item = _resolve_group_item(request)
     discard_service.discard_group_item(group, item, request.user)
-    next_url = _safe_next(request, reverse("group_detail", args=[group.id]))
+    next_url = helpers.safe_next(request, reverse("group_detail", args=[group.id]))
     separator = "&" if "?" in next_url else "?"
     query = urlencode({"discarded_item": item.id, "discarded_title": item.title})
     return redirect(f"{next_url}{separator}{query}")
@@ -1093,7 +1085,7 @@ def group_restore_item(request, group_id):
     discard_service.restore_group_item(group, item)
     messages.success(request, f'"{item.title}" is back for the group.')
     default_next = f"{reverse('group_detail', args=[group.id])}?tab=discarded"
-    return redirect(_safe_next(request, default_next))
+    return redirect(helpers.safe_next(request, default_next))
 
 
 @login_required

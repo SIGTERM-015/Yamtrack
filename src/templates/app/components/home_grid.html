@@ -6,7 +6,7 @@
   {% component_id 'history' media.item as history_component_id %}
   <div id="home-media-{{ media.item.media_type }}-{{ media.id }}"
        class="bg-[#2a2f35] rounded-lg overflow-hidden shadow-lg transition-all duration-300"
-       x-data="{ trackOpen: false, listsOpen: false, groupsOpen: false, historyOpen: false }">
+       x-data="{ trackOpen: false, listsOpen: false, groupsOpen: false, groupsReturnFocus: null, historyOpen: false }">
     <div class="relative">
       <a href="{{ media.item|media_url }}">
         <img alt="{{ media }}"
