@@ -73,7 +73,7 @@ class GroupEpisodesModalTest(TestCase):
 
         self.assertRedirects(
             response,
-            reverse("group_detail", args=[self.group.id]) + "?tab=watching",
+            reverse("group_detail", args=[self.group.id]) + "?tab=in_progress",
         )
         self.group_item.refresh_from_db()
         self.assertEqual(self.group_item.progress, 2)
@@ -156,10 +156,10 @@ class GroupCardPolishTest(TestCase):
             meta.return_value = {"max_progress": 1}
             response = self.client.post(
                 reverse("group_set_item_status", args=[self.group.id]),
-                {"item_id": self.item.id, "status": "In progress", "tab": "pending"},
+                {"item_id": self.item.id, "status": "In progress", "tab": "planning"},
             )
         self.assertRedirects(
-            response, reverse("group_detail", args=[self.group.id]) + "?tab=pending"
+            response, reverse("group_detail", args=[self.group.id]) + "?tab=planning"
         )
 
     def test_add_item_redirects_back_to_group(self):

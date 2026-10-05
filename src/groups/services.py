@@ -167,8 +167,8 @@ def add_item_to_group(group: Group, item, added_by, status=Status.PLANNING) -> t
     """
     Add an item to a group, creating ``status`` only for members without it.
 
-    Adding a title to the group's *to watch* adds it to every member's own
-    *to watch* without touching members who already track it: existing
+    Adding a title to the group's Planning adds it to every member's own
+    Planning without touching members who already track it: existing
     records keep their status, progress, score and notes intact. Unlike
     :func:`apply_status_to_group_members` (an explicit status change), this
     never updates existing entries.
@@ -607,10 +607,13 @@ def mark_group_item_status(
     return group_item
 
 
+# Status tabs of the group screen, in display order. Paused and Dropped share
+# "other" so the three main tabs keep the global status semantics.
+GROUP_TABS = ("planning", "in_progress", "completed", "other")
 _TAB_STATUS_BUCKETS = {
-    Status.PLANNING.value: "pending",
-    Status.IN_PROGRESS.value: "watching",
-    Status.COMPLETED.value: "watched",
+    Status.PLANNING.value: "planning",
+    Status.IN_PROGRESS.value: "in_progress",
+    Status.COMPLETED.value: "completed",
 }
 
 
@@ -618,20 +621,18 @@ def get_group_tab_items(group: Group) -> dict:
     """
     Classify a group's items into tabs from the group's own status.
 
-    Planning goes to pending, In progress to watching, Completed to
-    watched; Paused and Dropped fall into others (never mixed into the
-    three main tabs).
+    Planning, In progress and Completed each get their own tab; Paused and
+    Dropped fall into ``other`` (never mixed into the three main tabs).
 
     Args:
         group: The Group instance.
 
     Returns:
-        A dict with ``pending``/``watching``/``watched``/``others`` lists
-        of GroupItem.
+        A dict keyed by ``GROUP_TABS`` with lists of GroupItem.
     """
-    tabs = {"pending": [], "watching": [], "watched": [], "others": []}
+    tabs = {key: [] for key in GROUP_TABS}
     for group_item in group.group_items.select_related("item").all():
-        tabs[_TAB_STATUS_BUCKETS.get(group_item.status, "others")].append(
+        tabs[_TAB_STATUS_BUCKETS.get(group_item.status, "other")].append(
             group_item,
         )
     return tabs

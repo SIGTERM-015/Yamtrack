@@ -123,15 +123,15 @@ class GroupReadTests(GroupApiTestCase):
         """``tab`` buckets by the group's own status; bad tabs are rejected."""
         self.movie_gi.status = Status.IN_PROGRESS.value
         self.movie_gi.save()
-        watching = self.call_api(
+        in_progress = self.call_api(
             "get",
             "api_group_items",
             args=(self.group.id,),
-            params={"tab": "watching"},
+            params={"tab": "in_progress"},
             headers=self.auth_headers,
         )
         self.assertEqual(
-            [r["item"]["title"] for r in watching.json()["results"]], ["Group Movie"]
+            [r["item"]["title"] for r in in_progress.json()["results"]], ["Group Movie"]
         )
         bad = self.call_api(
             "get",

@@ -258,7 +258,7 @@ paths:
           name: tab
           schema:
             type: string
-            enum: [pending, watching, watched, others]
+            enum: [planning, in_progress, completed, other]
           description: Bucket by the group's own status (Planning, In progress, Completed, Paused/Dropped)
         - in: query
           name: limit

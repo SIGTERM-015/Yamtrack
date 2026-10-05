@@ -20,6 +20,7 @@ from app.models import Item, MediaTypes, Status
 from groups import discards as discard_service
 from groups.models import Group, GroupItem
 from groups.services import (
+    GROUP_TABS,
     add_item_to_group,
     episodes_up_to,
     get_group_progress,
@@ -31,8 +32,6 @@ from lists.views import get_or_create_item
 
 from .helpers import check_source_type, paginate_data, parse_limit_offset
 from .serializers import ItemSerializer
-
-GROUP_TABS = ("pending", "watching", "watched", "others")
 
 
 def _bad_request(detail):

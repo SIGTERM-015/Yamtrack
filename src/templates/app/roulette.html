@@ -10,7 +10,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-3xl font-bold">
         {% include "app/icons/cube.svg" with classes="inline w-7 h-7 text-indigo-400 -mt-1 mr-1" %}
-        What should we watch?
+        What's next?
       </h1>
       {% if group %}
         <a href="{% url 'group_detail' group.id %}" class="text-sm text-indigo-300 hover:text-white">
@@ -163,7 +163,7 @@
               <p class="text-sm text-gray-400">{{ result_genres|join:", " }}</p>
             {% endif %}
             {% if group_seen %}
-              <p class="text-xs text-amber-300">{{ group_seen.seen }}/{{ group_seen.total }} members have seen this</p>
+              <p class="text-xs text-amber-300">{{ group_seen.seen }}/{{ group_seen.total }} members already started this</p>
             {% endif %}
             <div class="flex flex-wrap justify-center gap-3 pt-3">
               <form method="post" action="{% url 'roulette_start' %}">
@@ -173,7 +173,7 @@
                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
                 <button type="submit"
                         class="cursor-pointer rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700">
-                  Start watching
+                  Start now
                 </button>
               </form>
               <form method="post"
