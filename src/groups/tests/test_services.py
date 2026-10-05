@@ -163,6 +163,61 @@ class GroupProgressServiceTest(TestCase):
         res = get_group_progress(self.group)
         self.assertEqual(res[self.tv_item.id]["members"][self.user1.id]["progress"], 0)
 
+    def test_progress_season_counts_its_episodes(self):
+        """A season in the group reports each member's watched episodes."""
+        TV.objects.bulk_create(
+            [TV(user=self.user1, item=self.tv_item, status=Status.IN_PROGRESS)]
+        )
+        tv1 = TV.objects.get(user=self.user1, item=self.tv_item)
+        season_item = Item.objects.create(
+            media_id="t1",
+            title="TV 1",
+            media_type="season",
+            season_number=1,
+            source="tmdb",
+        )
+        GroupItem.objects.create(
+            group=self.group, item=season_item, added_by=self.user1
+        )
+        Season.objects.bulk_create(
+            [
+                Season(
+                    user=self.user1,
+                    item=season_item,
+                    related_tv=tv1,
+                    status=Status.IN_PROGRESS,
+                ),
+            ]
+        )
+        season = Season.objects.get(user=self.user1, item=season_item)
+        episodes = [
+            Item.objects.create(
+                media_id="t1",
+                title=f"Ep {number}",
+                media_type="episode",
+                source="tmdb",
+                season_number=1,
+                episode_number=number,
+            )
+            for number in (1, 2)
+        ]
+        Episode.objects.bulk_create(
+            [Episode(item=episode, related_season=season) for episode in episodes]
+            # A rewatch of episode 1 does not count twice.
+            + [Episode(item=episodes[0], related_season=season)]
+        )
+
+        res = get_group_progress(self.group)
+
+        self.assertEqual(
+            res[season_item.id]["members"][self.user1.id],
+            {"status": Status.IN_PROGRESS.value, "progress": 2},
+        )
+        self.assertEqual(
+            res[season_item.id]["members"][self.user2.id],
+            {"status": None, "progress": 0},
+        )
+
     def test_query_efficiency(self):
         """Test query efficiency with assertNumQueries."""
         # We expect exactly 4 queries:

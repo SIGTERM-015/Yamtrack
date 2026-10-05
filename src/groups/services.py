@@ -62,30 +62,30 @@ def get_group_progress(group: Group) -> dict:
 
         # If TV show, we must calculate progress from the related episodes,
         # explicitly excluding season 0.
-        if media_type.lower() == "tv":
+        if media_type == MediaTypes.TV.value:
             qs = qs.annotate(
-                calculated_progress=models.Count(
+                progress_value=models.Count(
                     "seasons__episodes",
                     filter=models.Q(seasons__item__season_number__gt=0),
                 )
-            ).values("item_id", "user_id", "status", "calculated_progress")
+            )
+        # A season has no progress column either: count its distinct episodes.
+        elif media_type == MediaTypes.SEASON.value:
+            qs = qs.annotate(
+                progress_value=models.Count("episodes__item", distinct=True),
+            )
         else:
-            qs = qs.values("item_id", "user_id", "status", "progress")
+            qs = qs.annotate(progress_value=models.F("progress"))
+        qs = qs.values("item_id", "user_id", "status", "progress_value")
 
         for row in qs:
             item_id = row["item_id"]
             user_id = row["user_id"]
             status = row["status"]
 
-            # Map the right progress field
-            if media_type.lower() == "tv":
-                progress = row.get("calculated_progress", 0)
-            else:
-                progress = row.get("progress", 0)
-
             result[item_id]["members"][user_id] = {
                 "status": status,
-                "progress": progress,
+                "progress": row["progress_value"],
             }
             if status == Status.COMPLETED.value:
                 result[item_id]["completed_count"] += 1
