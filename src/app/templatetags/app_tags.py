@@ -254,6 +254,18 @@ def status_icon(status):
 
 
 @register.filter
+def status_section_icon(status):
+    """Return the summary pill icon of a status section header."""
+    return config.get_status_section_icon(status)
+
+
+@register.filter
+def status_section_gradient(status):
+    """Return the divider gradient classes of a status section header."""
+    return config.get_status_section_gradient(status)
+
+
+@register.filter
 def status_background_color(status):
     """Return the background color associated with the status."""
     return config.get_status_background_color(status)

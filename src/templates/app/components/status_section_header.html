@@ -1,0 +1,32 @@
+{% comment %}
+Header of a status section: status icon and name, an item count pill and a
+divider in the status colour. Include with `status` (a Status value) and
+`count`. Shared by the home page and the group page.
+{% endcomment %}
+{% load app_tags %}
+
+{% with status_text_color=status|status_color %}
+  <div class="space-y-4">
+    <div class="flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#39404b] {{ status_text_color }}">
+          {% include status|status_icon with classes="h-5 w-5" %}
+        </div>
+        <div>
+          <h2 class="text-2xl font-semibold text-white">{{ status|media_status_readable|title }}</h2>
+        </div>
+      </div>
+      <span class="inline-flex items-center gap-2 rounded-full border border-gray-700 bg-[#39404b] px-3 py-1 text-sm text-gray-300">
+        {% with icon_classes="h-4 w-4 "|add:status_text_color %}
+          {% include status|status_section_icon with classes=icon_classes %}
+        {% endwith %}
+        {{ count }} item{{ count|pluralize }}
+      </span>
+    </div>
+    <div class="relative h-px overflow-hidden rounded-full bg-gray-700/80">
+      <div class="absolute inset-y-0 left-0 w-full bg-linear-to-r {{ status|status_section_gradient }}"></div>
+      <div class="absolute top-1/2 left-0 h-1.5 w-1.5 -translate-y-1/2 rounded-full {{ status|status_background_color }}">
+      </div>
+    </div>
+  </div>
+{% endwith %}
