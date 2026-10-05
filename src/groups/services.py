@@ -4,6 +4,8 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models, transaction
+from django.db.models import Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from app import providers
@@ -91,6 +93,23 @@ def get_group_progress(group: Group) -> dict:
     return result
 
 
+# The bulk helpers below use update()/bulk_create, which bypass Model.save():
+# its process_status() hook would call the metadata provider for titles we
+# already have locally. These two apply the same status dates it fills in.
+def _status_create(model, status_value) -> dict:
+    """Return the field values for a new record created in ``status_value``."""
+    return {"status": status_value, **model.status_date_defaults(status_value)}
+
+
+def _status_update(model, status_value) -> dict:
+    """Return update() kwargs for ``status_value``, keeping existing dates."""
+    dates = model.status_date_defaults(status_value)
+    return {
+        "status": status_value,
+        **{field: Coalesce(field, Value(value)) for field, value in dates.items()},
+    }
+
+
 def apply_status_to_group_members(group: Group, item, status) -> dict:
     """
     Apply a status to every member of a group without overwriting existing data.
@@ -124,11 +143,15 @@ def apply_status_to_group_members(group: Group, item, status) -> dict:
     for user_id in member_ids:
         entry = existing.get(user_id)
         if entry is None:
-            to_create.append(model(item=item, user_id=user_id, status=status_value))
+            to_create.append(
+                model(item=item, user_id=user_id, **_status_create(model, status_value))
+            )
         elif entry.status == status_value:
             skipped += 1
         else:
-            updated += model.objects.filter(pk=entry.pk).update(status=status_value)
+            updated += model.objects.filter(pk=entry.pk).update(
+                **_status_update(model, status_value),
+            )
 
     if to_create:
         model.objects.bulk_create(to_create)
@@ -153,13 +176,15 @@ def apply_status_to_user(item, user, status) -> dict:
     """
     status_value = status.value if hasattr(status, "value") else status
     model = apps.get_model("app", item.media_type)
-    updated = model.objects.filter(item=item, user=user).update(status=status_value)
+    updated = model.objects.filter(item=item, user=user).update(
+        **_status_update(model, status_value),
+    )
     if updated:
         return {"created": 0, "updated": updated}
 
-    # bulk_create bypasses Model.save(), whose process_status() hook would
-    # call the metadata provider for a title we already have locally.
-    model.objects.bulk_create([model(item=item, user=user, status=status_value)])
+    model.objects.bulk_create(
+        [model(item=item, user=user, **_status_create(model, status_value))],
+    )
     return {"created": 1, "updated": 0}
 
 
@@ -198,7 +223,7 @@ def add_item_to_group(group: Group, item, added_by, status=Status.PLANNING) -> t
         )
     )
     to_create = [
-        model(item=item, user_id=user_id, status=status_value)
+        model(item=item, user_id=user_id, **_status_create(model, status_value))
         for user_id in member_ids
         if user_id not in existing_ids
     ]

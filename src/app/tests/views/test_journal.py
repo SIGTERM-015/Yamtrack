@@ -98,9 +98,10 @@ class JournalViewTests(TestCase):
             for entry in response.context["entries"]
             for change in entry["changes"]
         ]
-        self.assertIn("Finished watching", descriptions)
+        # Status changes stamp their date server-side, so entries carry the date.
+        self.assertTrue(any(d.startswith("Finished on ") for d in descriptions))
         self.assertIn("Rated 8.0/10", descriptions)
-        self.assertIn("Marked as currently watching", descriptions)
+        self.assertTrue(any(d.startswith("Started on ") for d in descriptions))
 
         # Newest activity is first
         self.assertEqual(
@@ -118,11 +119,10 @@ class JournalViewTests(TestCase):
             for change in entry["changes"]
         }
         # The movie was created in progress and then completed.
-        self.assertEqual(accents["Finished watching"], Status.COMPLETED.value)
-        self.assertEqual(
-            accents["Marked as currently watching"],
-            Status.IN_PROGRESS.value,
-        )
+        finished = next(d for d in accents if d.startswith("Finished on "))
+        self.assertEqual(accents[finished], Status.COMPLETED.value)
+        started = next(d for d in accents if d.startswith("Started on "))
+        self.assertEqual(accents[started], Status.IN_PROGRESS.value)
 
     def test_journal_entries_expose_history_id(self):
         """Each entry carries its history record id for deletion."""

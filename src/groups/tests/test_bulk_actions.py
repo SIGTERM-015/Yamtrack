@@ -8,7 +8,11 @@ from django.utils import timezone
 
 from app.models import Item, Movie, Status
 from groups.models import Group, GroupItem, GroupMembership
-from groups.services import add_item_to_group, apply_status_to_group_members
+from groups.services import (
+    add_item_to_group,
+    apply_status_to_group_members,
+    apply_status_to_user,
+)
 
 User = get_user_model()
 
@@ -97,6 +101,46 @@ class GroupBulkStatusTest(TestCase):
         self.assertEqual(
             Movie.objects.filter(user=self.owner, item=self.movie).count(), 1
         )
+
+    def test_bulk_completed_stamps_missing_end_dates(self):
+        """Completing via the bulk path dates every record that lacked one."""
+        watched_at = timezone.now() - timedelta(days=90)
+        Movie.objects.bulk_create(
+            [
+                Movie(user=self.alice, item=self.movie, status=Status.PLANNING),
+                Movie(
+                    user=self.bob,
+                    item=self.movie,
+                    status=Status.PAUSED,
+                    end_date=watched_at,
+                ),
+            ]
+        )
+
+        apply_status_to_group_members(self.group, self.movie, Status.COMPLETED)
+
+        for user in (self.owner, self.alice):
+            entry = Movie.objects.get(user=user, item=self.movie)
+            self.assertIsNotNone(entry.end_date)
+            self.assertIsNone(entry.start_date)
+        bob = Movie.objects.get(user=self.bob, item=self.movie)
+        self.assertEqual(bob.end_date, watched_at)
+
+    def test_apply_status_to_user_stamps_dates(self):
+        """The individual action dates new and existing records, never overwriting."""
+        started_at = timezone.now() - timedelta(days=3)
+
+        apply_status_to_user(self.movie, self.alice, Status.IN_PROGRESS)
+        alice = Movie.objects.get(user=self.alice, item=self.movie)
+        self.assertIsNotNone(alice.start_date)
+        self.assertIsNone(alice.end_date)
+
+        Movie.objects.filter(pk=alice.pk).update(start_date=started_at)
+        apply_status_to_user(self.movie, self.alice, Status.COMPLETED)
+        apply_status_to_user(self.movie, self.alice, Status.IN_PROGRESS)
+        alice.refresh_from_db()
+        self.assertEqual(alice.start_date, started_at)
+        self.assertIsNotNone(alice.end_date)
 
     def test_bulk_action_is_idempotent(self):
         """Running the action twice does not duplicate or change entries."""
