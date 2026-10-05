@@ -7,6 +7,7 @@ from django.db import models, transaction
 from django.db.models import Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
+from django.utils.text import slugify
 
 from app import providers
 from app.models import Item, MediaTypes, Status
@@ -661,6 +662,58 @@ def get_group_tab_items(group: Group) -> dict:
             group_item,
         )
     return tabs
+
+
+# Status sections on the group page: the home page's In Progress and Planning
+# first, then the rest of the statuses.
+GROUP_SECTION_STATUSES = (
+    Status.IN_PROGRESS.value,
+    Status.PLANNING.value,
+    Status.COMPLETED.value,
+    Status.PAUSED.value,
+    Status.DROPPED.value,
+)
+# Media types inside a section follow the app's media type order.
+_SECTION_MEDIA_TYPES = tuple(
+    media_type
+    for media_type in MediaTypes.values
+    if media_type != MediaTypes.EPISODE.value
+)
+
+
+def get_group_sections(group: Group) -> list[dict]:
+    """
+    Classify a group's items by the group's own status, then by media type.
+
+    Args:
+        group: The Group instance.
+
+    Returns:
+        One dict per status in ``GROUP_SECTION_STATUSES`` order, empty ones
+        included: ``{"status": str, "id": str, "count": int, "media_types":
+        [...]}`` (``id`` is the section's anchor),
+        where each media type entry is ``{"media_type": str, "items":
+        [GroupItem, ...]}`` and only types with items are listed.
+    """
+    by_status = {status: defaultdict(list) for status in GROUP_SECTION_STATUSES}
+    # Newest additions first, like the recent-first lists elsewhere.
+    group_items = group.group_items.select_related("item").order_by("-added_at", "-id")
+    for group_item in group_items:
+        by_status[group_item.status][group_item.item.media_type].append(group_item)
+
+    return [
+        {
+            "status": status,
+            "id": slugify(status),
+            "count": sum(len(items) for items in by_type.values()),
+            "media_types": [
+                {"media_type": media_type, "items": by_type[media_type]}
+                for media_type in _SECTION_MEDIA_TYPES
+                if by_type[media_type]
+            ],
+        }
+        for status, by_type in by_status.items()
+    ]
 
 
 # --- S4: TV propagation (episode-based) -------------------------------------

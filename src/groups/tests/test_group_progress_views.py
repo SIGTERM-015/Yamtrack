@@ -128,50 +128,58 @@ class GroupDetailTabsTest(TestCase):
 
         self.client.login(username="alice", password="pw")  # noqa: S106
 
-    def test_default_tab_is_planning(self):
-        """Without ?tab=, the Planning tab is shown."""
-        response = self.client.get(reverse("group_detail", args=[self.group.id]))
-        self.assertEqual(response.context["tab"], "planning")
-        self.assertContains(response, "Pending Movie")
-        self.assertNotContains(response, "Watching Movie")
+    def _section_titles(self, response):
+        return {
+            section["status"]: [
+                data["item"].title
+                for media_type in section["media_types"]
+                for data in media_type["items"]
+            ]
+            for section in response.context["sections"]
+        }
 
-    def test_tabs_use_the_global_status_labels(self):
-        """Tabs read like the rest of the app, not like a watchlist."""
+    def test_sections_follow_the_group_status(self):
+        """Each item sits in the section of the group's own status."""
         response = self.client.get(reverse("group_detail", args=[self.group.id]))
         self.assertEqual(
-            [(t["key"], t["label"]) for t in response.context["nav_tabs"]],
+            self._section_titles(response),
+            {
+                "In progress": ["Watching Movie"],
+                "Planning": ["Pending Movie"],
+                "Paused": ["Paused Movie"],
+            },
+        )
+
+    def test_section_order_and_empty_sections(self):
+        """In Progress and Planning always show, as on home; empty others don't."""
+        GroupItem.objects.filter(group=self.group).exclude(
+            status=Status.PAUSED.value
+        ).delete()
+        response = self.client.get(reverse("group_detail", args=[self.group.id]))
+        self.assertEqual(
             [
-                ("planning", "Planning"),
-                ("in_progress", "In Progress"),
-                ("completed", "Completed"),
-                ("other", "Other"),
+                (section["status"], section["count"])
+                for section in response.context["sections"]
             ],
+            [("In progress", 0), ("Planning", 0), ("Paused", 1)],
         )
-        self.assertContains(response, 'href="?tab=in_progress"')
-        self.assertNotContains(response, "Watching (")
-        self.assertNotContains(response, "Watched (")
+        self.assertContains(response, "The group isn't in the middle of anything")
+        self.assertContains(response, "Nothing planned for the group yet")
 
-    def test_legacy_tab_falls_back_to_planning(self):
-        """Old watchlist tab keys are no longer valid and land on Planning."""
-        response = self.client.get(
-            reverse("group_detail", args=[self.group.id]), {"tab": "watching"}
-        )
-        self.assertEqual(response.context["tab"], "planning")
+    def test_section_headers_and_jump_links(self):
+        """Sections use the home header and the page links to each one."""
+        response = self.client.get(reverse("group_detail", args=[self.group.id]))
+        self.assertContains(response, 'id="in-progress"')
+        self.assertContains(response, 'href="#paused"')
+        self.assertContains(response, "1 item", count=3)
 
-    def test_in_progress_tab_shows_in_progress_items(self):
-        """?tab=in_progress shows only In progress group items."""
+    def test_old_tab_links_land_on_the_page(self):
+        """Old status tab keys no longer filter: every section shows."""
         response = self.client.get(
             reverse("group_detail", args=[self.group.id]), {"tab": "in_progress"}
         )
         self.assertContains(response, "Watching Movie")
-        self.assertNotContains(response, "Pending Movie")
-
-    def test_other_tab_shows_paused_and_dropped(self):
-        """?tab=other shows the group's Paused/Dropped items."""
-        response = self.client.get(
-            reverse("group_detail", args=[self.group.id]), {"tab": "other"}
-        )
-        self.assertContains(response, "Paused Movie")
+        self.assertContains(response, "Pending Movie")
 
     def test_stats_page_renders_without_error(self):
         """The group stats page renders the comparison/genre sections."""
@@ -196,12 +204,13 @@ class GroupDetailTabsTest(TestCase):
             reverse("group_stats", args=[self.group.id]),
         )
 
-    def test_tabs_are_only_statuses(self):
-        """The tab row holds the four status tabs plus a Group settings button."""
+    def test_header_links_to_settings_not_tabs(self):
+        """The header has Select and Group settings; no stats/settings tabs."""
         response = self.client.get(reverse("group_detail", args=[self.group.id]))
         self.assertNotContains(response, 'href="?tab=stats"')
         self.assertNotContains(response, 'href="?tab=settings"')
         self.assertContains(response, "Group settings")
+        self.assertContains(response, "Select")
 
 
 class GroupItemRemoveTest(TestCase):

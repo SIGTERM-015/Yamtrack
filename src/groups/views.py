@@ -8,6 +8,7 @@ from django.db.models import Exists, OuterRef
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_POST
 
 from app import config
@@ -17,35 +18,29 @@ from groups import discards as discard_service
 from groups.forms import GroupBannerForm
 from groups.models import Group, GroupInvitation, GroupItem, GroupOrigin
 from groups.services import (
-    GROUP_TABS,
+    GROUP_SECTION_STATUSES,
     add_item_to_group,
     apply_status_to_user,
     episodes_up_to,
     get_group_comparison,
     get_group_genre_stats,
     get_group_progress,
-    get_group_tab_items,
+    get_group_sections,
     mark_group_episodes_watched,
     mark_group_item_status,
 )
 from lists.views import get_or_create_item
 
-# Tab labels reuse the global status labels so groups read like every other list.
-_TAB_LABELS = {
-    "planning": Status.PLANNING.label,
-    "in_progress": Status.IN_PROGRESS.label,
-    "completed": Status.COMPLETED.label,
-    "other": "Other",
-}
-_VALID_TABS = {*GROUP_TABS, "stats", "discarded", "settings"}
+# Poster rows shown per media type before "Load all", as on the home page.
+_SECTION_ITEMS_LIMIT = 14
 
 
 def _redirect_to_group(request, group):
-    """Redirect back to the group, keeping the tab the action came from."""
+    """Redirect back to the group, at the status section the action came from."""
     url = reverse("group_detail", args=[group.id])
-    tab = request.POST.get("tab")
-    if tab in _VALID_TABS:
-        url = f"{url}?tab={tab}"
+    section = request.POST.get("section")
+    if section in GROUP_SECTION_STATUSES:
+        url = f"{url}#{slugify(section)}"
     return redirect(url)
 
 
@@ -74,7 +69,7 @@ def _resolve_participants_or_404(request, group):
     return ids
 
 
-def _build_item_view(group_item, progress_data, members):
+def _build_item_view(group_item, progress_data, members, discarded_ids):
     """Build one poster-grid entry: group state + per-member rows."""
     item = group_item.item
     p_data = progress_data.get(item.id, {"completed_count": 0, "members": {}})
@@ -106,6 +101,7 @@ def _build_item_view(group_item, progress_data, members):
         "completed_count": p_data["completed_count"],
         "total_members": len(members),
         "member_progress": member_rows,
+        "is_discarded": item.id in discarded_ids,
         "group_status_color": (
             group_status_config["text_color"]
             if group_status_config
@@ -232,7 +228,7 @@ def group_list(request):
 
 @login_required
 def group_detail(request, group_id):
-    """View to display group detail: five tabs driven by the group's own status."""
+    """Group page: the group's items by its own status, then by media type."""
     group = get_object_or_404(Group, id=group_id)
 
     is_member = group.members.filter(id=request.user.id).exists()
@@ -242,45 +238,59 @@ def group_detail(request, group_id):
         msg = "Group not found"
         raise Http404(msg)
 
-    tab = request.GET.get("tab", "planning")
+    # Old tab links: settings and stats have their own pages; the status tabs
+    # are now sections of this page, so their keys just land here.
+    tab = request.GET.get("tab")
     if is_member and tab == "settings":
         return redirect("group_settings", group_id=group.id)
     if is_member and tab == "stats":
         return redirect("group_stats", group_id=group.id)
-    if tab not in _VALID_TABS:
-        tab = "planning"
 
     members = list(group.members.all())
-    progress_data = get_group_progress(group)
-    tab_items = get_group_tab_items(group)
-
-    nav_tabs = [
-        {"key": key, "label": _TAB_LABELS[key], "count": len(tab_items[key])}
-        for key in GROUP_TABS
-    ]
-
+    discards = discard_service.group_discarded_items(group)
     context = {
         "group": group,
         "is_member": is_member,
         "invitation": invitation,
-        "status_choices": Status.choices,
-        "tab": tab,
-        "nav_tabs": nav_tabs,
         "members": members,
-        "discarded_count": discard_service.group_discarded_items(group).count(),
+        "discarded_count": discards.count(),
         "MediaTypes": MediaTypes,
     }
 
-    if tab in GROUP_TABS:
-        items_data = [
-            _build_item_view(group_item, progress_data, members)
-            for group_item in tab_items[tab]
-        ]
-        context["items_data"] = items_data
-    elif tab == "discarded":
-        context["discards"] = discard_service.group_discarded_items(group)
+    if tab == "discarded":
+        context["show_discarded"] = True
+        context["discards"] = discards
+        return render(request, "groups/group_detail.html", context)
 
-    if tab == "planning":
+    progress_data = get_group_progress(group)
+    discarded_ids = discard_service.group_discarded_item_ids(group)
+    sections = get_group_sections(group)
+    for section in sections:
+        for media_type in section["media_types"]:
+            media_type["items"] = [
+                _build_item_view(group_item, progress_data, members, discarded_ids)
+                for group_item in media_type["items"]
+            ]
+    # In Progress and Planning always show, with an empty state, like on the
+    # home page; the other statuses only when they hold something.
+    context["sections"] = [
+        section
+        for section in sections
+        if section["count"]
+        or section["status"] in {Status.IN_PROGRESS.value, Status.PLANNING.value}
+    ]
+    context["has_items"] = any(section["count"] for section in sections)
+    # The bulk bar skips TV shows (they move by episodes) and says so.
+    context["tv_item_ids"] = [
+        data["item"].id
+        for section in sections
+        for media_type in section["media_types"]
+        if media_type["media_type"] == MediaTypes.TV.value
+        for data in media_type["items"]
+    ]
+    context["items_limit"] = _SECTION_ITEMS_LIMIT
+    context["status_choices"] = Status.choices
+    if is_member:
         context["stats_summary"] = _group_stats_summary(
             _group_stats_context(group, members)
         )
@@ -511,7 +521,8 @@ def group_mark_episodes(request, group_id):
 
     mark_group_episodes_watched(group_item, episodes, participants)
     messages.success(request, f"Marked episodes watched for '{group_item.item.title}'.")
-    return redirect(f"{reverse('group_detail', args=[group.id])}?tab=in_progress")
+    group_url = reverse("group_detail", args=[group.id])
+    return redirect(f"{group_url}#{slugify(Status.IN_PROGRESS.value)}")
 
 
 @login_required

@@ -12,7 +12,7 @@ La UI actual de grupos pone la gestión antes que el uso: el detalle (`group_det
 
 1. La pantalla del grupo se ordena por prioridad de uso: (1) añadir medios, (2) decidir qué ver, (3) actualizar el estado, (4) gestionar el grupo.
 2. El diseño es genérico para N personas, no específico de pareja: contadores tipo «X/Y».
-3. El grupo tiene cinco pestañas: **Pendientes** (con botón de ruleta) · **Viendo** · **Vistos** · **Estadísticas** (comparativa de valoraciones y géneros) · **Ajustes** (miembros, invitaciones, salir). Pendientes es la pestaña por defecto. Las tres primeras se basan en el estado propio del grupo, no en la suma de registros personales.
+3. El grupo tiene cinco pestañas: **Pendientes** (con botón de ruleta) · **Viendo** · **Vistos** · **Estadísticas** (comparativa de valoraciones y géneros) · **Ajustes** (miembros, invitaciones, salir). Pendientes es la pestaña por defecto. Las tres primeras se basan en el estado propio del grupo, no en la suma de registros personales. *(Enmendado el 2026-10-05: las pestañas de estado se sustituyen por secciones apiladas como en Home; ver «Disposición como Home». Estadísticas y Ajustes siguen siendo páginas propias.)*
 4. El estilo es la rejilla de pósters del resto de la app, con indicador de qué miembros lo han visto.
 5. Añadir usa el botón «añadir a grupo» de la ficha del medio y de los resultados de la búsqueda general. *(Enmendado el 2026-10-01: se retira el buscador dentro del grupo; duplicaba la búsqueda general sin aportar nada en el uso real.)*
 6. Ruleta y recomendador no son exclusivos de grupo: existen en ámbito individual y de grupo.
@@ -38,6 +38,8 @@ y S5 (rediseño de la pantalla de grupo), complementarias a la §7 de la Decisi�
    ninguna sin distorsionar su semántica, así que ambos caen en un filtro «Otros»
    separado. Ni Paused ni Dropped del grupo se propagan a los registros
    personales de los participantes (solo In progress y Completed avanzan algo).
+   *(Desde el 2026-10-05 Paused y Dropped tienen cada uno su sección en vez del
+   filtro «Otros»; la regla de no propagación no cambia.)*
 2. **Un miembro con registro personal Dropped se respeta, no se reanima.** Al
    marcar progreso o estado desde el grupo, la lista de participantes preselecciona
    a todos los miembros excepto a quien ya tenga el medio en Dropped en su perfil
@@ -56,10 +58,22 @@ y S5 (rediseño de la pantalla de grupo), complementarias a la §7 de la Decisi�
 
 ## Selección y acciones en la rejilla
 
+*(Sustituida el 2026-10-05 por el punto 4 de «Disposición como Home».)*
+
 Enmienda del 2026-10-01, tras uso real:
 
 1. Las casillas de selección no están siempre visibles: aparecen al pasar el ratón (o con el foco) sobre un póster. Al seleccionar uno, todos muestran su casilla y tocar un póster lo marca o desmarca.
 2. La barra de acciones masivas solo aparece con dos o más seleccionados. Con uno o ninguno, cada póster ofrece un selector de acción rápida (cambiar el estado del grupo, marcar episodios en series o abrir el resto de opciones).
+
+## Disposición como Home
+
+Enmienda del 2026-10-05, para que el grupo sea coherente con el resto de la app:
+
+1. La página del grupo se organiza como Home: una sección por estado propio del grupo (In Progress, Planning, Completed, Paused, Dropped, en ese orden) y, dentro de cada una, una sub-sección por tipo de medio (en el orden de tipos de la app) con su rejilla de pósters. Cabecera de sección, contador y divisor son el mismo componente que usa Home. In Progress y Planning se muestran siempre (con estado vacío); el resto, solo si tienen algo. Paused y Dropped dejan de mezclarse en un filtro «Otros»: cada uno tiene su sección.
+2. Se pasa de pestañas a secciones apiladas. Las pestañas obligaban a cambiar de vista para ver qué está en curso y qué queda pendiente, que es justo lo que Home enseña de un vistazo; con secciones, la página se lee igual que Home. Para no perder el acceso directo, una fila de enlaces bajo la cabecera salta a cada sección con su contador. Los enlaces antiguos `?tab=planning|in_progress|completed|other` abren la página completa; la API mantiene su parámetro `tab`.
+3. Las tarjetas son las de Home: póster, título centrado y barra de color del estado del grupo, sin selector ni línea de estado. El contador «X/N» de miembros que lo han completado sigue como insignia sobre el póster. Las acciones aparecen al pasar el ratón con los mismos botones redondos de Home: actualizar el estado del grupo (o marcar episodios en series) y «más acciones» (participantes, «solo yo», «No me interesa», quitar del grupo). En pantallas táctiles, sin hover, un botón «⋯» visible sobre el póster abre las mismas acciones.
+4. La selección se activa con un botón «Select» en la cabecera (o con la casilla que aparece al pasar el ratón por un póster). En modo selección todas las casillas son visibles, la tarjeta seleccionada lleva borde índigo y tocar un póster lo marca; «Cancel» o Escape salen. La barra de acciones masivas aparece desde el primer seleccionado (antes, desde dos) e incluye los participantes afectados. Esto sustituye la enmienda «Selección y acciones en la rejilla» del 2026-10-01.
+5. El resumen de valoraciones del grupo y el enlace a «No me interesa» se muestran siempre, no solo en la pestaña Pendientes, porque ya no hay pestañas.
 
 ## Alternativas descartadas
 
@@ -68,3 +82,4 @@ Enmienda del 2026-10-01, tras uso real:
 - **Ruleta solo de grupo:** se descarta por el acuerdo 6; la ruleta existe en ambos ámbitos.
 - **Descarte por unanimidad en grupo:** se descarta por el acuerdo 9; basta un miembro para descartar y cualquiera puede recuperar.
 - **Descarte individual que se propaga al grupo:** se descarta por el acuerdo 9; los ámbitos son independientes.
+- **Pestañas de estado con sub-secciones por tipo dentro:** se descarta por la enmienda «Disposición como Home»; obliga a cambiar de pestaña para ver lo que Home muestra junto, y deja el grupo con un sistema de navegación distinto al de Home.
