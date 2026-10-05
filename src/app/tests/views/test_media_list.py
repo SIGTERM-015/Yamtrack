@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from app.forms import MovieForm
 from app.models import (
     TV,
     Item,
@@ -315,8 +316,8 @@ class MediaListViewTests(TestCase):
             ),
         )
 
-    def test_notes_public_defaults_to_false(self):
-        """New entries keep their notes private by default."""
+    def test_notes_public_defaults_to_true(self):
+        """New entries share their notes on a public profile by default."""
         item = Item.objects.create(
             media_id="551",
             source=Sources.TMDB.value,
@@ -332,7 +333,13 @@ class MediaListViewTests(TestCase):
         )
         review.refresh_from_db()
 
-        self.assertFalse(review.notes_public)
+        self.assertTrue(review.notes_public)
+
+    def test_track_form_prechecks_public_note_only_for_new_entries(self):
+        """A new entry's form starts public; an existing private note stays so."""
+        self.assertIn("checked", str(MovieForm()["notes_public"]))
+        private = Movie(notes_public=False)
+        self.assertNotIn("checked", str(MovieForm(instance=private)["notes_public"]))
 
 
 class ProfileSectionVisibilityViewTests(TestCase):
