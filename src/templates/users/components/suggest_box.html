@@ -1,0 +1,84 @@
+{% load app_tags %}
+{% comment %}
+Recommend a title to ``target_user``: search by media type like the top bar,
+pick a result, say why, send. Used by the profile dialog and /suggest/<user>.
+Searches and sends go through ``suggest_media`` as HTMX fragments.
+{% endcomment %}
+{% get_search_media_types target_user as search_types %}
+{% url 'suggest_media' target_user.username as suggest_url %}
+<div x-data="{
+       step: 'search',
+       picked: {},
+       pick(data) { this.picked = { ...data }; this.step = 'compose'; this.$refs.feedback.innerHTML = ''; this.$nextTick(() => this.$refs.message.focus()) },
+       reset() { this.step = 'search'; this.picked = {}; this.$refs.feedback.innerHTML = ''; this.$refs.message.value = '' },
+     }"
+     @suggestion-sent="step = 'done'">
+
+  {# 1. Search and pick #}
+  <div x-show="step === 'search'">
+    <form method="get"
+          action="{{ suggest_url }}"
+          hx-get="{{ suggest_url }}"
+          hx-target="#suggest-results"
+          hx-trigger="submit, search-type-change"
+          hx-indicator="#suggest-searching">
+      {% include "app/components/media_search_input.html" with search_types=search_types selected_type=selected_type|default:search_types.0.value query=query input_id="suggest-search" %}
+    </form>
+    <div class="mt-4 min-h-24">
+      <p id="suggest-searching"
+         class="htmx-indicator text-sm text-gray-400 mb-3">Searching…</p>
+      <div id="suggest-results">{% include "users/components/suggest_results.html" %}</div>
+    </div>
+  </div>
+
+  {# 2. Why #}
+  <form x-cloak
+        x-show="step === 'compose'"
+        method="post"
+        action="{{ suggest_url }}"
+        hx-post="{{ suggest_url }}"
+        hx-target="#suggest-feedback"
+        hx-disabled-elt="find button[type='submit']">
+    {% csrf_token %}
+    <input type="hidden" name="title" :value="picked.title">
+    <input type="hidden" name="media_type" :value="picked.mediaType">
+    <input type="hidden" name="media_id" :value="picked.mediaId">
+    <input type="hidden" name="source" :value="picked.source">
+    <input type="hidden" name="image" :value="picked.image">
+    <div class="flex gap-4">
+      <img :src="picked.image"
+           :alt="picked.title"
+           class="w-20 sm:w-24 aspect-2/3 rounded-lg object-cover bg-[#3e454d] ring-1 ring-white/5 shrink-0">
+      <div class="min-w-0 grow">
+        <p class="text-xs text-gray-400" x-text="picked.typeLabel"></p>
+        <p class="font-semibold text-white line-clamp-2" x-text="picked.title"></p>
+        <label for="suggest-message"
+               class="block mt-3 mb-1 text-sm text-gray-300">Why do you recommend it?</label>
+        <textarea id="suggest-message"
+                  name="message"
+                  x-ref="message"
+                  rows="3"
+                  maxlength="500"
+                  placeholder="Optional, but it helps {{ target_user.username }} decide"
+                  class="w-full py-2 px-3 bg-[#272c31] rounded-md text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4a9eff] focus:ring-inset"></textarea>
+      </div>
+    </div>
+    <div class="mt-4 flex justify-end gap-2">
+      <button type="button"
+              @click="step = 'search'"
+              class="px-4 py-2 rounded-md text-sm text-gray-300 hover:bg-[#39404b] hover:text-white transition-colors cursor-pointer">
+        Back to results
+      </button>
+      <button type="submit"
+              class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-60 transition-colors text-sm cursor-pointer">
+        Send recommendation
+      </button>
+    </div>
+  </form>
+
+  {# 3. Result of sending. Rejections (400, 429) carry a message to show too. #}
+  <div id="suggest-feedback"
+       x-ref="feedback"
+       x-show="step !== 'search'"
+       hx-on::before-swap="if (event.detail.xhr.status < 500) { event.detail.shouldSwap = true; event.detail.isError = false }"></div>
+</div>

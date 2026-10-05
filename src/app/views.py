@@ -45,6 +45,7 @@ from users.models import (
     HomeSortChoices,
     MediaSortChoices,
     MediaStatusChoices,
+    SuggestionStatus,
     User,
 )
 
@@ -250,6 +251,13 @@ def profile(request, username):
         "heatmap": heatmap,
         "heatmap_username": target_user.username,
         "now_year": timezone.localdate().year,
+        "pending_suggestions": (
+            target_user.suggestions_received.filter(
+                status=SuggestionStatus.PENDING.value,
+            ).count()
+            if is_owner and target_user.suggestions_enabled
+            else 0
+        ),
     }
     return render(request, "app/profile.html", context)
 

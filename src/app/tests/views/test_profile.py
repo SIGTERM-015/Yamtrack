@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from app.models import Item, MediaTypes, Movie, Sources, Status
 from app.statistics import get_recent_activity
+from users.models import Suggestion
 
 
 class ProfileViewTests(TestCase):
@@ -451,3 +452,66 @@ class PublicSeasonLinkTests(TestCase):
         self.assertRedirects(
             response, "/ana/tv/tmdb/95396", fetch_redirect_response=False
         )
+
+
+class ProfileRecommendTests(TestCase):
+    """The "Recommend something" box on someone else's profile."""
+
+    def setUp(self):
+        """Create a public owner and a visitor account."""
+        self.owner = get_user_model().objects.create_user(
+            username="ana",
+            password="pw",  # noqa: S106
+        )
+        get_user_model().objects.create_user(
+            username="bob",
+            password="pw",  # noqa: S106
+        )
+
+    def test_visitors_get_the_recommend_box(self):
+        """Signed-in and anonymous visitors can open the box."""
+        response = self.client.get(reverse("profile", args=["ana"]))
+        self.assertContains(response, "Recommend something")
+        self.assertContains(response, "arrive without your name")
+        self.assertContains(response, 'hx-get="/suggest/ana"')
+
+        self.client.login(username="bob", password="pw")  # noqa: S106
+        response = self.client.get(reverse("profile", args=["ana"]))
+        self.assertContains(response, "Recommend something")
+        self.assertContains(response, "see it came from you")
+
+    def test_no_recommend_box_when_suggestions_are_off(self):
+        """Turning suggestions off hides the button."""
+        self.owner.suggestions_enabled = False
+        self.owner.save(update_fields=["suggestions_enabled"])
+
+        response = self.client.get(reverse("profile", args=["ana"]))
+
+        self.assertNotContains(response, "Recommend something")
+
+    def test_owner_gets_inbox_link_with_pending_count(self):
+        """The owner sees a link to their suggestions, not the box."""
+        Suggestion.objects.create(
+            target_user=self.owner,
+            title="Show",
+            media_type=MediaTypes.TV.value,
+            media_id="1",
+            source=Sources.TMDB.value,
+        )
+        self.client.login(username="ana", password="pw")  # noqa: S106
+
+        response = self.client.get(reverse("profile", args=["ana"]))
+
+        self.assertNotContains(response, "Recommend something")
+        self.assertContains(response, f'href="{reverse("suggestions")}"')
+        self.assertEqual(response.context["pending_suggestions"], 1)
+
+    def test_visitor_preview_explains_instead_of_searching(self):
+        """The owner's visitor preview shows the button without a live box."""
+        self.client.login(username="ana", password="pw")  # noqa: S106
+
+        response = self.client.get(reverse("profile", args=["ana"]), {"as": "visitor"})
+
+        self.assertContains(response, "Recommend something")
+        self.assertNotContains(response, 'hx-get="/suggest/ana"')
+        self.assertContains(response, "Visitors search for a title here")

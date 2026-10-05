@@ -1,0 +1,34 @@
+{% load app_tags %}
+{% comment %}
+Search results of the suggestion box. Picking a poster hands its data to the
+box (``pick``), which moves on to the "why" step.
+{% endcomment %}
+{% if search_error %}
+  <p class="text-sm text-red-400">{{ search_error }}</p>
+{% elif results %}
+  <ul class="grid grid-cols-3 sm:grid-cols-4 gap-3">
+    {% for result in results %}
+      <li>
+        <button type="button"
+                data-title="{{ result.title }}"
+                data-media-type="{{ result.media_type }}"
+                data-type-label="{{ result.media_type|media_type_readable }}"
+                data-media-id="{{ result.media_id }}"
+                data-source="{{ result.source }}"
+                data-image="{% if result.image and result.image != 'None' %}{{ result.image }}{% else %}{{ IMG_NONE }}{% endif %}"
+                @click="pick($el.dataset)"
+                class="group/pick block w-full text-left cursor-pointer focus:outline-none">
+          <img src="{% if result.image and result.image != 'None' %}{{ result.image }}{% else %}{{ IMG_NONE }}{% endif %}"
+               alt="{{ result.title }}"
+               loading="lazy"
+               class="w-full aspect-2/3 rounded-lg object-cover bg-[#3e454d] ring-1 ring-white/5 transition group-hover/pick:ring-2 group-hover/pick:ring-indigo-500 group-focus-visible/pick:ring-2 group-focus-visible/pick:ring-[#4a9eff]">
+          <span class="mt-1.5 block text-xs text-gray-300 line-clamp-2 group-hover/pick:text-white">{{ result.title }}</span>
+        </button>
+      </li>
+    {% endfor %}
+  </ul>
+{% elif query %}
+  <p class="text-sm text-gray-400">No results for “{{ query }}”. Try another title or media type.</p>
+{% else %}
+  <p class="text-sm text-gray-400">Search for a title, then pick it from the results.</p>
+{% endif %}
