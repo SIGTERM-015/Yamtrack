@@ -128,24 +128,48 @@ class GroupDetailTabsTest(TestCase):
 
         self.client.login(username="alice", password="pw")  # noqa: S106
 
-    def test_default_tab_is_pending(self):
+    def test_default_tab_is_planning(self):
         """Without ?tab=, the Planning tab is shown."""
         response = self.client.get(reverse("group_detail", args=[self.group.id]))
+        self.assertEqual(response.context["tab"], "planning")
         self.assertContains(response, "Pending Movie")
         self.assertNotContains(response, "Watching Movie")
 
-    def test_watching_tab_shows_in_progress_items(self):
-        """?tab=watching shows only In progress group items."""
+    def test_tabs_use_the_global_status_labels(self):
+        """Tabs read like the rest of the app, not like a watchlist."""
+        response = self.client.get(reverse("group_detail", args=[self.group.id]))
+        self.assertEqual(
+            [(t["key"], t["label"]) for t in response.context["nav_tabs"]],
+            [
+                ("planning", "Planning"),
+                ("in_progress", "In Progress"),
+                ("completed", "Completed"),
+                ("other", "Other"),
+            ],
+        )
+        self.assertContains(response, 'href="?tab=in_progress"')
+        self.assertNotContains(response, "Watching (")
+        self.assertNotContains(response, "Watched (")
+
+    def test_legacy_tab_falls_back_to_planning(self):
+        """Old watchlist tab keys are no longer valid and land on Planning."""
         response = self.client.get(
             reverse("group_detail", args=[self.group.id]), {"tab": "watching"}
+        )
+        self.assertEqual(response.context["tab"], "planning")
+
+    def test_in_progress_tab_shows_in_progress_items(self):
+        """?tab=in_progress shows only In progress group items."""
+        response = self.client.get(
+            reverse("group_detail", args=[self.group.id]), {"tab": "in_progress"}
         )
         self.assertContains(response, "Watching Movie")
         self.assertNotContains(response, "Pending Movie")
 
-    def test_others_tab_shows_paused_and_dropped(self):
-        """?tab=others shows the group's Paused/Dropped items."""
+    def test_other_tab_shows_paused_and_dropped(self):
+        """?tab=other shows the group's Paused/Dropped items."""
         response = self.client.get(
-            reverse("group_detail", args=[self.group.id]), {"tab": "others"}
+            reverse("group_detail", args=[self.group.id]), {"tab": "other"}
         )
         self.assertContains(response, "Paused Movie")
 

@@ -16,6 +16,7 @@ from app.providers import services as provider_services
 from groups import discards as discard_service
 from groups.models import Group, GroupInvitation, GroupItem, GroupOrigin
 from groups.services import (
+    GROUP_TABS,
     add_item_to_group,
     apply_status_to_user,
     episodes_up_to,
@@ -28,21 +29,14 @@ from groups.services import (
 )
 from lists.views import get_or_create_item
 
+# Tab labels reuse the global status labels so groups read like every other list.
 _TAB_LABELS = {
-    "pending": "Planning",
-    "watching": "Watching",
-    "watched": "Watched",
-    "others": "Other",
+    "planning": Status.PLANNING.label,
+    "in_progress": Status.IN_PROGRESS.label,
+    "completed": Status.COMPLETED.label,
+    "other": "Other",
 }
-_VALID_TABS = {
-    "pending",
-    "watching",
-    "watched",
-    "others",
-    "stats",
-    "discarded",
-    "settings",
-}
+_VALID_TABS = {*GROUP_TABS, "stats", "discarded", "settings"}
 
 
 def _redirect_to_group(request, group):
@@ -247,13 +241,13 @@ def group_detail(request, group_id):
         msg = "Group not found"
         raise Http404(msg)
 
-    tab = request.GET.get("tab", "pending")
+    tab = request.GET.get("tab", "planning")
     if is_member and tab == "settings":
         return redirect("group_settings", group_id=group.id)
     if is_member and tab == "stats":
         return redirect("group_stats", group_id=group.id)
     if tab not in _VALID_TABS:
-        tab = "pending"
+        tab = "planning"
 
     members = list(group.members.all())
     progress_data = get_group_progress(group)
@@ -261,7 +255,7 @@ def group_detail(request, group_id):
 
     nav_tabs = [
         {"key": key, "label": _TAB_LABELS[key], "count": len(tab_items[key])}
-        for key in ("pending", "watching", "watched", "others")
+        for key in GROUP_TABS
     ]
 
     context = {
@@ -276,7 +270,7 @@ def group_detail(request, group_id):
         "MediaTypes": MediaTypes,
     }
 
-    if tab in ("pending", "watching", "watched", "others"):
+    if tab in GROUP_TABS:
         items_data = [
             _build_item_view(group_item, progress_data, members)
             for group_item in tab_items[tab]
@@ -285,7 +279,7 @@ def group_detail(request, group_id):
     elif tab == "discarded":
         context["discards"] = discard_service.group_discarded_items(group)
 
-    if tab == "pending":
+    if tab == "planning":
         context["stats_summary"] = _group_stats_summary(
             _group_stats_context(group, members)
         )
@@ -508,7 +502,7 @@ def group_mark_episodes(request, group_id):
 
     mark_group_episodes_watched(group_item, episodes, participants)
     messages.success(request, f"Marked episodes watched for '{group_item.item.title}'.")
-    return redirect(f"{reverse('group_detail', args=[group.id])}?tab=watching")
+    return redirect(f"{reverse('group_detail', args=[group.id])}?tab=in_progress")
 
 
 @login_required

@@ -78,17 +78,17 @@
   {% if tab == 'discarded' %}
     <div class="flex items-center justify-between gap-3 mb-4">
       <h2 class="text-xl font-bold">Not interested</h2>
-      <a href="?tab=pending" class="text-sm text-gray-400 hover:text-white">Back to Planning</a>
+      <a href="?tab=planning" class="text-sm text-gray-400 hover:text-white">Back to Planning</a>
     </div>
     {% include "groups/components/discarded.html" with group=group discards=discards %}
 
   {% else %}
-    {% if tab == 'pending' and is_member %}
+    {% if tab == 'planning' and is_member %}
       {% include "groups/components/stats_summary.html" %}
     {% endif %}
-    {# Planning / Watching / Watched / Other tabs share the same poster grid. #}
+    {# Planning / In Progress / Completed / Other tabs share the same poster grid. #}
     {% include "groups/components/item_grid.html" %}
-    {% if tab == 'pending' and discarded_count %}
+    {% if tab == 'planning' and discarded_count %}
       <p class="mt-6 text-sm text-gray-400">
         <a href="?tab=discarded" class="hover:text-white underline-offset-2 hover:underline">{{ discarded_count }} title{{ discarded_count|pluralize }} marked not interested</a>
       </p>

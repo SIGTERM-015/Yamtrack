@@ -106,10 +106,10 @@ class GetGroupTabItemsTest(TestCase):
     def test_classifies_all_statuses(self):
         """Planning/In progress/Completed/Paused/Dropped land in tabs."""
         tabs = get_group_tab_items(self.group)
-        self.assertEqual(tabs["pending"], [self.items[Status.PLANNING]])
-        self.assertEqual(tabs["watching"], [self.items[Status.IN_PROGRESS]])
-        self.assertEqual(tabs["watched"], [self.items[Status.COMPLETED]])
+        self.assertEqual(tabs["planning"], [self.items[Status.PLANNING]])
+        self.assertEqual(tabs["in_progress"], [self.items[Status.IN_PROGRESS]])
+        self.assertEqual(tabs["completed"], [self.items[Status.COMPLETED]])
         self.assertCountEqual(
-            tabs["others"],
+            tabs["other"],
             [self.items[Status.PAUSED], self.items[Status.DROPPED]],
         )
