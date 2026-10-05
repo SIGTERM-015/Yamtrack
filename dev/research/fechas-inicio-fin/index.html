@@ -12,7 +12,7 @@
         <meta name="author" content="FuzzyGrim">
       
       
-        <link rel="canonical" href="https://FuzzyGrim.github.io/Yamtrack/dev/adr/0002-ui-grupos/">
+        <link rel="canonical" href="https://FuzzyGrim.github.io/Yamtrack/dev/research/fechas-inicio-fin/">
       
       
       
@@ -25,7 +25,7 @@
     
     
       
-        <title>ADR 0002: Rediseño de la UI de grupos y descarte - Yamtrack Documentation</title>
+        <title>¿Pedir «start date» y «end date» en los formularios de seguimiento? - Yamtrack Documentation</title>
       
     
     
@@ -83,7 +83,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#adr-0002-rediseno-de-la-ui-de-grupos-y-descarte" class="md-skip">
+        <a href="#pedir-start-date-y-end-date-en-los-formularios-de-seguimiento" class="md-skip">
           Skip to content
         </a>
       
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              ADR 0002: Rediseño de la UI de grupos y descarte
+              ¿Pedir «start date» y «end date» en los formularios de seguimiento?
             
           </span>
         </div>
@@ -563,7 +563,7 @@
                 
                   
   
-    <a href="https://github.com/FuzzyGrim/Yamtrack/edit/dev/docs/adr/0002-ui-grupos.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/FuzzyGrim/Yamtrack/edit/dev/docs/research/fechas-inicio-fin.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -572,90 +572,102 @@
     
       
     
-    <a href="https://github.com/FuzzyGrim/Yamtrack/raw/dev/docs/adr/0002-ui-grupos.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/FuzzyGrim/Yamtrack/raw/dev/docs/research/fechas-inicio-fin.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="adr-0002-rediseno-de-la-ui-de-grupos-y-descarte">ADR 0002: Rediseño de la UI de grupos y descarte<a class="headerlink" href="#adr-0002-rediseno-de-la-ui-de-grupos-y-descarte" title="Permanent link">&para;</a></h1>
+<h1 id="pedir-start-date-y-end-date-en-los-formularios-de-seguimiento">¿Pedir «start date» y «end date» en los formularios de seguimiento?<a class="headerlink" href="#pedir-start-date-y-end-date-en-los-formularios-de-seguimiento" title="Permanent link">&para;</a></h1>
+<p>Fecha: 2026-10-05 · Solo análisis, sin cambios de código.</p>
+<h2 id="1-que-depende-de-cada-fecha">1. Qué depende de cada fecha<a class="headerlink" href="#1-que-depende-de-cada-fecha" title="Permanent link">&para;</a></h2>
+<p>Ambas viven en el registro personal abstracto (<code>src/app/models.py:994-995</code>); el episodio solo tiene <code>end_date</code> (<code>models.py:1905</code>). En TV y temporada son propiedades derivadas de los episodios (<code>models.py:1186-1201</code>, <code>1670-1688</code>), y sus formularios ya no las piden (<code>src/app/forms.py:339-363</code>).</p>
+<p><strong><code>end_date</code> sostiene casi todo lo que el fork considera consumo:</strong>
+- Heatmap (<code>src/app/statistics.py:640-660</code>), actividad reciente (<code>statistics.py:910-955</code>), diario/timeline del perfil (<code>statistics.py:978-1060</code>): solo cuentan registros con <code>end_date</code>.
+- «Terminado el» en el detalle de perfil (<code>src/app/views.py:339-349</code>), fecha de la tarjeta (<code>templates/app/components/media_card.html:21-24</code>) y orden «End Date» (<code>src/users/models.py:80</code>, <code>models.py:352-400</code>).
+- Importadores: Trakt, Letterboxd, Goodreads, MAL y AniList la rellenan (<code>integrations/imports/trakt.py:453</code>, <code>letterboxd.py:241</code>, <code>goodreads.py:264</code>, <code>mal.py:191</code>, <code>anilist.py:330</code>). También los webhooks (<code>webhooks/movie.py:104</code>, <code>anime.py:57</code>) y los grupos (<code>groups/services.py:533-555</code>).</p>
+<p><strong><code>start_date</code> pesa poco:</strong> filtro de estadísticas por solapamiento de rango (<code>statistics.py:117-142</code>), timeline de la API (<code>statistics.py:465-530</code>), orden «Start Date», historial (<code>history_processor.py:516</code>) y respaldo de la tarjeta. No alimenta ni el heatmap ni el diario.</p>
+<h2 id="2-que-se-rellena-solo-hoy">2. Qué se rellena solo hoy<a class="headerlink" href="#2-que-se-rellena-solo-hoy" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Estado:</strong> aceptado como alcance de producto</li>
-<li><strong>Fecha:</strong> 2026-09-23</li>
-<li><strong>Decisor:</strong> producto</li>
+<li><strong>Servidor:</strong> solo pone <code>end_date</code> cuando el progreso alcanza el máximo estando en curso (<code>models.py:1040-1054</code>). Pasar a Completed por estado (<code>process_status</code>, <code>models.py:1056-1067</code>) <strong>no</strong> pone <code>end_date</code>, y tampoco lo hace la API.</li>
+<li><strong>Cliente:</strong> <code>src/static/js/mediaStatusDateHandler.js:37-110</code> propone <code>end_date = ahora</code> al elegir Completed y <code>start_date = ahora</code> al elegir In progress, solo si el campo está vacío y visible.</li>
 </ul>
-<h2 id="contexto">Contexto<a class="headerlink" href="#contexto" title="Permanent link">&para;</a></h2>
-<p>La UI actual de grupos pone la gestión antes que el uso: el detalle (<code>group_detail.html</code>) muestra la caja de invitar y la lista de miembros por encima de los medios, y no permite añadir medios al grupo (el servicio <code>add_item_to_group</code> existe pero ninguna vista lo llama). No hay pestañas, ni buscador dentro del grupo, ni ruleta; el registro de consumo se resuelve con radios binarios «Just me / Whole group» en lugar de selección de participantes; y la comparativa de valoraciones y las estadísticas de géneros viven en páginas separadas. El rediseño ordena la pantalla por prioridad de uso y fija las reglas del descarte («No me interesa»).</p>
-<h2 id="decision">Decisión<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
-<ol>
-<li>La pantalla del grupo se ordena por prioridad de uso: (1) añadir medios, (2) decidir qué ver, (3) actualizar el estado, (4) gestionar el grupo.</li>
-<li>El diseño es genérico para N personas, no específico de pareja: contadores tipo «X/Y».</li>
-<li>El grupo tiene cinco pestañas: <strong>Pendientes</strong> (con botón de ruleta) · <strong>Viendo</strong> · <strong>Vistos</strong> · <strong>Estadísticas</strong> (comparativa de valoraciones y géneros) · <strong>Ajustes</strong> (miembros, invitaciones, salir). Pendientes es la pestaña por defecto. Las tres primeras se basan en el estado propio del grupo, no en la suma de registros personales. <em>(Enmendado el 2026-10-05: las pestañas de estado se sustituyen por secciones apiladas como en Home; ver «Disposición como Home». Estadísticas y Ajustes siguen siendo páginas propias.)</em></li>
-<li>El estilo es la rejilla de pósters del resto de la app, con indicador de qué miembros lo han visto.</li>
-<li>Añadir usa el botón «añadir a grupo» de la ficha del medio y de los resultados de la búsqueda general. <em>(Enmendado el 2026-10-01: se retira el buscador dentro del grupo; duplicaba la búsqueda general sin aportar nada en el uso real.)</em></li>
-<li>Ruleta y recomendador no son exclusivos de grupo: existen en ámbito individual y de grupo.</li>
-<li>El estado y el progreso son propios del grupo, según la spec de CONTEXT.md: el grupo tiene estado y progreso contextuales; al avanzar actualiza los registros personales sin reducir progreso ni reabrir completados.</li>
-<li>Quitar un medio del grupo lo puede hacer cualquier miembro; solo lo quita del grupo, los registros personales se conservan.</li>
-<li>El <strong>descarte</strong> («No me interesa») se marca desde la ruleta y el recomendador; excluye el medio de futuras tiradas y recomendaciones; es reversible. Existe en ámbito individual y de grupo:</li>
-<li>En grupo basta con que un miembro descarte para que desaparezca para todo el grupo; cualquier miembro puede recuperarlo.</li>
-<li>Individual y grupal son independientes: descartar para ti no lo descarta en tus grupos, y viceversa.</li>
-<li>Recuperación: sección «Descartados» (en recomendaciones para lo individual, en el grupo para lo grupal) con botón «recuperar», más «deshacer» inmediato tras descartar.</li>
-</ol>
-<h2 id="consecuencias">Consecuencias<a class="headerlink" href="#consecuencias" title="Permanent link">&para;</a></h2>
-<p>Hay que construir las cinco pestañas con el estado propio del grupo como fuente, el botón «añadir a grupo» en ficha y búsqueda, la ruleta de grupo sobre pendientes, la comparativa y los géneros integrados en la pestaña de estadísticas, y el flujo de descarte con «deshacer» y sección «Descartados» en ambos ámbitos. La gestión de miembros e invitaciones se repliega a la pestaña de Ajustes.</p>
-<h2 id="progreso-del-grupo">Progreso del grupo<a class="headerlink" href="#progreso-del-grupo" title="Permanent link">&para;</a></h2>
-<p>Decisiones tomadas durante la implementación de S4 (propagación de episodios de TV)
-y S5 (rediseño de la pantalla de grupo), complementarias a la §7 de la Decisión:</p>
-<ol>
-<li><strong>Paused/Dropped del grupo van a un filtro «Otros», no se propagan.</strong> Las tres
-   pestañas Pendientes/Viendo/Vistos se basan en el estado propio del grupo
-   (Planning/In progress/Completed); un grupo en Paused o Dropped no encaja en
-   ninguna sin distorsionar su semántica, así que ambos caen en un filtro «Otros»
-   separado. Ni Paused ni Dropped del grupo se propagan a los registros
-   personales de los participantes (solo In progress y Completed avanzan algo).
-   <em>(Desde el 2026-10-05 Paused y Dropped tienen cada uno su sección en vez del
-   filtro «Otros»; la regla de no propagación no cambia.)</em></li>
-<li><strong>Un miembro con registro personal Dropped se respeta, no se reanima.</strong> Al
-   marcar progreso o estado desde el grupo, la lista de participantes preselecciona
-   a todos los miembros excepto a quien ya tenga el medio en Dropped en su perfil
-   personal: aparece sin marcar por defecto (puede marcarse a mano si alguien
-   quiere reactivarlo explícitamente). Esto es consistente con que Dropped es
-   terminal para la propagación (ADR 0001 acuerdo 17).</li>
-<li><strong>Los episodios de grupo se pueden marcar en cualquier orden.</strong> El ledger
-   <code>GroupEpisodeWatch</code> es un conjunto de episodios vistos, no un puntero de
-   "último episodio", así que no impone secuencialidad; existe además el atajo
-   «hasta el episodio N», que expande a marcar los episodios 1..N de una
-   temporada de una sola vez.</li>
-<li><strong>Un episodio visto por el grupo cuenta una sola vez.</strong> El ledger tiene una
-   fila por <code>(group_item, item)</code> con restricción de unicidad; volver a marcar el
-   mismo episodio no lo duplica ni lo cuenta dos veces en el progreso agregado
-   del grupo.</li>
-</ol>
-<h2 id="seleccion-y-acciones-en-la-rejilla">Selección y acciones en la rejilla<a class="headerlink" href="#seleccion-y-acciones-en-la-rejilla" title="Permanent link">&para;</a></h2>
-<p><em>(Sustituida el 2026-10-05 por el punto 4 de «Disposición como Home».)</em></p>
-<p>Enmienda del 2026-10-01, tras uso real:</p>
-<ol>
-<li>Las casillas de selección no están siempre visibles: aparecen al pasar el ratón (o con el foco) sobre un póster. Al seleccionar uno, todos muestran su casilla y tocar un póster lo marca o desmarca.</li>
-<li>La barra de acciones masivas solo aparece con dos o más seleccionados. Con uno o ninguno, cada póster ofrece un selector de acción rápida (cambiar el estado del grupo, marcar episodios en series o abrir el resto de opciones).</li>
-</ol>
-<h2 id="disposicion-como-home">Disposición como Home<a class="headerlink" href="#disposicion-como-home" title="Permanent link">&para;</a></h2>
-<p>Enmienda del 2026-10-05, para que el grupo sea coherente con el resto de la app:</p>
-<ol>
-<li>La página del grupo se organiza como Home: una sección por estado propio del grupo (In Progress, Planning, Completed, Paused, Dropped, en ese orden) y, dentro de cada una, una sub-sección por tipo de medio (en el orden de tipos de la app) con su rejilla de pósters. Cabecera de sección, contador y divisor son el mismo componente que usa Home. In Progress y Planning se muestran siempre (con estado vacío); el resto, solo si tienen algo. Paused y Dropped dejan de mezclarse en un filtro «Otros»: cada uno tiene su sección.</li>
-<li>Se pasa de pestañas a secciones apiladas. Las pestañas obligaban a cambiar de vista para ver qué está en curso y qué queda pendiente, que es justo lo que Home enseña de un vistazo; con secciones, la página se lee igual que Home. Para no perder el acceso directo, una fila de enlaces bajo la cabecera salta a cada sección con su contador. Los enlaces antiguos <code>?tab=planning|in_progress|completed|other</code> abren la página completa; la API mantiene su parámetro <code>tab</code>.</li>
-<li>Las tarjetas son las de Home: póster, título centrado y barra de color del estado del grupo, sin selector ni línea de estado. El contador «X/N» de miembros que lo han completado sigue como insignia sobre el póster. Las acciones aparecen al pasar el ratón con los mismos botones redondos de Home: actualizar el estado del grupo (o marcar episodios en series) y «más acciones» (participantes, «solo yo», «No me interesa», quitar del grupo). En pantallas táctiles, sin hover, un botón «⋯» visible sobre el póster abre las mismas acciones.</li>
-<li>La selección se activa con un botón «Select» en la cabecera (o con la casilla que aparece al pasar el ratón por un póster). En modo selección todas las casillas son visibles, la tarjeta seleccionada lleva borde índigo y tocar un póster lo marca; «Cancel» o Escape salen. La barra de acciones masivas aparece desde el primer seleccionado (antes, desde dos) e incluye los participantes afectados. Esto sustituye la enmienda «Selección y acciones en la rejilla» del 2026-10-01.</li>
-<li>El resumen de valoraciones del grupo y el enlace a «No me interesa» se muestran siempre, no solo en la pestaña Pendientes, porque ya no hay pestañas.</li>
-</ol>
-<h2 id="alternativas-descartadas">Alternativas descartadas<a class="headerlink" href="#alternativas-descartadas" title="Permanent link">&para;</a></h2>
+<p>Si se ocultan los campos tal cual, el autorrelleno queda en manos de un JS sobre inputs ocultos. Una película marcada como Completed por la API o sin JS se quedaría sin <code>end_date</code> y desaparecería del heatmap, del diario y de las estadísticas por periodo. Esto ya pasa hoy si alguien borra la fecha.</p>
+<h2 id="3-por-tipo-de-medio">3. Por tipo de medio<a class="headerlink" href="#3-por-tipo-de-medio" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tipo</th>
+<th>¿Hace falta un rango?</th>
+<th>Qué conviene</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Película</td>
+<td>No</td>
+<td>Una «fecha vista» (= <code>end_date</code>)</td>
+</tr>
+<tr>
+<td>Serie / temporada</td>
+<td>Ya no lo pide</td>
+<td>Fecha por episodio, como ahora</td>
+</tr>
+<tr>
+<td>Episodio</td>
+<td>No</td>
+<td><code>end_date</code>, ya existe</td>
+</tr>
+<tr>
+<td>Anime</td>
+<td>Poco; el progreso se registra por episodio, pero no deja fecha por episodio</td>
+<td>Fin automático; el inicio es útil a veces</td>
+</tr>
+<tr>
+<td>Manga / cómic</td>
+<td>Sí para series largas: «empecé en marzo y lo acabé en junio» se usa</td>
+<td>Rango opcional</td>
+</tr>
+<tr>
+<td>Libro</td>
+<td>Sí: es el caso clásico (Goodreads lo modela así)</td>
+<td>Rango visible</td>
+</tr>
+<tr>
+<td>Videojuego</td>
+<td>Sí: se juegan durante semanas y Steam/HLTB no aportan fechas</td>
+<td>Rango opcional</td>
+</tr>
+<tr>
+<td>Juego de mesa</td>
+<td>No: el progreso son partidas sueltas</td>
+<td>Una fecha o ninguna</td>
+</tr>
+</tbody>
+</table>
+<p>El usuario acierta en película, serie y juego de mesa. Para libro, videojuego y manga el rango sí aporta. Además, la API y el filtro de estadísticas por solapamiento lo aprovechan: un libro leído de enero a marzo cuenta en los tres meses.</p>
+<h2 id="4-propuestas">4. Propuestas<a class="headerlink" href="#4-propuestas" title="Permanent link">&para;</a></h2>
+<p><strong>A (recomendada): fechas automáticas en el servidor y plegadas en la UI.</strong>
+1. Pasar el autorrelleno al modelo: al pasar a Completed sin <code>end_date</code>, poner <code>end_date = ahora</code>; al pasar a In progress sin <code>start_date</code>, poner <code>start_date = ahora</code>. Así funciona igual en formulario, API y grupos.
+2. Película y juego de mesa: un único campo «Fecha» (= <code>end_date</code>), sin <code>start_date</code>.
+3. Libro, videojuego, manga, cómic y anime: las fechas pasan a un bloque «Más detalles» plegable, que se abre solo si ya tienen valor.
+4. Borrar el JS de autorrelleno, o reducirlo a mostrar el valor propuesto.</p>
 <ul>
-<li><strong>Diseño específico de pareja:</strong> se descarta por el acuerdo 2; el diseño genérico con contadores «X/Y» cubre la pareja sin casos especiales.</li>
-<li><strong>Tabla compacta en lugar de rejilla de pósters:</strong> se descarta por el acuerdo 4; la rejilla mantiene la coherencia visual con el resto de la app.</li>
-<li><strong>Ruleta solo de grupo:</strong> se descarta por el acuerdo 6; la ruleta existe en ambos ámbitos.</li>
-<li><strong>Descarte por unanimidad en grupo:</strong> se descarta por el acuerdo 9; basta un miembro para descartar y cualquiera puede recuperar.</li>
-<li><strong>Descarte individual que se propaga al grupo:</strong> se descarta por el acuerdo 9; los ámbitos son independientes.</li>
-<li><strong>Pestañas de estado con sub-secciones por tipo dentro:</strong> se descarta por la enmienda «Disposición como Home»; obliga a cambiar de pestaña para ver lo que Home muestra junto, y deja el grupo con un sistema de navegación distinto al de Home.</li>
+<li><strong>Impacto en datos:</strong> ninguno; no se migra nada. Los <code>start_date</code> existentes en películas se conservan, aunque ya no se puedan editar desde la UI (la API sí).</li>
+<li><strong>Impacto en estadísticas:</strong> mejora. Ningún Completed se queda sin fecha, así que el heatmap y el diario dejan de perder entradas.</li>
+</ul>
+<p><strong>B: ocultar siempre las fechas y rellenarlas automáticamente.</strong> Es lo más simple, pero impide corregir la fecha de un libro o de una película vista ayer, y en este fork esas correcciones alimentan el heatmap y el perfil público.</p>
+<p><strong>C: dejarlo como está.</strong> Mantiene el ruido en películas y el hueco del servidor.</p>
+<h2 id="archivos-a-tocar-opcion-a">Archivos a tocar (opción A)<a class="headerlink" href="#archivos-a-tocar-opcion-a" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>src/app/models.py</code> (<code>process_status</code>, ~1056): autorrelleno de fechas en el servidor.</li>
+<li><code>src/app/forms.py:200-330</code>: <code>MovieForm</code> y <code>BoardgameForm</code> solo con <code>end_date</code> y etiqueta «Date»; el resto sigue con ambas.</li>
+<li><code>src/templates/app/components/fill_track.html</code>: bloque «Más detalles» plegable.</li>
+<li><code>src/templates/app/create_entry.html:320-335</code>: el mismo criterio.</li>
+<li><code>src/static/js/mediaStatusDateHandler.js</code>: simplificar o eliminar.</li>
+<li><code>src/api/helpers.py:33-82</code>: quitar <code>start_date</code> de las películas (opcional).</li>
+<li>Tests de formularios, de modelos (autorrelleno) y de la API.</li>
 </ul>
 
 

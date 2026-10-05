@@ -732,10 +732,11 @@
 <p>For the default SQLite setup:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-LO<span class="w"> </span>https://raw.githubusercontent.com/FuzzyGrim/Yamtrack/release/docker-compose.yml
 </span></code></pre></div>
-<p>SQLite is enough for most personal installs. It stores the database in the local <code>db</code> directory created beside the Compose file.</p>
+<p>SQLite is enough for most personal installs. It stores the database in the local <code>db</code> directory created beside the Compose file, together with uploaded images (such as profile avatars) under <code>db/media</code>.</p>
 <p>If you prefer PostgreSQL, download the PostgreSQL example instead:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-LO<span class="w"> </span>https://raw.githubusercontent.com/FuzzyGrim/Yamtrack/release/docker-compose.postgres.yml
 </span></code></pre></div>
+<p>With PostgreSQL, uploaded images are kept in the local <code>media</code> directory, mounted at <code>/yamtrack/db/media</code>. Keep that volume: without it uploaded images are lost when the container is recreated.</p>
 <h2 id="2-update-the-environment-values">2) Update the environment values<a class="headerlink" href="#2-update-the-environment-values" title="Permanent link">&para;</a></h2>
 <p>Open the Compose file and replace the example secret:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="l l-Scalar l-Scalar-Plain">SECRET=longstring</span>
