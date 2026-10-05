@@ -31,6 +31,18 @@
     </div>
   </div>
 
+  {% if suggest_anime_search %}
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mb-6 px-4 py-3 bg-[#2a2f35] rounded-lg text-sm text-gray-300">
+      {% include "app/icons/info.svg" with classes="w-4 h-4 shrink-0 text-indigo-400" %}
+      <span class="flex-1 min-w-0">Some results look like anime. Anime search uses MyAnimeList, with better metadata for anime.</span>
+      <a href="{% url 'search' %}?q={{ query|urlencode }}&media_type={{ MediaTypes.ANIME.value }}&layout={{ layout }}"
+         class="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
+        Search "{{ query }}" in Anime
+        {% include "app/icons/right-arrow.svg" with classes="w-4 h-4" %}
+      </a>
+    </div>
+  {% endif %}
+
   {% if data.results %}
     <div {% if layout == 'grid' %}
          class="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4">
