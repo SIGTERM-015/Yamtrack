@@ -1,7 +1,7 @@
 from unittest.mock import patch
 from uuid import UUID
 
-from app.models import MediaTypes, Sources, Status
+from app.models import MediaTypes, Movie, Sources, Status
 
 from .base import PRIDE_TV_SYNOPSIS, YamtrackApiTestCase
 from .helpers import (
@@ -820,6 +820,39 @@ class MediaCoreTests(YamtrackApiTestCase):
         self.assertEqual(payload["consumptions"][0]["status"], status)
         self.assertEqual(payload["consumptions"][0]["score"], score)
         self.assertEqual(payload["consumptions"][0]["notes"], notes)
+
+    @patch("api.views.services.get_media_metadata")
+    def test_media_detail_patch_completed_stamps_end_date(self, mock_metadata):
+        """Completing via PATCH without a date fills end_date server-side."""
+        movie = self.movie_medias[0]
+        mock_metadata.return_value = {
+            "media_id": movie.item.media_id,
+            "source": movie.item.source,
+            "media_type": MediaTypes.MOVIE.value,
+            "title": movie.item.title,
+            "image": movie.item.image,
+            "max_progress": 1,
+            "related": {},
+        }
+        Movie.objects.filter(pk=movie.pk).update(
+            status=Status.PLANNING.value,
+            start_date=None,
+            end_date=None,
+        )
+
+        response = self.call_api(
+            "patch",
+            "api_media_detail",
+            args=(MediaTypes.MOVIE.value, movie.item.source, movie.item.media_id),
+            payload={"status": 3},
+            headers=self.auth_headers,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        movie.refresh_from_db()
+        self.assertEqual(movie.status, Status.COMPLETED.value)
+        self.assertIsNotNone(movie.end_date)
+        self.assertIsNone(movie.start_date)
 
     def test_media_detail_patch_invalid_type_returns_bad_request(self):
         """Media detail PATCH should reject unsupported media types."""

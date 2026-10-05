@@ -221,12 +221,14 @@ class LetterboxdExportTest(TestCase):
             title="A Manual Movie",
             image="https://image.url",
         )
-        Movie.objects.create(
+        manual_movie = Movie.objects.create(
             item=manual_item,
             user=self.user,
             score=Decimal("8.5"),
             status=Status.COMPLETED.value,
         )
+        # Completing stamps end_date; clear it to cover undated legacy records.
+        Movie.objects.filter(pk=manual_movie.pk).update(end_date=None)
 
         other_item = Item.objects.create(
             media_id="603",

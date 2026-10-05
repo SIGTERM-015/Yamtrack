@@ -1053,8 +1053,31 @@ class Media(models.Model):
                     now = timezone.now().replace(second=0, microsecond=0)
                     self.end_date = now
 
+    @classmethod
+    def status_date_defaults(cls, status):
+        """Return the dates a status change fills in when they are empty.
+
+        Completing stamps ``end_date`` and starting stamps ``start_date`` so
+        every completed record shows up in the heatmap, diary and statistics,
+        whichever path (form, API, groups) changed the status. Models without
+        concrete date fields (TV, seasons) get nothing.
+        """
+        field_by_status = {
+            Status.COMPLETED.value: "end_date",
+            Status.IN_PROGRESS.value: "start_date",
+        }
+        field = field_by_status.get(status)
+        concrete = {f.name for f in cls._meta.concrete_fields}
+        if field not in concrete:
+            return {}
+        return {field: timezone.now().replace(second=0, microsecond=0)}
+
     def process_status(self):
         """Update fields depending on the status of the media."""
+        for field, value in self.status_date_defaults(self.status).items():
+            if getattr(self, field) is None:
+                setattr(self, field, value)
+
         if self.status == Status.COMPLETED.value:
             max_progress = providers.services.get_media_metadata(
                 self.item.media_type,
