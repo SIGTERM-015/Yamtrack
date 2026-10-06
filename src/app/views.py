@@ -178,7 +178,7 @@ def _is_app_route(path):
     return match.url_name != "profile_slash"
 
 
-def _split_opinions(entries, *, show_comments, is_owner, opinions=4, others=8):
+def _split_opinions(entries, *, show_comments, is_owner, opinions=4, others=3):
     """Split activity into entries with a visible score or comment, and the rest."""
 
     def has_opinion(entry):

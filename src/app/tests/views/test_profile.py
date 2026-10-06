@@ -352,6 +352,28 @@ class ProfileDiaryAndTimelineTests(TestCase):
         self.assertEqual(others, ["Plain"])
         self.assertContains(response, 'href="/ana/timeline"')
 
+    def test_also_strip_shows_the_three_latest(self):
+        """The strip under Latest keeps only the three most recent plain titles."""
+        now = timezone.now()
+        for index in range(5):
+            item = Item.objects.create(
+                media_id=str(800 + index),
+                source=Sources.MANUAL.value,
+                media_type=MediaTypes.MOVIE.value,
+                title=f"Extra {index}",
+            )
+            Movie.objects.bulk_create(
+                [Movie(item=item, user=self.owner, status=Status.COMPLETED.value)],
+            )
+            Movie.objects.filter(item=item).update(
+                end_date=now - timedelta(hours=index + 1),
+            )
+
+        response = self.client.get("/ana")
+
+        others = [e["item"].title for e in response.context["latest_others"]]
+        self.assertEqual(others, ["Extra 0", "Extra 1", "Extra 2"])
+
     def test_timeline_groups_by_day_newest_first(self):
         """The timeline shows one section per active day, newest first."""
         response = self.client.get("/ana/timeline")

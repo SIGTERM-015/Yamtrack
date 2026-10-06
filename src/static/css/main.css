@@ -3369,11 +3369,6 @@
       grid-column-start: 3;
     }
   }
-  .sm\:block {
-    @media (width >= 40rem) {
-      display: block;
-    }
-  }
   .sm\:grid {
     @media (width >= 40rem) {
       display: grid;
