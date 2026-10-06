@@ -59,8 +59,6 @@
             <span x-text="copied ? 'Link copied' : 'Copy link'">Copy link</span>
           </button>
         </div>
-      {% elif target_user.suggestions_enabled and not target_user.profile_private %}
-        {% include "app/components/recommend_dialog.html" %}
       {% endif %}
     </header>
 
@@ -140,6 +138,11 @@
         {% endif %}
       {% endif %}
     </section>
+
+    {# Recommend sits right above the activity, after what they have been watching. #}
+    {% if not is_owner and target_user.suggestions_enabled and not target_user.profile_private %}
+      {% include "app/components/recommend_dialog.html" %}
+    {% endif %}
 
     {% if heatmap %}
       <section aria-label="Activity over the last months">

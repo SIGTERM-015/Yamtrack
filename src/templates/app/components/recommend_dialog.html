@@ -6,7 +6,7 @@ what visitors get, since nobody can recommend to themselves.
 <div x-data="{ open: false }"
      x-init="$watch('open', value => value || $nextTick(() => $refs.trigger.focus()))"
      @keydown.escape.window="open = false"
-     class="mt-5">
+     class="flex justify-center">
   <button type="button"
           x-ref="trigger"
           @click="open = true; $nextTick(() => document.getElementById('suggest-search')?.focus())"
@@ -18,12 +18,12 @@ what visitors get, since nobody can recommend to themselves.
   <div x-cloak
        x-show="open"
        x-transition.opacity
-       class="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/50 p-4 text-left">
+       class="fixed top-0 left-0 z-50 flex h-dvh w-screen items-start sm:items-center justify-center bg-black/50 p-3 sm:p-4 text-left">
     <div role="dialog"
          aria-modal="true"
          aria-labelledby="recommend-heading"
          @click.outside="open = false"
-         class="w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-lg bg-[#2a2f35] p-6 shadow-xl">
+         class="w-full max-w-xl max-h-[85dvh] overflow-y-auto overscroll-contain rounded-lg bg-[#2a2f35] p-4 sm:p-6 shadow-xl">
       <div class="flex items-start justify-between gap-4 mb-5">
         <div>
           <h2 id="recommend-heading" class="text-xl font-bold text-white">Recommend to {{ target_user.username }}</h2>
