@@ -126,7 +126,7 @@
                  alt="{{ entry.item.title }}"
                  title="{{ entry.item.title }}{% if entry.kind == 'episode' %} · S{{ entry.season_number }}E{{ entry.episode_number }}{% endif %}"
                  loading="lazy"
-                 class="{% if forloop.counter > 3 %}hidden sm:block {% endif %}w-10 h-15 rounded object-cover bg-[#3e454d] ring-1 ring-white/5 group-hover/also:ring-indigo-500">
+                 class="w-10 h-15 rounded object-cover bg-[#3e454d] ring-1 ring-white/5 group-hover/also:ring-indigo-500">
           {% endfor %}
         </a>
       {% endif %}
