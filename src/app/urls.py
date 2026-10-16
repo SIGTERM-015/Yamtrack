@@ -108,4 +108,6 @@ urlpatterns = [
     path("roulette", roulette_views.roulette, name="roulette"),
     path("roulette/start", roulette_views.roulette_start, name="roulette_start"),
     path("serviceworker.js", views.service_worker, name="service_worker"),
+    path("offline/", views.offline, name="offline"),
+    path("manifest.webmanifest", views.webmanifest, name="webmanifest"),
 ]

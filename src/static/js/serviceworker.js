@@ -1,44 +1,52 @@
-const CACHE_NAME = 'magpie-v1';
-const urlsToCache = [
-  '/',
-  '/static/css/main.css',
-  '/static/favicon/android-chrome-192x192.png',
-  '/static/favicon/android-chrome-512x512.png',
-  '/static/fonts/roboto-flex.woff2'
-];
+// Magpie service worker. Pages and data always come from the network (they
+// are per-user and dynamic); only static assets are cached, plus an offline
+// page shown when a navigation fails.
+// Registered as <BASE_URL>/serviceworker.js?<mtime>: the prefix and the cache
+// version are derived from the script URL itself.
+const BASE = new URL('.', self.location).pathname;
+const VERSION = self.location.search.slice(1) || '0';
+const STATIC_CACHE = `magpie-static-${VERSION}`;
+const OFFLINE_URL = `${BASE}offline/`;
+const STATIC_PREFIX = `${BASE}static/`;
 
-// Install event
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(STATIC_CACHE)
+      .then((cache) => cache.add(new Request(OFFLINE_URL, { cache: 'reload' })))
+      .then(() => self.skipWaiting())
   );
 });
 
-// Fetch event
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        return response || fetch(event.request);
-      }
-    )
-  );
-});
-
-// Activate event
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    caches.keys()
+      .then((names) => Promise.all(
+        names.filter((name) => name !== STATIC_CACHE).map((name) => caches.delete(name))
+      ))
+      .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => caches.match(OFFLINE_URL))
+    );
+    return;
+  }
+
+  if (url.pathname.startsWith(STATIC_PREFIX)) {
+    event.respondWith(
+      caches.open(STATIC_CACHE).then((cache) =>
+        cache.match(request).then((hit) => hit || fetch(request).then((response) => {
+          if (response.ok) cache.put(request, response.clone());
+          return response;
+        }))
+      )
+    );
+  }
 });
