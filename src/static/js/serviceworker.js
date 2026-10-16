@@ -1,4 +1,4 @@
-const CACHE_NAME = 'yamtrack-v1';
+const CACHE_NAME = 'magpie-v1';
 const urlsToCache = [
   '/',
   '/static/css/main.css',

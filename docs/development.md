@@ -1,6 +1,6 @@
 # Development
 
-This page covers working on Yamtrack from source.
+This page covers working on Magpie from source.
 
 ## Prerequisites
 
@@ -76,7 +76,7 @@ uvx honcho -e /dev/null start
 ```
 
 The `-e /dev/null` flag stops honcho from loading the `.env` file into the
-process environment; Yamtrack reads `.env` itself, so honcho should leave it
+process environment; Magpie reads `.env` itself, so honcho should leave it
 alone.
 
 Alternatively, run each process in its own terminal.

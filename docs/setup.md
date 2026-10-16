@@ -1,10 +1,10 @@
 # Setup
 
-This page covers running Yamtrack with Docker.
+This page covers running Magpie with Docker.
 
 ## Docker
 
-The Docker setup uses the published Yamtrack image, so you do not need to clone the repository. Download a Compose file, adjust the environment values, and start the containers.
+The Docker setup uses the published Magpie image, so you do not need to clone the repository. Download a Compose file, adjust the environment values, and start the containers.
 
 ## Prerequisites
 
@@ -36,7 +36,7 @@ Open the Compose file and replace the example secret:
 SECRET=longstring
 ```
 
-Use a long random value for `SECRET`. If you are running Yamtrack behind a reverse proxy, also set `URLS` to the public origin:
+Use a long random value for `SECRET`. If you are running Magpie behind a reverse proxy, also set `URLS` to the public origin:
 
 ```yaml
 URLS=https://yamtrack.mydomain.com
@@ -46,7 +46,7 @@ The URL must include the protocol (`https` or `http`) and should not include a t
 
 For the full list of supported settings, see [Environment Variables](env-variables.md).
 
-## 3) Start Yamtrack
+## 3) Start Magpie
 
 For SQLite:
 
@@ -64,7 +64,7 @@ If your system uses the older Compose command, replace `docker compose` with `do
 
 ## 4) Open the app
 
-Open Yamtrack at:
+Open Magpie at:
 
 ```text
 http://localhost:8000
@@ -74,7 +74,7 @@ If you changed the port mapping in the Compose file, use the port you configured
 
 ## Reverse Proxy Setup
 
-When using a reverse proxy, `URLS` tells Yamtrack which public origins it should trust. This is required for CSRF protection, OAuth redirects, and webhook integrations.
+When using a reverse proxy, `URLS` tells Magpie which public origins it should trust. This is required for CSRF protection, OAuth redirects, and webhook integrations.
 
 Example:
 
@@ -89,7 +89,7 @@ If you see `403 Forbidden` behind a proxy, check that `URLS` exactly matches the
 
 ## Troubleshooting
 
-Check the Yamtrack container logs:
+Check the Magpie container logs:
 
 ```bash
 docker logs -f yamtrack
