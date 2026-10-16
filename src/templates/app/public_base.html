@@ -17,7 +17,7 @@ owner's "view as visitor" preview.
       <header class="border-b border-[#2c3136] bg-[#1a1d20]">
         <div class="container mx-auto px-4 sm:px-8 h-14 flex items-center justify-between gap-4">
           <a href="{% url 'profile' target_user.username %}"
-             class="text-lg font-semibold text-gray-100">Yamtrack</a>
+             class="text-lg font-semibold text-gray-100">Magpie</a>
           {% if request.user.is_authenticated %}
             <a href="{{ request.path }}"
                class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">

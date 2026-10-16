@@ -406,7 +406,7 @@ class User(AbstractUser):
 
     date_format = models.CharField(
         max_length=20,
-        default=DateFormatChoices.ISO,
+        default=DateFormatChoices.EUROPEAN,
         choices=DateFormatChoices,
         help_text="Preferred date display format",
     )

@@ -31,7 +31,7 @@ comment. Expects ``entry`` (from get_recent_activity / get_profile_timeline),
       · <time datetime="{{ entry.date|date:'c' }}">{% if date_style == "time" %}{{ entry.date|time:"H:i" }}{% else %}{{ entry.date|date_format:target_user }}{% endif %}</time>
     </p>
     {% if entry.media.notes %}
-      {% if is_owner or show_comments and entry.media.notes_public %}
+      {% if is_owner or show_comments %}
         <p class="mt-2 text-gray-200 whitespace-pre-line line-clamp-4">{{ entry.media.notes }}</p>
       {% endif %}
     {% endif %}

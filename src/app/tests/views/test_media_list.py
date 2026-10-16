@@ -203,7 +203,7 @@ class MediaListViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("media_list", response.context)
 
-    def _create_note(self, user, notes, notes_public, score=None):
+    def _create_note(self, user, notes, score=None):
         """Create a completed movie entry carrying a note."""
         item = Item.objects.create(
             media_id="550",
@@ -217,13 +217,12 @@ class MediaListViewTests(TestCase):
             user=user,
             status=Status.COMPLETED.value,
             notes=notes,
-            notes_public=notes_public,
             score=score,
         )
 
     def test_public_review_visible_to_anonymous(self):
         """Notes marked public appear as reviews on a public profile."""
-        self._create_note(self.external_user, "Great movie", notes_public=True)
+        self._create_note(self.external_user, "Great movie")
         self.external_user.profile_private = False
         self.external_user.save(update_fields=["profile_private"])
         self.client.logout()
@@ -251,7 +250,6 @@ class MediaListViewTests(TestCase):
             user=self.external_user,
             status=Status.IN_PROGRESS.value,
             notes="Great show",
-            notes_public=True,
         )
         self.external_user.profile_private = False
         self.external_user.save(update_fields=["profile_private"])
@@ -266,28 +264,11 @@ class MediaListViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Great show")
 
-    def test_private_review_hidden(self):
-        """Notes not marked public never appear as reviews."""
-        self._create_note(self.external_user, "Secret note", notes_public=False)
-        self.external_user.profile_private = False
-        self.external_user.save(update_fields=["profile_private"])
-        self.client.logout()
-
-        response = self.client.get(
-            reverse(
-                "medialist", args=[self.external_user.username, MediaTypes.MOVIE.value]
-            )
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "Secret note")
-
     def test_public_review_shows_score_and_link_to_title_page(self):
         """Visitors see the score and comment on a poster opening the title page."""
         review = self._create_note(
             self.external_user,
             "Loved it",
-            notes_public=True,
             score=9,
         )
         self.external_user.profile_private = False
@@ -316,30 +297,6 @@ class MediaListViewTests(TestCase):
             ),
         )
 
-    def test_notes_public_defaults_to_true(self):
-        """New entries share their notes on a public profile by default."""
-        item = Item.objects.create(
-            media_id="551",
-            source=Sources.TMDB.value,
-            media_type=MediaTypes.MOVIE.value,
-            title="Default Review Movie",
-            image="http://example.com/image.jpg",
-        )
-        review = Movie.objects.create(
-            item=item,
-            user=self.user,
-            status=Status.COMPLETED.value,
-            notes="Default note",
-        )
-        review.refresh_from_db()
-
-        self.assertTrue(review.notes_public)
-
-    def test_track_form_prechecks_public_note_only_for_new_entries(self):
-        """A new entry's form starts public; an existing private note stays so."""
-        self.assertIn("checked", str(MovieForm()["notes_public"]))
-        private = Movie(notes_public=False)
-        self.assertNotIn("checked", str(MovieForm(instance=private)["notes_public"]))
 
 
 class ProfileSectionVisibilityViewTests(TestCase):
@@ -370,7 +327,6 @@ class ProfileSectionVisibilityViewTests(TestCase):
                     user=self.owner,
                     status=Status.COMPLETED.value,
                     notes="A public review",
-                    notes_public=True,
                 ),
             ],
         )
