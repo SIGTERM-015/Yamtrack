@@ -1,8 +1,8 @@
 openapi: 3.0.4
 info:
-  title: Yamtrack API
+  title: Magpie API
   version: 0.0.25
-  description: Initial API for Yamtrack.
+  description: Initial API for Magpie.
 servers:
   - url: http://localhost:8000
     description: Local development server
@@ -4083,7 +4083,7 @@ components:
           description: If the Item is a Season or an Episode, the parent_id is the id of the Serie or of the Season
         tracked:
           type: boolean
-          description: If the current media is being tracked by Yamtrack
+          description: If the current media is being tracked by Magpie
         consumptions_number:
           type: integer
           description: Number of times the media has been watched/tracked
@@ -4663,7 +4663,7 @@ components:
           nullable: true
         tracked:
           type: boolean
-          description: If the current media is being tracked by Yamtrack
+          description: If the current media is being tracked by Magpie
         created_at:
           type: string
           format: date-time

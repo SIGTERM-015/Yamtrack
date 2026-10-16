@@ -2,7 +2,7 @@
 {% load app_tags %}
 
 {% block title %}
-  {{ media.title }} · {{ target_user.username }} - Yamtrack
+  {{ media.title }} · {{ target_user.username }} - Magpie
 {% endblock title %}
 
 {% block content %}
@@ -49,9 +49,6 @@
           </div>
           {% if show_comment %}
             <blockquote class="mt-4 text-lg leading-relaxed text-gray-100 whitespace-pre-line">{{ record.notes }}</blockquote>
-            {% if is_owner and not record.notes_public %}
-              <p class="mt-2 text-xs text-gray-500">Only you can see this note.</p>
-            {% endif %}
           {% endif %}
         </section>
         {% else %}

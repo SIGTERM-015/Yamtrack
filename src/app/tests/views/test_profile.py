@@ -26,11 +26,11 @@ class ProfileViewTests(TestCase):
         )
         now = timezone.now()
         self.movies = []
-        for index, (title, notes, public) in enumerate(
+        for index, (title, notes) in enumerate(
             [
-                ("Old Movie", "", False),
-                ("New Movie", "Me encantó", True),
-                ("Secret Movie", "Nota privada", False),
+                ("Old Movie", ""),
+                ("New Movie", "Me encantó"),
+                ("Other Movie", "Nota extra"),
             ],
         ):
             item = Item.objects.create(
@@ -48,7 +48,6 @@ class ProfileViewTests(TestCase):
                         status=Status.COMPLETED.value,
                         score=8,
                         notes=notes,
-                        notes_public=public,
                     ),
                 ],
             )
@@ -72,19 +71,18 @@ class ProfileViewTests(TestCase):
         response = self.client.get("/search", {"q": "x", "media_type": "movie"})
         self.assertNotEqual(response.resolver_match.url_name, "profile")
 
-    def test_latest_is_newest_first_with_public_comments_only(self):
-        """Visitors see public comments; private notes stay hidden."""
+    def test_latest_is_newest_first_with_comments(self):
+        """Visitors see every comment, newest title first."""
         response = self.client.get("/ana")
         titles = [entry["item"].title for entry in response.context["recent_activity"]]
-        self.assertEqual(titles, ["Secret Movie", "New Movie", "Old Movie"])
+        self.assertEqual(titles, ["Other Movie", "New Movie", "Old Movie"])
         self.assertContains(response, "Me encantó")
-        self.assertNotContains(response, "Nota privada")
+        self.assertContains(response, "Nota extra")
 
-    def test_owner_sees_their_own_private_notes(self):
-        """The owner sees every note on their own profile."""
+    def test_owner_sees_edit_controls(self):
+        """The owner gets edit controls on their own profile."""
         self.client.login(username="ana", password="pw")  # noqa: S106
         response = self.client.get("/ana")
-        self.assertContains(response, "Nota privada")
         self.assertContains(response, "Edit profile")
 
     def test_hidden_reviews_hide_comments_from_visitors(self):
@@ -152,8 +150,6 @@ class ProfileChromeTests(TestCase):
                     item=item,
                     user=self.owner,
                     status=Status.COMPLETED.value,
-                    notes="Solo para mí",
-                    notes_public=False,
                 ),
             ],
         )
@@ -177,11 +173,10 @@ class ProfileChromeTests(TestCase):
         self.assertContains(response, "Copy link")
 
     def test_owner_preview_matches_what_visitors_see(self):
-        """?as=visitor hides private notes and owner-only controls."""
+        """?as=visitor hides owner-only controls."""
         self.client.login(username="leo", password="pw")  # noqa: S106
         response = self.client.get("/leo", {"as": "visitor"})
         self.assertTrue(response.context["public_view"])
-        self.assertNotContains(response, "Solo para mí")
         self.assertNotContains(response, "Edit profile")
         self.assertContains(response, "Exit visitor view")
 
@@ -230,7 +225,6 @@ class ProfileLayoutTests(TestCase):
                     status=Status.COMPLETED.value,
                     score=9,
                     notes="Los sueños dentro de sueños",
-                    notes_public=True,
                 ),
             ],
         )
@@ -286,18 +280,6 @@ class ProfileLayoutTests(TestCase):
         self.assertNotContains(response, "Add to tracker")
         self.assertNotContains(response, 'id="global-search"')
 
-    @patch("app.views.services.get_media_metadata")
-    def test_title_page_hides_private_notes_from_visitors(self, mock_metadata):
-        """A private note only shows to its owner."""
-        mock_metadata.return_value = self.metadata
-        Movie.objects.filter(item=self.item).update(notes_public=False)
-        self.assertNotContains(
-            self.client.get("/ana/movie/tmdb/27205"), "Los sueños dentro de sueños"
-        )
-        self.client.login(username="ana", password="pw")  # noqa: S106
-        self.assertContains(
-            self.client.get("/ana/movie/tmdb/27205"), "Only you can see this note."
-        )
 
     def test_title_page_404s_outside_the_library(self):
         """Titles the person hasn't tracked or shelved aren't on their profile."""
@@ -316,11 +298,11 @@ class ProfileDiaryAndTimelineTests(TestCase):
         )
         now = timezone.now()
         rows = [
-            ("Rated", 8, "", False, 0),
-            ("Commented", None, "Me encantó", True, 1),
-            ("Plain", None, "", False, 2),
+            ("Rated", 8, "", 0),
+            ("Commented", None, "Me encantó", 1),
+            ("Plain", None, "", 2),
         ]
-        for index, (title, score, notes, public, days_ago) in enumerate(rows):
+        for index, (title, score, notes, days_ago) in enumerate(rows):
             item = Item.objects.create(
                 media_id=str(700 + index),
                 source=Sources.MANUAL.value,
@@ -335,7 +317,6 @@ class ProfileDiaryAndTimelineTests(TestCase):
                         status=Status.COMPLETED.value,
                         score=score,
                         notes=notes,
-                        notes_public=public,
                     ),
                 ],
             )
@@ -430,7 +411,6 @@ class PublicListPosterTests(TestCase):
                     status=Status.COMPLETED.value,
                     score=7,
                     notes="Bonita",
-                    notes_public=True,
                 ),
             ],
         )

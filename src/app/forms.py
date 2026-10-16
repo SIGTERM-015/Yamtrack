@@ -205,13 +205,6 @@ class MediaForm(forms.ModelForm):
     media_type = forms.CharField(widget=forms.HiddenInput(), required=True)
     source = forms.CharField(widget=forms.HiddenInput(), required=True)
     media_id = forms.CharField(widget=forms.HiddenInput(), required=True)
-    notes_public = forms.BooleanField(
-        required=False,
-        initial=True,
-        label="Show this note publicly",
-        help_text="Visible as a review on your public profile",
-    )
-
     class Meta:
         """Define fields and input types."""
 
@@ -222,7 +215,6 @@ class MediaForm(forms.ModelForm):
             "start_date",
             "end_date",
             "notes",
-            "notes_public",
         ]
         widgets = {
             "score": forms.NumberInput(
@@ -244,7 +236,7 @@ class MediaForm(forms.ModelForm):
     # form; the server stamps them on status changes, so they are optional.
     detail_field_names = ("start_date", "end_date")
     # Fields rendered on their own after the main grid.
-    trailing_field_names = ("notes", "notes_public")
+    trailing_field_names = ("notes",)
 
     def main_fields(self):
         """Return the visible fields shown in the form's main grid."""
@@ -321,7 +313,6 @@ class MovieForm(SingleDateMediaForm):
             "start_date",
             "end_date",
             "notes",
-            "notes_public",
         ]
         labels = {"end_date": "Watched on"}
 
@@ -392,7 +383,7 @@ class TvForm(MediaForm):
         """Bind form to model."""
 
         model = TV
-        fields = ["score", "status", "notes", "notes_public"]
+        fields = ["score", "status", "notes"]
 
 
 class SeasonForm(MediaForm):
@@ -408,7 +399,6 @@ class SeasonForm(MediaForm):
             "score",
             "status",
             "notes",
-            "notes_public",
         ]
 
 

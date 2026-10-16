@@ -49,17 +49,6 @@
       </div>
     {% endif %}
 
-    {% if form.notes_public %}
-      <div class="mb-5">
-        <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer"
-               for="{{ form.notes_public.id_for_label }}">
-          {{ form.notes_public|add_class:"h-4 w-4 rounded border-gray-600 bg-[#39404b] text-indigo-600 focus:ring-[#4a9eff]" }}
-          {{ form.notes_public.label }}
-        </label>
-        <p class="mt-1 text-xs text-gray-500">{{ form.notes_public.help_text }}</p>
-      </div>
-    {% endif %}
-
     <div class="flex flex-row-reverse justify-between mt-6">
       <button type="submit"
               class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer">

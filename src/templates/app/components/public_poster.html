@@ -20,6 +20,6 @@ page. Expects ``media`` and ``target_user``; ``show_comments`` gates notes.
   {% if media.item.season_number is not None %}<p class="text-xs text-gray-300">Season {{ media.item.season_number }}</p>{% endif %}
 </a>
 <p class="text-xs text-gray-400">{{ media.status|media_status_readable }}</p>
-{% if show_comments and media.notes and media.notes_public %}
+{% if show_comments and media.notes %}
   <p class="mt-1 text-xs text-gray-300 line-clamp-2">{{ media.notes }}</p>
 {% endif %}

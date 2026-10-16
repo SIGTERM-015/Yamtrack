@@ -79,7 +79,7 @@ jobs:
       - name: Check login page is served
         run: |
           curl --fail --silent --show-error http://127.0.0.1:8000/accounts/login/ \
-            | grep -q "Yamtrack"
+            | grep -q "Magpie"
 
       - name: Check static files are served
         run: |

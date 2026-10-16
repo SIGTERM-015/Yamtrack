@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Run the Django test suite on the 0-0-0 host. Usage: scripts/remote-test [test labels...]
+set -euo pipefail
+host=${REMOTE_TEST_HOST:-0-0-0}
+dest=ci/yamtrack
+cd "$(dirname "$0")/.."
+ssh "$host" "mkdir -p $dest"
+rsync -az --delete --exclude .git --exclude .venv --exclude src/db --exclude __pycache__ ./ "$host:$dest/"
+ssh "$host" "cd $dest && export PATH=\$HOME/.local/bin:\$PATH && uv sync --quiet && cd src && uv run python manage.py test --parallel=auto $*"

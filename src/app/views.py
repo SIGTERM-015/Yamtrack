@@ -183,9 +183,7 @@ def _split_opinions(entries, *, show_comments, is_owner, opinions=4, others=3):
 
     def has_opinion(entry):
         media = entry["media"]
-        visible_note = bool(media.notes) and (
-            is_owner or (show_comments and media.notes_public)
-        )
+        visible_note = bool(media.notes) and (is_owner or show_comments)
         return media.score is not None or visible_note
 
     with_opinion = [entry for entry in entries if has_opinion(entry)]
@@ -338,10 +336,7 @@ def profile_media(request, username, media_type, source, media_id):
         and bool(record.notes)
         and (
             is_owner
-            or (
-                record.notes_public
-                and target_user.profile_section_visible(viewer, "profile_show_reviews")
-            )
+            or target_user.profile_section_visible(viewer, "profile_show_reviews")
         )
     )
     finished_at = getattr(record, "end_date", None)

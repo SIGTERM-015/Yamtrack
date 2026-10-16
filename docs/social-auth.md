@@ -55,7 +55,7 @@ SOCIALACCOUNT_PROVIDERS={"github":{"SCOPE":["user","repo","read:org"]}}
 In Authentik:
 
 1. Create an OAuth2/OpenID Provider (under Applications/Providers) with these settings:
-   - Name: Yamtrack
+   - Name: Magpie
    - Redirect URI: `https://yamtrack.yourdomain.com/accounts/oidc/authentik/login/callback/`
 
 2. In YamTrack, configure:
