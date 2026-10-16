@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 from urllib.parse import urlencode
@@ -1603,11 +1604,55 @@ def restore_item_view(request, item_id):
     )
 
 
+@login_not_required
 @require_GET
-def service_worker():
-    """Serve the service worker file."""
+def service_worker(request):
+    """Serve the service worker from the site root so it controls every page.
+
+    The query string carries what the static file cannot know: the cache
+    version (changes with the file), the offline page and the static prefix
+    (both depend on BASE_URL).
+    """
     sw_path = Path(settings.STATICFILES_DIRS[0]) / "js" / "serviceworker.js"
-    with sw_path.open() as f:
-        response = HttpResponse(f.read(), content_type="application/javascript")
-        response["Service-Worker-Allowed"] = "/"
-        return response
+    response = HttpResponse(
+        sw_path.read_text(),
+        content_type="application/javascript",
+    )
+    response["Service-Worker-Allowed"] = reverse("home")
+    response["Cache-Control"] = "no-cache"
+    return response
+
+
+@login_not_required
+@require_GET
+def webmanifest(request):
+    """Serve the web app manifest with every path under the deployment prefix."""
+    prefix = reverse("home").rstrip("/")
+    path = Path(settings.STATICFILES_DIRS[0]) / "favicon" / "site.webmanifest"
+    manifest = json.loads(path.read_text())
+
+    def prefixed(node):
+        if isinstance(node, dict):
+            return {
+                key: f"{prefix}{value}"
+                if key in {"src", "url", "start_url", "scope", "id"}
+                and isinstance(value, str)
+                and value.startswith("/")
+                else prefixed(value)
+                for key, value in node.items()
+            }
+        if isinstance(node, list):
+            return [prefixed(item) for item in node]
+        return node
+
+    return HttpResponse(
+        json.dumps(prefixed(manifest)),
+        content_type="application/manifest+json",
+    )
+
+
+@login_not_required
+@require_GET
+def offline(request):
+    """Page the service worker shows when the network is unreachable."""
+    return render(request, "offline.html")
