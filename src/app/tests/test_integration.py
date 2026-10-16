@@ -55,7 +55,7 @@ class IntegrationTest(StaticLiveServerTestCase):
         self.page.get_by_role("button", name="Fill in air date").click()
         self.page.get_by_role("button", name="Add watch").click()
 
-        datetime_format = "%Y-%m-%d"
+        datetime_format = "%d/%m/%Y"
 
         # Episode 1 air date is 2008-01-20
         fixed_date = date(2008, 1, 20)
