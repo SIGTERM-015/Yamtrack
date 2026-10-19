@@ -17,9 +17,9 @@ from django.views.generic import RedirectView
 from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from health_check.views import HealthCheckView
-from redis.asyncio import Redis as RedisClient
 
 from app import views as app_views
+from config.health import HEALTH_CHECKS
 
 urlpatterns = [
     path("", include("app.urls")),
@@ -31,23 +31,7 @@ urlpatterns = [
     path("select2/", include("django_select2.urls")),
     path(
         "health/",
-        login_not_required(
-            HealthCheckView.as_view(
-                checks=[
-                    "health_check.Cache",
-                    "health_check.Database",
-                    "health_check.contrib.celery.Ping",
-                    (
-                        "health_check.contrib.redis.Redis",
-                        {
-                            "client_factory": lambda: RedisClient.from_url(
-                                settings.REDIS_URL
-                            )
-                        },
-                    ),
-                ]
-            )
-        ),
+        login_not_required(HealthCheckView.as_view(checks=HEALTH_CHECKS)),
     ),
     path("api/v1/", include("api.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

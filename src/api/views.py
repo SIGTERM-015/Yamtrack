@@ -23,6 +23,7 @@ from app.statistics import (
     get_timeline,
     get_user_media,
 )
+from config.health import HEALTH_CHECKS
 from events import tasks
 from events.models import Event
 from lists.models import CustomList, CustomListItem
@@ -553,7 +554,7 @@ class HealthView(drf_views.APIView):
     authentication_classes = []
     permission_classes = []
 
-    checks = HealthCheckView.checks
+    checks = HEALTH_CHECKS
 
     def get_checks(self):
         """Return instantiated health checks using the installed library."""

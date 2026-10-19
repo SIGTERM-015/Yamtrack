@@ -13,6 +13,17 @@ class PublicEndpointsTests(YamtrackApiTestCase):
         payload = response.json()
         check_health_structure(self, payload)
 
+    def test_health_endpoint_does_not_check_mail(self):
+        """Mail is not a dependency, so an unset SMTP must not mark Magpie down."""
+        response = self.call_api("get", "api_health")
+
+        checks = response.json()["checks"]
+        self.assertFalse([name for name in checks if name.startswith("Mail(")])
+        self.assertEqual(
+            sorted(name.split("(")[0] for name in checks),
+            ["Cache", "Database", "Ping", "Redis"],
+        )
+
     def test_info_endpoint(self):
         """Info endpoint test."""
         response = self.call_api("get", "api_info")
